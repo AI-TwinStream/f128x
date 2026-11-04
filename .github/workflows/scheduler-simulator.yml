@@ -166,6 +166,13 @@ jobs:
           for links in 1 2 4; do
             grep -q "linksPerNeighbor=$links " <<< "$output"
           done
+          for bandwidth in 128 256 512; do
+            grep -q "bisectionBandwidthBytesPerCycle=$bandwidth " <<< "$output"
+          done
+          if grep -v 'bisectionBandwidthBytesPerCycle=' <<< "$output" | grep -q '^topology='; then
+            echo "Missing normalized bisection bandwidth in topology result" >&2
+            exit 1
+          fi
           echo "$output"
           echo "PASS: full 81-case switched-fabric topology matrix"
 

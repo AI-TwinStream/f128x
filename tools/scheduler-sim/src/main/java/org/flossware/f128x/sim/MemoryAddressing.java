@@ -55,8 +55,8 @@ final class MemoryAddressing {
         long threadRegion = (long) thread * regionBytes;
         return switch (pattern) {
             case RANDOM -> randomAddress;
-            case SEQUENTIAL -> threadRegion + sequence * 64L;
-            case STRIDED -> threadRegion + sequence * stride;
+            case SEQUENTIAL -> threadRegion + (sequence * 64L) % regionBytes;
+            case STRIDED -> threadRegion + (sequence * stride) % regionBytes;
             case SHARED_REGION -> (sequence * stride) % regionBytes;
         };
     }

@@ -28,6 +28,9 @@ public final class MemoryAddressingTest {
         require(sharedA == sharedB, "shared-region addresses overlap across threads");
         require(random == 0x1234, "random pattern preserves supplied entropy");
         require(sequential != strided, "sequential and strided patterns differ");
+        long wrapped = MemoryAddressing.address(
+                MemoryAddressing.Pattern.SEQUENTIAL, 1, 17, 99, 64, 1024);
+        require(wrapped == 4096 + 64, "sequential accesses wrap within their region");
     }
 
     private static void mappingsExposeExpectedInterleaving() {

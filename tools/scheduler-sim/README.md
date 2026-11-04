@@ -1,4 +1,4 @@
-# Scheduler Simulation 0.4
+# Scheduler Simulation 0.5
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.
 
@@ -136,6 +136,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add byte-oriented bandwidth and bank/channel contention, richer dependency graphs, independent per-cluster issue budgets, migration/locality costs, and calibrate inputs from representative workload traces.
+The next model revision should add byte-oriented bandwidth and bank/channel contention, richer dependency graphs, workspace-level workload heterogeneity, independent per-cluster issue budgets, migration/locality costs, and calibrate inputs from representative workload traces.
 
 No architectural decision about 65,536 contexts follows from this model alone.

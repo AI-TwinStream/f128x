@@ -197,6 +197,21 @@ jobs:
           awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="memoryIssues") issues=p[2]; if (p[1]=="completedRequests") completed=p[2]; if (p[1]=="memoryBytesIssued") issued=p[2]; if (p[1]=="memoryBytesCompleted") done=p[2]; if (p[1]=="memoryRequestBytesObservedMin") min=p[2]; if (p[1]=="memoryRequestBytesObservedMax") max=p[2]; } } END { if (min < 16 || max > 256 || min >= max || issued <= issues * 16 || issued >= issues * 256 || done > issued) exit 1; }' <<< "$variable"
           printf '%s\n' "$variable"
 
+      - name: Verify independent dependency chains
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.f128x.sim.ContextSweep
+          single="$(java -Df128x.dependencyChains=1 -cp build/scheduler-sim "$class" 8 4 300 0.0 50000 42 1 128 0.70 4 0.20 20 200 0.50 12)"
+          parallel="$(java -Df128x.dependencyChains=4 -cp build/scheduler-sim "$class" 8 4 300 0.0 50000 42 1 128 0.70 4 0.20 20 200 0.50 12)"
+          grep -q 'dependencyChains=1' <<< "$single"
+          grep -q 'dependencyIssuesOverlapped=0' <<< "$single"
+          grep -q 'dependencyChains=4' <<< "$parallel"
+          grep -Eq 'dependencyIssuesOverlapped=[1-9][0-9]*' <<< "$parallel"
+          awk -v single="$single" '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="measuredIPC") parallel=p[2]; } } END { for (i=1; i<=split(single, fields, " "); i++) { split(fields[i], p, "="); if (p[1]=="measuredIPC") baseline=p[2]; } if (parallel <= baseline) exit 1; }' <<< "$parallel"
+          printf '%s\n' "$single"
+          printf '%s\n' "$parallel"
+
       - name: Verify memory completion-rate backpressure
         shell: bash
         run: |
@@ -242,6 +257,14 @@ jobs:
           fi
           if java -Df128x.remoteMemoryLatencyPenalty=-1 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
             echo "Expected negative remote-memory penalty to fail" >&2
+            exit 1
+          fi
+          if java -Df128x.dependencyChains=0 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected non-positive dependency-chain count to fail" >&2
+            exit 1
+          fi
+          if java -Df128x.dependencyChains=129 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected dependency-chain count above 128 to fail" >&2
             exit 1
           fi
           if java -Df128x.memoryRequestMinBytes=0 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then

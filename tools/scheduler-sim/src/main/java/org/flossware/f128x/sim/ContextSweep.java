@@ -13,7 +13,7 @@ import java.util.SplittableRandom;
  * outstanding memory transactions. If no slot is available, the selected
  * memory instruction waits for queue credit without being issued.
  *
- * This is an exploratory model, not a realistic cache, DRAM, or core model.
+ * Non-memory instructions may optionally incur a serialized dependency stall.\n * This is an exploratory model, not a realistic cache, DRAM, or core model.
  */
 public final class ContextSweep {
     private record Completion(long cycle, int thread, int latencyClass) {}
@@ -48,7 +48,7 @@ public final class ContextSweep {
                 ? Integer.parseInt(args[14]) : 1;
 
         MemoryClass[] memoryClasses;
-        if (args.length == 13) {
+        if (args.length == 13 || args.length == 15) {
             double l1Fraction = Double.parseDouble(args[8]);
             int l1Latency = Integer.parseInt(args[9]);
             double l2Fraction = Double.parseDouble(args[10]);

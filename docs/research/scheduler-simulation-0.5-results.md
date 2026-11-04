@@ -28,7 +28,7 @@ Parameters:
 - 50,000 cycles; warmup 5,000; seed 42.
 - Distributed scheduler configured with 8 clusters.
 
-| Scheduler | IPC | Issue utilization | Workspace Jain fairness | Steals |
+| Scheduler | IPC | Issue utilization | Raw workspace issue-count Jain index | Steals |
 |---|---:|---:|---:|---:|
 | FIFO | 4.0000 | 100.00% | 0.999997 | 0 |
 | Hierarchical | 4.0000 | 100.00% | 1.000000 | 0 |
@@ -54,19 +54,41 @@ Measured distributed result:
 | IPC | 1.6862 |
 | Issue utilization | 42.16% |
 | Scheduler steals | 30,403 |
-| Workspace Jain fairness | 0.999795 |
+| Raw workspace issue-count Jain index | 0.999795 |
 
 The work-stealing path is exercised because there are more scheduler clusters than workspaces. The global round-robin selector visits empty target clusters and steals ready threads from nonempty queues. The high steal count exposes repeated reassignment under this deliberately oversubscribed configuration.
 
 This is not a claim that a physical implementation should use eight clusters for four workspaces. It is a useful warning that cluster count, workspace placement, local issue budgets, and migration policy cannot be chosen independently. The current model does not assign a latency, power, or locality penalty to a steal, so the result cannot quantify its cost.
 
-## 4. Interpretation and next work
+## 4. Workspace workload-skew comparison
 
-The balanced case shows that the three policies can reach the same throughput under a uniform workload. It does not distinguish their behavior under skewed workspace activity, priorities, shared-register hot spots, or different memory profiles.
+Parameters:
+
+- 64 contexts across 4 workspaces; issue width 4.
+- First workspace assigned the hot profile (`hotWorkspaceRatio=0.25)).
+- Hot workspace: memory-operation fraction 0.90; dependency-stall fraction 0.20.
+- Other workspaces: memory-operation fraction 0.05; dependency-stall fraction 0.02.
+- Memory latency: 300 cycles; per-thread outstanding limit 2.
+- 50,000 cycles; warmup 5,000; seed 42.
+- Distributed configuration: 2 clusters.
+
+| Scheduler | IPC | Issue utilization | Raw workspace issue-count Jain index | Steals |
+|---|---:|---:|---:|---:|
+| FIFO | 4.0000 | 100.00% | 0.793313 | 0 |
+| Hierarchical | 4.0000 | 100.00% | 0.794508 | 0 |
+| Distributed | 4.0000 | 100.00% | 0.793544 | 9 |
+
+All policies keep the four-wide issue engine saturated. The raw issue-count fairness index is lower because the hot workspace has a much higher memory and dependency stall rate and therefore less runnable work. This metric is not normalized by runnable time; it must not be interpreted as proof of scheduler starvation or unfair treatment. The small differences between policies are not meaningful evidence of a fairness winner.
+
+The result motivates a better fairness model: measure each workspace's runnable-thread cycles and compare delivered issue service against its actual opportunity to run. That instrumentation is required before making policy claims.
+
+## 5. Interpretation and next work
+
+The balanced and skewed cases both show that the three policies can reach the same aggregate throughput in the tested workloads. The raw workspace issue-count index is confounded by runnable availability, so the current tests do not establish a fairness winner. They also do not cover priorities, shared-register hot spots, or locality-sensitive memory profiles.
 
 The next scheduler experiment should introduce workspace-level workload heterogeneity and explicit per-cluster issue budgets. It should then measure:
 
-- Per-workspace and per-thread service distribution.
+- Per-workspace and per-thread service distribution, normalized by runnable-thread cycles.
 - Jain fairness, minimum service, and maximum wait.
 - Steal frequency, migration count, and time spent remote from workspace-local state.
 - Local versus remote wakeup delay.

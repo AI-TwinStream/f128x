@@ -307,6 +307,10 @@ public final class ContextSweep {
                     int channel = completion.channel();
                     int bank = completion.bank();
                     bankOutstanding[channel][bank]--;
+                    if (bankOutstanding[channel][bank] < 0) {
+                        throw new IllegalStateException(
+                                "DRAM bank outstanding count became negative");
+                    }
                 }
                 completedRequests++;
                 classCompletions[latencyClass]++;

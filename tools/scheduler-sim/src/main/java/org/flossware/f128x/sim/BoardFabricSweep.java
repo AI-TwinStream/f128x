@@ -16,7 +16,7 @@ import java.util.SplittableRandom;
  * fabric. This is a comparative queueing model, not RTL.
  */
 public final class BoardFabricSweep {
-    private record Wakeup(long cycle, int thread) {}
+    private record Wakeup(long cycle, int thread, boolean memoryRequest) {}
 
     private record Result(int boards, int clustersPerBoard, int issueWidthPerCluster,
             long instructions, long memoryRequests, long remoteRequests,
@@ -142,7 +142,9 @@ public final class BoardFabricSweep {
             while (!completions.isEmpty() && completions.peek().cycle() <= cycle) {
                 Wakeup wakeup = completions.remove();
                 ready.get(homeCluster[wakeup.thread()]).addLast(wakeup.thread());
-                outstandingCount--;
+                if (wakeup.memoryRequest()) {
+                    outstandingCount--;
+                }
             }
 
             for (int cluster = 0; cluster < clusterCount; cluster++) {
@@ -176,10 +178,10 @@ public final class BoardFabricSweep {
                         memoryRequests++;
                         outstandingCount++;
                         maxOutstanding = Math.max(maxOutstanding, outstandingCount);
-                        completions.add(new Wakeup(completionCycle, thread));
+                        completions.add(new Wakeup(completionCycle, thread, true));
                     } else if (random.nextDouble() < dependencyFraction) {
                         completions.add(new Wakeup(
-                                (long) cycle + dependencyLatency, thread));
+                                (long) cycle + dependencyLatency, thread, false));
                     } else {
                         ready.get(cluster).addLast(thread);
                     }

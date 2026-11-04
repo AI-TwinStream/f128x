@@ -13,7 +13,8 @@ import java.util.SplittableRandom;
  * outstanding memory transactions. If no slot is available, the selected
  * memory instruction waits for queue credit without being issued.
  *
- * Non-memory instructions may optionally incur a serialized dependency stall.\n * This is an exploratory model, not a realistic cache, DRAM, or core model.
+ * Non-memory instructions may optionally incur a serialized dependency stall.
+ * This is an exploratory model, not a realistic cache, DRAM, or core model.
  */
 public final class ContextSweep {
     private record Completion(long cycle, int thread, int latencyClass) {}
@@ -27,7 +28,8 @@ public final class ContextSweep {
 
     public static void main(String[] args) {
         if (args.length != 6 && args.length != 7
-                && args.length != 8 && args.length != 13 && args.length != 14\n                && args.length != 15 && args.length != 16) {
+                && args.length != 8 && args.length != 13 && args.length != 14
+                && args.length != 15 && args.length != 16) {
             usage();
             System.exit(2);
         }
@@ -42,7 +44,7 @@ public final class ContextSweep {
                 ? Integer.parseInt(args[6]) : 1;
         int memoryQueueCapacity = args.length >= 8
                 ? Integer.parseInt(args[7]) : Integer.MAX_VALUE;
-        double dependencyFraction = args.length == 15
+        double dependencyFraction = args.length >= 15
                 ? Double.parseDouble(args[13]) : 0.0;
         int dependencyLatency = args.length >= 15
                 ? Integer.parseInt(args[14]) : 1;
@@ -78,7 +80,8 @@ public final class ContextSweep {
                 || cycles < 1 || maxOutstanding < 1
                 || memoryQueueCapacity < 1 || memoryFraction < 0.0
                 || memoryFraction > 1.0 || dependencyFraction < 0.0
-                || dependencyFraction > 1.0 || dependencyLatency < 1\n                || memoryCompletionRate < 1) {
+                || dependencyFraction > 1.0 || dependencyLatency < 1
+                || memoryCompletionRate < 1) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
         for (MemoryClass memoryClass : memoryClasses) {
@@ -111,7 +114,8 @@ public final class ContextSweep {
         long idleCycles = 0;
         long queueFullAttempts = 0;
         long queueWaiterCycles = 0;
-        long dependencyWaiterCycles = 0;\n        long serviceBacklogCycles = 0;
+        long dependencyWaiterCycles = 0;
+        long serviceBacklogCycles = 0;
         long dependencyIssues = 0;
         long completedDependencies = 0;
         long maxQueueOccupancy = 0;

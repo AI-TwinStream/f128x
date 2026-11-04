@@ -287,6 +287,7 @@ jobs:
           printf '%s\n' "$baseline"
           printf '%s\n' "$bounded"
           variable="$(java -Df128x.memoryRequestMinBytes=16 -Df128x.memoryRequestMaxBytes=256 -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -Df128x.memoryBandwidthBytesPerCycle=16 -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
+          echo "$variable"
           grep -q 'memoryRequestBytesMin=16 memoryRequestBytesMax=256' <<< "$variable"
           grep -q 'memoryRequestBytesObservedMin=' <<< "$variable"
           grep -q 'memoryRequestBytesObservedMax=' <<< "$variable"

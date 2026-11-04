@@ -297,7 +297,7 @@ jobs:
           grep -Eq 'bankConflictWaitCycles=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'memoryServiceCycles=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'maxBankOutstanding=[1-9][0-9]*' <<< "$bounded"
-          issues="$(grep -o 'memoryIssues=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
+          issues="$(grep -o ' memoryIssues=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
           completed="$(grep -o 'completedRequests=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
           issued="$(grep -o 'memoryBytesIssued=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
           done="$(grep -o 'memoryBytesCompleted=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"

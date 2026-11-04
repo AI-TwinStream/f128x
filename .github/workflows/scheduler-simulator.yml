@@ -289,18 +289,26 @@ jobs:
         run: |
           set -euo pipefail
           class=org.flossware.f128x.sim.ContextSweep
+          baseline="$(java -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
           bounded="$(java -Df128x.memoryRequestBytes=64 -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -Df128x.memoryBandwidthBytesPerCycle=16 -Df128x.bankConflictPenalty=2 -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
           echo "$bounded"
-          grep -q 'memorySystemEnabled=true cacheHierarchyEnabled=false memoryRequestBytes=64 memoryRequestBytesMin=64 memoryRequestBytesMax=64' <<< "$bounded"
-          grep -q 'memoryChannels=4 memoryBanksPerChannel=8 memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' <<< "$bounded"
-          grep -Eq 'bankConflictRequests=[1-9][0-9]*' <<< "$bounded"
-          grep -Eq 'bankConflictWaitCycles=[1-9][0-9]*' <<< "$bounded"
-          grep -Eq 'memoryServiceCycles=[1-9][0-9]*' <<< "$bounded"
-          grep -Eq 'maxBankOutstanding=[1-9][0-9]*' <<< "$bounded"
-          grep -Eq 'memoryBytesIssued=[1-9][0-9]* memoryBytesCompleted=[0-9]+' <<< "$bounded"
-          grep -Eq 'memoryBankRequests=[1-9][0-9]*' <<< "$bounded"
-          : # Assertions above are the test; avoid dumping the full simulation output.
-
+          check() {
+            local label="$1" pattern="$2" output="$3"
+            if ! grep -Eq "$pattern" <<< "$output"; then
+              echo "FAIL: $label" >&2
+              exit 1
+            fi
+          }
+          check "memory system enabled with 64-byte requests" 'memorySystemEnabled=true cacheHierarchyEnabled=false memoryRequestBytes=64 memoryRequestBytesMin=64 memoryRequestBytesMax=64' "$bounded"
+          check "four-channel/eight-bank bandwidth configuration" 'memoryChannels=4 memoryBanksPerChannel=8 memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' "$bounded"
+          check "bank conflicts observed" 'bankConflictRequests=[1-9][0-9]*' "$bounded"
+          check "bank conflict wait observed" 'bankConflictWaitCycles=[1-9][0-9]*' "$bounded"
+          check "DRAM service cycles observed" 'memoryServiceCycles=[1-9][0-9]*' "$bounded"
+          check "bank outstanding observed" 'maxBankOutstanding=[1-9][0-9]*' "$bounded"
+          check "memory byte counters reported" 'memoryBytesIssued=[1-9][0-9]* memoryBytesCompleted=[0-9]+' "$bounded"
+          check "DRAM bank requests reported" 'memoryBankRequests=[1-9][0-9]*' "$bounded"
+          echo "PASS: byte bandwidth and bank contention checks"
+ 
       - name: Verify independent dependency chains
         shell: bash
         run: |

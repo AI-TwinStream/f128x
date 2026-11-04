@@ -112,7 +112,7 @@ This is deliberately a small first model. It does not yet include:
 - Clock, power, thermal, area, pin-count, signal-integrity, or physical packaging costs.
 - Workload traces, address locality, real instruction streams, or compiler behavior.
 
-The shared full-duplex fabric and single local-memory lane per board are bottleneck candidates, not claims about a proposed electrical interface. The model assumes one local service lane per board and a single globally serialized fabric; it is intended to expose trade-offs, not select a physical interconnect.
+The shared full-duplex fabric and configurable board-local memory lanes are bottleneck candidates, not claims about a proposed electrical interface. The default is one local service lane per board, and the fabric remains a single globally serialized request path plus response path. These are deliberate abstractions to expose trade-offs, not to select a physical interconnect.
 
 The first four configurations compare packaging and fabric pressure at equal aggregate issue capacity. If they differ, the cause in this model is board-local placement, memory-lane service capacity, and remote-memory serialization, not additional execution width. The 4×4 configuration is a separate scale-up point. The published four-seed table above uses the original one-lane-per-board and uniform-remote baseline; results from the new lane-count and remote-pattern sweeps must be reported separately.
 

@@ -68,7 +68,7 @@ java \
 
 ## Preliminary results
 
-Four full-default runs were executed locally with OpenJDK 21, using seeds 42, 7, 101, and 2026. The repository workflow compiles and smoke-tests the committed source with JDK 25; its run status is not yet visible through the available GitHub status interface, so this is not being represented as a completed JDK 25 CI pass.
+Four full-default runs were executed locally with OpenJDK 21, using seeds 42, 7, 101, and 2026. The repository workflow also compiled the committed source with Temurin JDK 25 and passed the board/backplane smoke test and the existing scheduler suite in run [#108](https://github.com/FlossWare/f128x/actions/runs/41851658484). The four-seed throughput table below was generated in the local OpenJDK 21 experiment; JDK 25 CI validates compilation and deterministic smoke behavior, not the full four-seed result table.
 
 Configuration:
 

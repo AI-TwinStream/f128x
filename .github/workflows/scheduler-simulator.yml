@@ -97,7 +97,7 @@ jobs:
           for scheduler in fifo hierarchical distributed; do
             output="$(java -Df128x.scheduler="$scheduler" -Df128x.clusters=8 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1024 4 300 0.25 50000 42 4 128 0.70 4 0.20 20 200 0.10 12)"
             grep -q "scheduler=$scheduler" <<< "$output"
-            grep -Eq 'workspaceJainFairness=0\.[0-9]+' <<< "$output"
+            grep -Eq 'workspaceJainFairness=[01]\.[0-9]+' <<< "$output"
             printf '%s\n' "$output"
           done
 

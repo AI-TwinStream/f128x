@@ -21,7 +21,8 @@ import java.util.SplittableRandom;
  */
 public final class ContextSweep {
     private record Completion(long cycle, int thread, int latencyClass,
-            int channel, int bank, int requestBytes) {}
+            int channel, int bank, int requestBytes, long address,
+            CacheSweep.Result cacheResult) {}
 
     private record DependencyWakeup(long cycle, int thread) {}
 
@@ -294,6 +295,10 @@ public final class ContextSweep {
                 Completion completion = completions.remove();
                 int thread = completion.thread();
                 int latencyClass = completion.latencyClass();
+                if (cacheHierarchyEnabled && completion.cacheResult() != null) {
+                    cacheHierarchy.fill(thread, completion.address(),
+                            completion.cacheResult());
+                }
                 outstandingByThread[thread]--;
                 memoryBytesCompleted += completion.requestBytes();
                 if (memorySystemEnabled) {
@@ -398,6 +403,7 @@ public final class ContextSweep {
                     int channel = 0;
                     int bank = 0;
                     long syntheticAddress = 0L;
+                    CacheSweep.Result cacheResult = null;
                     if (memorySystemEnabled || cacheHierarchyEnabled) {
                         long addressEntropy = random.nextLong();
                         if (cacheHierarchyEnabled) {
@@ -409,7 +415,7 @@ public final class ContextSweep {
                                 addressEntropy, addressStride, addressRegionBytes);
                     }
                     if (cacheHierarchyEnabled) {
-                        CacheSweep.Result cacheResult = cacheHierarchy.access(
+                        cacheResult = cacheHierarchy.probe(
                                 thread, syntheticAddress);
                         selectedClass = switch (cacheResult) {
                             case L1_HIT -> 0;
@@ -464,7 +470,8 @@ public final class ContextSweep {
                     }
                     completions.add(new Completion(
                             completionCycle, thread, selectedClass,
-                            channel, bank, requestBytes));
+                            channel, bank, requestBytes, syntheticAddress,
+                            cacheResult));
                     memoryBytesIssued += requestBytes;
                     if (remote) {
                         remoteMemoryIssues++;

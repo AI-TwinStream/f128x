@@ -2,7 +2,7 @@ name: Scheduler simulator
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'experiment/**']
     paths:
       - "tools/scheduler-sim/**"
       - ".github/workflows/scheduler-simulator.yml"
@@ -40,13 +40,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          command=(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.25 20000 42 2)
+          command=(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.25 20000 42 2 128)
           first="$( "${command[@]}" )"
           second="$( "${command[@]}" )"
           test "$first" = "$second"
           grep -q 'contexts=512' <<< "$first"
           grep -q 'issueWidth=4' <<< "$first"
           grep -q 'maxOutstanding=2' <<< "$first"
+          grep -q 'memoryQueueCapacity=128' <<< "$first"
           grep -q 'seed=42' <<< "$first"
           printf '%s\n' "$first"
 
@@ -66,6 +67,11 @@ jobs:
               java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep "$contexts" 4 300 0.25 200000 42 "$outstanding"
             done
           done
+
+      - name: Exercise multi-class finite-queue model
+        run: |
+          java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep \\
+            1024 4 300 0.25 100000 42 4 128 0.70 4 0.20 20 200
 
       - name: Verify invalid arguments fail
         run: |

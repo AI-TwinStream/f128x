@@ -60,8 +60,8 @@ public final class BoardFabricSweep {
                 || contexts > workspaces * threadsPerWorkspace || cycles < 2
                 || warmup < 0 || warmup >= cycles || localMemoryLatency < 1
                 || remoteMemoryLatency < 1 || fabricLatency < 0
-                 || fabricBytesPerCycle < 1 || localMemoryBytesPerCycle < 1 || fabricHopLatency < 0
-                || requestBytes < 1 || queueCapacity < 1
+                || fabricBytesPerCycle < 1 || localMemoryBytesPerCycle < 1
+                || fabricHopLatency < 0 || requestBytes < 1 || queueCapacity < 1
                 || !fraction(memoryFraction) || !fraction(dependencyFraction)
                 || dependencyLatency < 1) {
             throw new IllegalArgumentException("Invalid board/fabric simulation parameter");
@@ -70,10 +70,12 @@ public final class BoardFabricSweep {
         System.out.printf("board-fabric-sim=0.1 contexts=%d workspaces=%d cycles=%d warmup=%d "
                 + "memoryFraction=%.3f dependencyFraction=%.3f localMemoryLatency=%d "
                 + "remoteMemoryLatency=%d fabricLatency=%d fabricBytesPerCycle=%d "
-                + "localMemoryBytesPerCycle=%d fabricHopLatency=%d requestBytes=%d queueCapacity=%d seed=%d%n",
+                + "localMemoryBytesPerCycle=%d fabricHopLatency=%d requestBytes=%d "
+                + "queueCapacity=%d seed=%d%n",
                 contexts, workspaces, cycles, warmup, memoryFraction, dependencyFraction,
                 localMemoryLatency, remoteMemoryLatency, fabricLatency,
-                fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency, requestBytes, queueCapacity, seed);
+                fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency,
+                requestBytes, queueCapacity, seed);
 
         int[][] topologies = {{1, 8, 1}, {2, 4, 1}, {4, 2, 1}, {8, 1, 1}, {4, 4, 1}};
         double[] remoteFractions = {0.10, 0.50, 0.90};
@@ -84,8 +86,8 @@ public final class BoardFabricSweep {
                         cycles, warmup, seed, topology[0], topology[1], topology[2],
                         remoteFraction, memoryFraction, dependencyFraction,
                         dependencyLatency, localMemoryLatency, remoteMemoryLatency,
-                        fabricLatency, fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency,
-                        requestBytes, queueCapacity);
+                        fabricLatency, fabricBytesPerCycle, localMemoryBytesPerCycle,
+                        fabricHopLatency, requestBytes, queueCapacity);
                 System.out.printf("boards=%d clustersPerBoard=%d issueWidthPerCluster=%d "
                         + "aggregateIssueWidth=%d ipc=%.4f utilization=%.4f "
                         + "memoryRequests=%d remoteRequests=%d fabricBytes=%d "
@@ -192,7 +194,8 @@ public final class BoardFabricSweep {
                                     memoryEnd + remoteMemoryLatency, responseFabricAvailableCycle);
                             long responseEnd = responseStart + requestCycles;
                             long hops = 32 - Integer.numberOfLeadingZeros(boards - 1);
-                            long roundTripFabricLatency = 2L * (fabricLatency + hops * fabricHopLatency);
+                            long roundTripFabricLatency = 2L
+                                    * (fabricLatency + hops * fabricHopLatency);
                             completionCycle = responseEnd + roundTripFabricLatency;
                             requestFabricAvailableCycle = requestEnd;
                             responseFabricAvailableCycle = responseEnd;

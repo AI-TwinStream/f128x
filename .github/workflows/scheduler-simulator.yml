@@ -100,6 +100,9 @@ jobs:
             grep -Eq 'workspaceJainFairness=[01]\.[0-9]+' <<< "$output"
             printf '%s\n' "$output"
           done
+          sparse="$(java -Df128x.scheduler=distributed -Df128x.clusters=8 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 20000 42 2)"
+          grep -Eq 'schedulerSteals=[1-9][0-9]*' <<< "$sparse"
+          printf '%s\n' "$sparse"
 
       - name: Verify memory completion-rate backpressure
         shell: bash

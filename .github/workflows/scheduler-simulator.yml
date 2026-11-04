@@ -300,12 +300,22 @@ jobs:
           grep -Eq 'maxBankOutstanding=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'memoryBytesIssued=[1-9][0-9]* memoryBytesCompleted=[0-9]+' <<< "$bounded"
           grep -Eq 'memoryBankRequests=[1-9][0-9]*' <<< "$bounded"
-          issues="$(sed -n 's/.* memoryIssues=\\([0-9]*\\).*/\\1/p' <<< "$bounded")"
-          completed="$(sed -n 's/.* completedRequests=\\([0-9]*\\).*/\\1/p' <<< "$bounded")"
-          issued="$(sed -n 's/.* memoryBytesIssued=\\([0-9]*\\).*/\\1/p' <<< "$bounded")"
-          done="$(sed -n 's/.* memoryBytesCompleted=\\([0-9]*\\).*/\\1/p' <<< "$bounded")"
-          baseline_ipc="$(sed -n 's/.* measuredIPC=\\([0-9.]*\\).*/\\1/p' <<< "$baseline")"
-          bounded_ipc="$(sed -n 's/.* measuredIPC=\\([0-9.]*\\).*/\\1/p' <<< "$bounded")"
+          field() {
+            local key="$1" line="$2" token
+            for token in $line; do
+              if [[ "$token" == "$key="* ]]; then
+                printf '%s' "${token#*=}"
+                return 0
+              fi
+            done
+            return 1
+          }
+          issues="$(field memoryIssues "$bounded")"
+          completed="$(field completedRequests "$bounded")"
+          issued="$(field memoryBytesIssued "$bounded")"
+          done="$(field memoryBytesCompleted "$bounded")"
+          baseline_ipc="$(field measuredIPC "$baseline")"
+          bounded_ipc="$(field measuredIPC "$bounded")"
           test "$issued" -eq "$((issues * 64))"
           test "$done" -eq "$((completed * 64))"
           test "$done" -le "$issued"

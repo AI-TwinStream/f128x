@@ -197,7 +197,7 @@ public final class ContextSweep {
         long serviceBacklogCycles = 0;
         long dependencyIssues = 0;
         long dependencyIssuesOverlapped = 0;
-        long completedDependencies = 0;
+        long dependencyStallWakeups = 0;
         long remoteWakeups = 0;
         long remoteMemoryIssues = 0;
         long remoteMemoryLatencyCycles = 0;
@@ -247,7 +247,7 @@ public final class ContextSweep {
                     remoteWakeups++;
                 }
                 ready.addLast(wakeup.thread());
-                completedDependencies++;
+                dependencyStallWakeups++;
             }
 
             int completionsThisCycle = 0;
@@ -613,7 +613,7 @@ public final class ContextSweep {
                         + "waitingAtThreadLimitAtEnd=%d "
                         + "waitingAtQueueLimitAtEnd=%d outstandingAtEnd=%d "
                         + "dependencyIssues=%d dependencyIssuesOverlapped=%d "
-                        + "completedDependencies=%d dependenciesInFlightAtEnd=%d "
+                        + "dependencyStallWakeups=%d threadsWaitingOnDependenciesAtEnd=%d "
                         + "workspaceIssuesMin=%d workspaceIssuesMax=%d "
                         + "workspaceIssueJainFairness=%.6f "
                         + "workspaceRunnableThreadCycles=%d "
@@ -651,7 +651,7 @@ public final class ContextSweep {
                 dependencyWaiterCycles, serviceBacklogCycles, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
                 dependencyIssues, dependencyIssuesOverlapped,
-                completedDependencies, dependencyWakeups.size(),
+                dependencyStallWakeups, dependencyWakeups.size(),
                 minWorkspaceIssues, maxWorkspaceIssues, workspaceIssueJainFairness,
                 totalRunnableThreadCycles, totalRunnableWorkspaceCycles,
                 workspacesWithRunnableOpportunity,

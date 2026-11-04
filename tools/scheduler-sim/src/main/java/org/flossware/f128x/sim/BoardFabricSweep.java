@@ -353,7 +353,7 @@ final class FabricTopologySweep {
         if (memoryLanes < 1) {
             throw new IllegalArgumentException("memoryLanesPerBoard must be positive");
         }
-        String arbitration = System.getProperty("f128x.fabric.arbitration", "round_robin");
+        String arbitration = System.getProperty("f128x.fabric.arbitration", "fixed");
         if (!(arbitration.equals("fixed") || arbitration.equals("round_robin"))) {
             throw new IllegalArgumentException("arbitration must be fixed or round_robin");
         }

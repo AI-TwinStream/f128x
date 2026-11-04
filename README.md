@@ -21,6 +21,8 @@ A first-order latency-hiding model treats 65,536 contexts as a hypothesis to tes
 
 A 128-bit register does not imply 128-bit addresses, instructions, memory buses, or execution units. Those are independent design decisions.
 
+<img width="1536" height="1024" alt="floscpu" src="https://github.com/user-attachments/assets/0fde519b-5cf7-4909-9c3c-4e2622a3ce32" />
+
 ## Documentation
 
 ### Current architecture and review work

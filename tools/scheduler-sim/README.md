@@ -242,3 +242,26 @@ java -cp build/scheduler-sim org.flossware.f128x.sim.BoardFabricSweep
 ```
 
 The board model is intentionally separate from `ContextSweep`. The lane count is a service-parallelism abstraction, not a detailed channel/bank controller. The model still does not include parallel fabric links, cache coherence, migration, or physical board costs. See [Board and Backplane Simulation 0.1](../../docs/research/board-backplane-simulation-0.1.md) for assumptions and limitations.
+
+
+## Switched fabric topology experiment
+
+`FabricTopologySweep` is an independent packet/service sensitivity experiment in the same source file as `BoardFabricSweep`. It compares:
+- A globally shared full-duplex fabric lane.
+- A bidirectional ring using shortest paths.
+- A two-dimensional mesh proxy using deterministic shortest paths.
+- One, two, or four parallel links per neighbor.
+- Uniform, hotspot, and paired remote destinations.
+- Four-, eight-, and sixteen-board organizations.
+
+Each source board injects a deterministic stream of 64-byte remote requests. Request and response directions have independent link availability, each traversed hop consumes link service, and destination memory has one service lane. The report includes mean and p95 request-to-response latency plus aggregate completed operations per cycle.
+
+Run it with:
+
+```sh
+java -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep
+```
+
+Use `-Df128x.fabric.operationsPerBoard=2048` and `-Df128x.fabric.seed=42` to control workload size and seed. The normal `BoardFabricSweep` CI smoke path also runs a deterministic switched-mesh check, so this experiment is compiled and exercised by the existing workflow.
+
+This is a topology sensitivity model, not a routing or electrical model. It uses deterministic shortest-path routing, fixed injection intervals, FIFO link availability, one destination-memory service lane, and no packet arbitration policy, virtual channels, adaptive routing, failures, congestion control, or physical link costs. The shared topology is a single serialized fabric resource per direction; ring and mesh topologies have per-directed-hop resources, with the configured number of parallel links per neighbor. Compare like-for-like board counts, patterns, and link counts; do not interpret the absolute throughput as a hardware prediction.

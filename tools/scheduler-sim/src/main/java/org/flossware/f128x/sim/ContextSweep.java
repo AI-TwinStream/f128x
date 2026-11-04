@@ -63,7 +63,8 @@ public final class ContextSweep {
             double l2Fraction = Double.parseDouble(args[10]);
             int l2Latency = Integer.parseInt(args[11]);
             int dramLatency = Integer.parseInt(args[12]);
-            if (l1Fraction < 0.0 || l2Fraction < 0.0
+            if (!Double.isFinite(l1Fraction) || !Double.isFinite(l2Fraction)
+                    || l1Fraction < 0.0 || l2Fraction < 0.0
                     || l1Fraction + l2Fraction > 1.0) {
                 throw new IllegalArgumentException(
                         "Memory-class fractions must be non-negative and sum to at most 1");
@@ -94,20 +95,27 @@ public final class ContextSweep {
 
         if (contexts < 1 || issueWidth < 1 || defaultLatency < 1
                 || cycles < 1 || maxOutstanding < 1
-                || memoryQueueCapacity < 1 || memoryFraction < 0.0
-                || memoryFraction > 1.0 || dependencyFraction < 0.0
+                || memoryQueueCapacity < 1 || !Double.isFinite(memoryFraction)
+                || memoryFraction < 0.0 || memoryFraction > 1.0
+                || !Double.isFinite(dependencyFraction) || dependencyFraction < 0.0
                 || dependencyFraction > 1.0 || dependencyLatency < 1
-                || memoryCompletionRate < 1 || hotWorkspaceRatio < 0.0
-                || hotWorkspaceRatio > 1.0 || hotMemoryFraction < 0.0
-                || hotMemoryFraction > 1.0 || coldMemoryFraction < 0.0
-                || coldMemoryFraction > 1.0 || hotDependencyFraction < 0.0
-                || hotDependencyFraction > 1.0 || coldDependencyFraction < 0.0
-                || coldDependencyFraction > 1.0) {
+                || memoryCompletionRate < 1 || !Double.isFinite(hotWorkspaceRatio)
+                || hotWorkspaceRatio < 0.0 || hotWorkspaceRatio > 1.0
+                || !Double.isFinite(hotMemoryFraction) || hotMemoryFraction < 0.0
+                || hotMemoryFraction > 1.0 || !Double.isFinite(coldMemoryFraction)
+                || coldMemoryFraction < 0.0 || coldMemoryFraction > 1.0
+                || !Double.isFinite(hotDependencyFraction)
+                || hotDependencyFraction < 0.0 || hotDependencyFraction > 1.0
+                || !Double.isFinite(coldDependencyFraction)
+                || coldDependencyFraction < 0.0 || coldDependencyFraction > 1.0) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
         String schedulerStrategy = System.getProperty("f128x.scheduler", "fifo");
         int defaultClusters = Math.max(1, Math.min(8, workspaceCount));
         int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
+        if (clusterCount < 1) {
+            throw new IllegalArgumentException("Cluster count must be positive");
+        }
         ReadyScheduler ready = createReadyScheduler(
                 schedulerStrategy, contexts, clusterCount);
 

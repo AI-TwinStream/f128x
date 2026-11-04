@@ -18,6 +18,8 @@ import java.util.SplittableRandom;
 public final class ContextSweep {
     private record Completion(long cycle, int thread, int latencyClass) {}
 
+    private record DependencyWakeup(long cycle, int thread) {}
+
     private record MemoryClass(String name, double cumulativeFraction,
             int latency) {}
 
@@ -25,7 +27,7 @@ public final class ContextSweep {
 
     public static void main(String[] args) {
         if (args.length != 6 && args.length != 7
-                && args.length != 8 && args.length != 13) {
+                && args.length != 8 && args.length != 13 && args.length != 15) {
             usage();
             System.exit(2);
         }
@@ -40,6 +42,10 @@ public final class ContextSweep {
                 ? Integer.parseInt(args[6]) : 1;
         int memoryQueueCapacity = args.length >= 8
                 ? Integer.parseInt(args[7]) : Integer.MAX_VALUE;
+        double dependencyFraction = args.length == 15
+                ? Double.parseDouble(args[13]) : 0.0;
+        int dependencyLatency = args.length == 15
+                ? Integer.parseInt(args[14]) : 1;
 
         MemoryClass[] memoryClasses;
         if (args.length == 13) {
@@ -67,7 +73,8 @@ public final class ContextSweep {
         if (contexts < 1 || issueWidth < 1 || defaultLatency < 1
                 || cycles < 1 || maxOutstanding < 1
                 || memoryQueueCapacity < 1 || memoryFraction < 0.0
-                || memoryFraction > 1.0) {
+                || memoryFraction > 1.0 || dependencyFraction < 0.0
+                || dependencyFraction > 1.0 || dependencyLatency < 1) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
         for (MemoryClass memoryClass : memoryClasses) {
@@ -81,6 +88,8 @@ public final class ContextSweep {
         var queueWaiters = new ArrayDeque<Integer>();
         var completions = new PriorityQueue<>(
                 Comparator.comparingLong(Completion::cycle));
+        var dependencyWakeups = new PriorityQueue<>(
+                Comparator.comparingLong(DependencyWakeup::cycle));
         int[] outstandingByThread = new int[contexts];
         boolean[] waitingForThreadSlot = new boolean[contexts];
         boolean[] waitingForQueueSlot = new boolean[contexts];
@@ -97,6 +106,8 @@ public final class ContextSweep {
         long completedRequests = 0;
         long idleCycles = 0;
         long queueFullStalls = 0;
+        long dependencyIssues = 0;
+        long completedDependencies = 0;
         long maxQueueOccupancy = 0;
         int maxThreadOutstandingObserved = 0;
         long[] classIssues = new long[memoryClasses.length];
@@ -104,6 +115,13 @@ public final class ContextSweep {
         final int warmup = Math.min(10_000, cycles / 10);
 
         for (int cycle = 0; cycle < cycles; cycle++) {
+            while (!dependencyWakeups.isEmpty()
+                    && dependencyWakeups.peek().cycle() <= cycle) {
+                DependencyWakeup wakeup = dependencyWakeups.remove();
+                ready.addLast(wakeup.thread());
+                completedDependencies++;
+            }
+
             while (!completions.isEmpty()
                     && completions.peek().cycle() <= cycle) {
                 Completion completion = completions.remove();
@@ -182,7 +200,13 @@ public final class ContextSweep {
                     if (cycle >= warmup) {
                         measuredIssued++;
                     }
-                    requeue[requeueCount++] = thread;
+                    if (random.nextDouble() < dependencyFraction) {
+                        dependencyIssues++;
+                        dependencyWakeups.add(new DependencyWakeup(
+                                (long) cycle + dependencyLatency, thread));
+                    } else {
+                        requeue[requeueCount++] = thread;
+                    }
                 }
             }
 
@@ -212,6 +236,7 @@ public final class ContextSweep {
 
         System.out.printf(
                 "contexts=%d issueWidth=%d memoryFraction=%.3f "
+                        + "dependencyFraction=%.3f dependencyLatency=%d "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
                         + "cycles=%d warmup=%d measuredIPC=%.4f "
                         + "issueUtilization=%.4f memoryIssues=%d "
@@ -220,12 +245,15 @@ public final class ContextSweep {
                         + "idleCycles=%d readyAtEnd=%d "
                         + "waitingAtThreadLimitAtEnd=%d "
                         + "waitingAtQueueLimitAtEnd=%d outstandingAtEnd=%d "
-                        + "seed=%d%n",
-                contexts, issueWidth, memoryFraction, maxOutstanding,
+                        + "dependencyIssues=%d completedDependencies=%d "
+                        + "dependenciesInFlightAtEnd=%d seed=%d%n",
+                contexts, issueWidth, memoryFraction, dependencyFraction,
+                dependencyLatency, maxOutstanding,
                 memoryQueueCapacity, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
                 maxQueueOccupancy, queueFullStalls, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
+                dependencyIssues, completedDependencies, dependencyWakeups.size(),
                 seed);
 
         for (int i = 0; i < memoryClasses.length; i++) {
@@ -252,7 +280,8 @@ public final class ContextSweep {
                   ContextSweep <contexts> <issue-width> <latency-cycles>
                     <memory-fraction> <cycles> <seed>
                     [max-outstanding [memory-queue-capacity
-                    l1-fraction l1-latency l2-fraction l2-latency dram-latency]]
+                    l1-fraction l1-latency l2-fraction l2-latency dram-latency
+                    [dependency-fraction dependency-latency]]]
 
                 Use all five memory-class arguments together. The L1 and L2
                 fractions are conditional probabilities among memory

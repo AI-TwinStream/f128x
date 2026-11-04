@@ -166,8 +166,20 @@ jobs:
           for links in 1 2 4; do
             grep -q "linksPerNeighbor=$links " <<< "$output"
           done
-          for bandwidth in 128 256 512; do
+          for bandwidth in 192 384 768; do
             grep -q "bisectionBandwidthBytesPerCycle=$bandwidth " <<< "$output"
+          done
+          for expected in \
+            "boards=4 topology=shared bisectionEdges=1" \
+            "boards=4 topology=ring bisectionEdges=2" \
+            "boards=4 topology=mesh bisectionEdges=2" \
+            "boards=8 topology=shared bisectionEdges=1" \
+            "boards=8 topology=ring bisectionEdges=2" \
+            "boards=8 topology=mesh bisectionEdges=3" \
+            "boards=16 topology=shared bisectionEdges=1" \
+            "boards=16 topology=ring bisectionEdges=2" \
+            "boards=16 topology=mesh bisectionEdges=4"; do
+            grep -q "$expected" <<< "$output"
           done
           if grep -v 'bisectionBandwidthBytesPerCycle=' <<< "$output" | grep -q '^topology='; then
             echo "Missing normalized bisection bandwidth in topology result" >&2

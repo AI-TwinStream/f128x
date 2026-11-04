@@ -532,3 +532,38 @@ At one and two lanes, four-link hotspot throughput scales close to linearly with
 The 16-board mesh with only one parallel link per neighbor remains at 0.91918 operations/cycle for this hotspot pattern even when destination memory lanes increase from one to four. That is a fabric bottleneck, not a memory-lane bottleneck. This is useful: the experiment can now expose the crossover between endpoint-limited and fabric-limited traffic rather than attributing every slowdown to the network.
 
 These results support continuing with the two independent controls: bisection-normalized fabric links and per-board memory lanes. They do not establish a physical topology winner because routing arbitration, queue fairness, physical link costs, and more realistic memory-bank scheduling remain out of scope.
+
+
+## Fabric ingress arbitration and source latency fairness (2026-11-04)
+
+The switched-fabric transaction model now exposes
+`-Df128x.fabric.arbitration=fixed|round_robin`. The default remains `fixed`
+so previously recorded matrices retain their original transaction ordering.
+The `round_robin` policy rotates the first source considered at each injection
+epoch. For an epoch with (N) boards, source priority begins at
+`epoch mod N` and wraps around the board indices. The policy is deterministic
+and removes the persistent low-index-first ordering from simultaneous source
+injections.
+
+Each matrix row now reports:
+
+- `minSourceMeanLatency` and `maxSourceMeanLatency`: minimum and maximum
+  average end-to-end latency across source boards.
+- `latencyFairnessJain`: Jain's fairness index over reciprocal per-source
+  mean latency. A value closer to 1 indicates more balanced source latency;
+  it does not mean equal throughput or equal packet service.
+
+CI exercises the full 81-case topology/board-count/traffic/link matrix under
+both fixed and round-robin policies. The existing deterministic smoke also
+compares repeated round-robin runs and validates that all sources receive
+service and the fairness index remains within its mathematical bounds.
+
+**Model boundary:** this is a global ingress ordering policy applied before
+the existing deterministic route/link reservation. It is not yet per-output
+switch arbitration, virtual-channel arbitration, packet-level contention
+resolution, or a work-conserving flit scheduler. The latency fairness metric
+therefore measures source-level effects of ingress ordering in this model,
+not a claim about fairness properties of a physical router. A subsequent
+iteration should move arbitration to individual directed links and model
+competing head-of-line requests explicitly before making router fairness
+claims.

@@ -170,16 +170,16 @@ jobs:
             grep -q "bisectionBandwidthBytesPerCycle=$bandwidth " <<< "$output"
           done
           for expected in \
-            "boards=4 topology=shared bisectionEdges=1" \
-            "boards=4 topology=ring bisectionEdges=2" \
-            "boards=4 topology=mesh bisectionEdges=2" \
-            "boards=8 topology=shared bisectionEdges=1" \
-            "boards=8 topology=ring bisectionEdges=2" \
-            "boards=8 topology=mesh bisectionEdges=3" \
-            "boards=16 topology=shared bisectionEdges=1" \
-            "boards=16 topology=ring bisectionEdges=2" \
-            "boards=16 topology=mesh bisectionEdges=4"; do
-            grep -q "$expected" <<< "$output"
+            "topology=shared boards=4 .*bisectionEdges=1" \
+            "topology=ring boards=4 .*bisectionEdges=2" \
+            "topology=mesh boards=4 .*bisectionEdges=2" \
+            "topology=shared boards=8 .*bisectionEdges=1" \
+            "topology=ring boards=8 .*bisectionEdges=2" \
+            "topology=mesh boards=8 .*bisectionEdges=3" \
+            "topology=shared boards=16 .*bisectionEdges=1" \
+            "topology=ring boards=16 .*bisectionEdges=2" \
+            "topology=mesh boards=16 .*bisectionEdges=4"; do
+            grep -Eq "$expected" <<< "$output"
           done
           if grep -v 'bisectionBandwidthBytesPerCycle=' <<< "$output" | grep -q '^topology='; then
             echo "Missing normalized bisection bandwidth in topology result" >&2

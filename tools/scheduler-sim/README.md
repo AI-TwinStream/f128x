@@ -84,7 +84,7 @@ Arguments:
 [max-outstanding [memory-queue-capacity
 [l1-fraction l1-latency l2-fraction l2-latency dram-latency
 [dependency-fraction dependency-latency [max-memory-completions-per-cycle]]]]
-OR append only [max-memory-completions-per-cycle] immediately after the memory-class arguments.
+To specify a completion rate without dependency stalls, append only `max-memory-completions-per-cycle` immediately after the memory-class arguments (14 arguments total).
 ```
 
 The original six-argument invocation remains valid. `max-outstanding` defaults to 1. The shared memory queue defaults to effectively unbounded capacity unless explicitly configured. Supply all five latency-class arguments together.
@@ -112,7 +112,8 @@ The program reports:
 - Maximum shared request-queue occupancy.
 - Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, service-backlog cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
-- Per-class issue and completion counts.\n- Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's workspace fairness index.
+- Per-class issue and completion counts.
+- Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's workspace fairness index.
 
 The warmup interval is excluded from measured IPC. Other counters are whole-run diagnostics.
 
@@ -122,10 +123,10 @@ This revision still does not model:
 
 - Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
 - Cache hit/miss generation from addresses or working sets.
-- Memory bandwidth, banks, channels, row buffers, arbitration, or service-rate limits.
+- Byte-level bandwidth, banks, channels, row buffers, or request-size-dependent service rates.
 - Different request sizes, read/write behavior, coherence, translation, or TLBs.
 - Shared-register conflicts or synchronization.
-- Scheduler arbitration delay, hierarchy, migration, fairness, or work stealing.
+- Independent per-cluster issue pipelines, physical arbitration, migration costs, fairness bounds, or locality penalties.
 - Interrupts, exceptions, priorities, or OS behavior.
 - Physical register-file banking, ports, timing, area, or power.
 

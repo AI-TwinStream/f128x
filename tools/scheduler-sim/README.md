@@ -1,4 +1,4 @@
-# Scheduler Simulation 0.10
+# Scheduler Simulation 0.11
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.
 
@@ -102,7 +102,7 @@ Add the optional dependency fraction and latency after the five memory-class arg
 java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42 4 128 0.70 4 0.20 20 200 0.10 12
 ```
 
-The dependency fraction applies to non-memory instructions. A selected dependency-bound instruction issues, then makes its thread unavailable for the configured dependency latency. This approximates serialized data-dependency stalls without modelling operands, producer-consumer graphs, or forwarding.
+The dependency fraction applies to non-memory instructions. A selected dependency-bound instruction issues and makes its selected dependency chain unavailable for the configured latency. Set `-Df128x.dependencyChains=4` to give each thread four independent synthetic chains; the default is one and the maximum is 128. If another chain is ready, the thread can remain eligible and issue from it. If all chains are busy, the thread waits until the earliest chain becomes ready. The output reports dependency issues overlapped by another ready chain as well as dependency-waiter cycles. This models independent chains, not operand-level producer/consumer graphs, register renaming, forwarding, or real instruction dependencies.
 
 To limit memory request completions to one per cycle, append `1` after the memory-class arguments (14 arguments total). This delays completions that are ready but cannot be serviced in the current cycle. Append the same value after the dependency pair when both options are enabled (16 arguments total). The limit is requests completed per cycle, not bytes transferred per cycle.
 
@@ -140,7 +140,7 @@ The program reports:
 - Accepted memory requests and completions.
 - Maximum per-thread outstanding requests.
 - Maximum shared request-queue occupancy.
-- Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, service-backlog cycles, and idle cycles.
+- Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, dependency issues overlapped by another chain, service-backlog cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
 - Per-class issue and completion counts.
 - Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index.
@@ -172,6 +172,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add configurable address-to-channel/bank mapping, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md), and [Scheduler Simulation 0.10 Results](../../docs/research/scheduler-simulation-0.10-results.md).
+The next model revision should add configurable address-to-channel/bank mapping, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md), and [Scheduler Simulation 0.10 Results](../../docs/research/scheduler-simulation-0.10-results.md), and [Scheduler Simulation 0.11 Results](../../docs/research/scheduler-simulation-0.11-results.md).
 
 No architectural decision about 65,536 contexts follows from this model alone.

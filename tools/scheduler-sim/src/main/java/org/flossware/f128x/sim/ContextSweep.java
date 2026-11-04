@@ -20,7 +20,8 @@ import java.util.SplittableRandom;
  * This is an exploratory model, not a realistic cache, DRAM, or core model.
  */
 public final class ContextSweep {
-    private record Completion(long cycle, int thread, int latencyClass) {}
+    private record Completion(long cycle, int thread, int latencyClass,
+            int channel, int bank, int requestBytes) {}
 
     private record DependencyWakeup(long cycle, int thread) {}
 
@@ -121,8 +122,25 @@ public final class ContextSweep {
                 "f128x.migrationLatency", 0);
         int remoteMemoryLatencyPenalty = Integer.getInteger(
                 "f128x.remoteMemoryLatencyPenalty", 0);
+        int memoryRequestBytes = Integer.getInteger(
+                "f128x.memoryRequestBytes", 64);
+        int memoryChannels = Integer.getInteger("f128x.memoryChannels", 1);
+        int memoryBanksPerChannel = Integer.getInteger(
+                "f128x.memoryBanksPerChannel", 1);
+        int memoryBandwidthBytesPerCycle = Integer.getInteger(
+                "f128x.memoryBandwidthBytesPerCycle", 0);
+        int bankConflictPenalty = Integer.getInteger(
+                "f128x.bankConflictPenalty", 0);
+        boolean memorySystemEnabled = memoryBandwidthBytesPerCycle > 0
+                || memoryChannels > 1 || memoryBanksPerChannel > 1
+                || bankConflictPenalty > 0;
+        long aggregateMemoryBandwidthBytesPerCycle =
+                (long) memoryBandwidthBytesPerCycle * memoryChannels;
         if (clusterCount < 1 || clusterIssueWidth < 1
-                || migrationLatency < 0 || remoteMemoryLatencyPenalty < 0) {
+                || migrationLatency < 0 || remoteMemoryLatencyPenalty < 0
+                || memoryRequestBytes < 1 || memoryChannels < 1
+                || memoryBanksPerChannel < 1 || memoryBandwidthBytesPerCycle < 0
+                || bankConflictPenalty < 0) {
             throw new IllegalArgumentException(
                     "Cluster count and cluster issue width must be positive; "
                             + "migration and remote-memory penalties cannot be negative");
@@ -146,6 +164,8 @@ public final class ContextSweep {
                 Comparator.comparingLong(DependencyWakeup::cycle));
         var migrationWakeups = new PriorityQueue<>(
                 Comparator.comparingLong(MigrationWakeup::cycle));
+        long[][] bankAvailableCycle = new long[memoryChannels][memoryBanksPerChannel];
+        int[][] bankOutstanding = new int[memoryChannels][memoryBanksPerChannel];
         int[] outstandingByThread = new int[contexts];
         boolean[] waitingForThreadSlot = new boolean[contexts];
         boolean[] waitingForQueueSlot = new boolean[contexts];
@@ -172,6 +192,12 @@ public final class ContextSweep {
         long remoteMemoryLatencyCycles = 0;
         long migrationWaiterCycles = 0;
         long migrationCompletions = 0;
+        long memoryBytesIssued = 0;
+        long memoryBytesCompleted = 0;
+        long memoryServiceCycles = 0;
+        long bankConflictRequests = 0;
+        long bankConflictWaitCycles = 0;
+        int maxBankOutstanding = 0;
         long maxQueueOccupancy = 0;
         int maxThreadOutstandingObserved = 0;
         long[] workspaceIssues = new long[workspaceCount];
@@ -220,6 +246,12 @@ public final class ContextSweep {
                 int thread = completion.thread();
                 int latencyClass = completion.latencyClass();
                 outstandingByThread[thread]--;
+                memoryBytesCompleted += completion.requestBytes();
+                if (memorySystemEnabled) {
+                    int channel = completion.channel();
+                    int bank = completion.bank();
+                    bankOutstanding[channel][bank]--;
+                }
                 completedRequests++;
                 classCompletions[latencyClass]++;
 
@@ -316,9 +348,46 @@ public final class ContextSweep {
                     MemoryClass memoryClass = memoryClasses[selectedClass];
                     boolean remote = ready.isRemote(thread);
                     int localityPenalty = remote ? remoteMemoryLatencyPenalty : 0;
+                    long nominalReadyCycle = (long) cycle
+                            + memoryClass.latency() + localityPenalty;
+                    int channel = 0;
+                    int bank = 0;
+                    long completionCycle = nominalReadyCycle;
+                    if (memorySystemEnabled) {
+                        long syntheticAddress = random.nextLong();
+                        channel = (int) Long.remainderUnsigned(
+                                syntheticAddress, memoryChannels);
+                        bank = (int) Long.remainderUnsigned(
+                                Long.divideUnsigned(syntheticAddress, memoryChannels),
+                                memoryBanksPerChannel);
+                        long bankReadyCycle = bankAvailableCycle[channel][bank];
+                        long bankWait = Math.max(0L,
+                                bankReadyCycle - nominalReadyCycle);
+                        if (bankWait > 0) {
+                            bankConflictRequests++;
+                            bankConflictWaitCycles += bankWait;
+                        }
+                        long transferCycles = memoryBandwidthBytesPerCycle > 0
+                                ? Math.max(1L,
+                                        ((long) memoryRequestBytes
+                                                * memoryBanksPerChannel
+                                                + memoryBandwidthBytesPerCycle - 1)
+                                                / memoryBandwidthBytesPerCycle)
+                                : 1L;
+                        long serviceStart = Math.max(
+                                nominalReadyCycle, bankReadyCycle);
+                        completionCycle = serviceStart + transferCycles;
+                        bankAvailableCycle[channel][bank] =
+                                completionCycle + bankConflictPenalty;
+                        memoryServiceCycles += transferCycles;
+                        bankOutstanding[channel][bank]++;
+                        maxBankOutstanding = Math.max(maxBankOutstanding,
+                                bankOutstanding[channel][bank]);
+                    }
                     completions.add(new Completion(
-                            (long) cycle + memoryClass.latency() + localityPenalty,
-                            thread, selectedClass));
+                            completionCycle, thread, selectedClass,
+                            channel, bank, memoryRequestBytes));
+                    memoryBytesIssued += memoryRequestBytes;
                     if (remote) {
                         remoteMemoryIssues++;
                         remoteMemoryLatencyCycles += localityPenalty;
@@ -477,6 +546,14 @@ public final class ContextSweep {
                         + "remoteThreadCycles=%d remoteMemoryIssues=%d "
                         + "remoteMemoryLatencyCycles=%d migrationWaiterCycles=%d "
                         + "migrationCompletions=%d "
+                        + "memorySystemEnabled=%s memoryRequestBytes=%d "
+                        + "memoryChannels=%d memoryBanksPerChannel=%d "
+                        + "memoryBandwidthBytesPerCycle=%d "
+                        + "aggregateMemoryBandwidthBytesPerCycle=%d "
+                        + "bankConflictPenalty=%d memoryBytesIssued=%d "
+                        + "memoryBytesCompleted=%d memoryServiceCycles=%d "
+                        + "bankConflictRequests=%d bankConflictWaitCycles=%d "
+                        + "maxBankOutstanding=%d "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
                         + "memoryCompletionRate=%d cycles=%d warmup=%d measuredIPC=%.4f "
                         + "issueUtilization=%.4f memoryIssues=%d "
@@ -510,8 +587,13 @@ public final class ContextSweep {
                 remoteMemoryLatencyPenalty, ready.migrations(), remoteWakeups,
                 totalRemoteThreadCycles, remoteMemoryIssues,
                 remoteMemoryLatencyCycles, migrationWaiterCycles,
-                migrationCompletions, maxOutstanding,
-                memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
+                migrationCompletions, memorySystemEnabled,
+                memoryRequestBytes, memoryChannels, memoryBanksPerChannel,
+                memoryBandwidthBytesPerCycle,
+                aggregateMemoryBandwidthBytesPerCycle, bankConflictPenalty,
+                memoryBytesIssued, memoryBytesCompleted, memoryServiceCycles,
+                bankConflictRequests, bankConflictWaitCycles, maxBankOutstanding,
+                maxOutstanding, memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
                 maxQueueOccupancy, queueFullAttempts, queueWaiterCycles,
                 dependencyWaiterCycles, serviceBacklogCycles, idleCycles, ready.size(),

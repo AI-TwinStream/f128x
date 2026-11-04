@@ -23,6 +23,10 @@ A 128-bit register does not imply 128-bit addresses, instructions, memory buses,
 
 ## Documentation
 
+### Architecture diagrams
+- [Physical system block diagram 0.1](docs/architecture/physical-system-block-diagram-0.1.md) — conceptual chip, CPU-board, memory, I/O, and backplane boundaries.
+- [Logical data paths 0.1](docs/architecture/data-paths-0.1.md) — thread/register execution and local/remote memory and I/O paths.
+
 ### Current architecture and review work
 - [Review synthesis 0.2](docs/reviews/review-synthesis-0.2.md)
 - [Context state and residency 0.2](docs/architecture/context-state-and-residency-0.2.md)

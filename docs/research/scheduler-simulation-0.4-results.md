@@ -94,7 +94,34 @@ Measured result:
 
 This case confirms that the multi-class and dependency paths execute and that the configured issue width remains saturated with 1,024 contexts. It does not tell us the minimum context count for this mixed workload. The dependency mechanism is intentionally coarse: it stalls a thread after a selected non-memory instruction for a fixed latency. It does not model register operands, producer-consumer graphs, forwarding, or multiple independent dependency chains.
 
-## 5. Model semantics and remaining gaps
+## 5. Memory completion-rate stress case
+
+Parameters:
+
+- 512 contexts, issue width 4
+- Memory-operation fraction: 0.50
+- Per-thread outstanding limit: 4
+- Shared outstanding-request capacity: 128
+- Maximum memory completions: 1 request/cycle
+- Latency classes: L1 70% at 4 cycles, L2 20% at 20 cycles, DRAM 10% at 200 cycles
+- Cycles: 50,000; warmup: 5,000; seed: 19
+
+Measured result:
+
+| Metric | Result |
+|---|---:|
+| IPC | 1.9953 |
+| Issue utilization | 49.88% |
+| Accepted memory requests | 50,124 |
+| Completed requests | 49,996 |
+| Maximum shared queue occupancy | 128 |
+| Queue-full admission attempts | 50,394 |
+| Accumulated queue-waiter cycles | 25,371,347 |
+| Cycles with due requests waiting for completion service | 49,996 |
+
+This introduces a per-cycle completion-throughput limit. Requests whose nominal latency has elapsed remain outstanding until a completion slot is available. The experiment demonstrates how a completion bottleneck can constrain throughput and hold shared request capacity occupied. The rate is measured in requests per cycle, not bytes per cycle; it is not a DRAM bandwidth model.
+
+## 6. Model semantics and remaining gaps
 
 The shared request capacity is a limit on accepted outstanding transactions. Queue waiters retain a selected memory operation and wait for a returned credit. Only as many waiters as there are available credits are reactivated, in FIFO order.
 

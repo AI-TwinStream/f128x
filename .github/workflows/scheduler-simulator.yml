@@ -158,6 +158,12 @@ jobs:
           grep -Eq 'migrationCompletions=[1-9][0-9]*' <<< "$output"
           awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="schedulerMigrations") migrations=p[2]; if (p[1]=="schedulerSteals") steals=p[2]; if (p[1]=="remoteMemoryIssues") remote=p[2]; if (p[1]=="remoteMemoryLatencyCycles") penalty=p[2]; } } END { if (migrations != steals || penalty != remote * 7) exit 1; }' <<< "$output"
           printf '%s\n' "$output"
+          baseline="$(java -Df128x.scheduler=distributed -Df128x.clusters=8 -Df128x.clusterIssueWidth=1 -Df128x.migrationLatency=0 -Df128x.remoteMemoryLatencyPenalty=0 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -q 'migrationLatency=0 remoteMemoryLatencyPenalty=0' <<< "$baseline"
+          grep -q 'migrationWaiterCycles=0' <<< "$baseline"
+          grep -q 'migrationCompletions=0' <<< "$baseline"
+          grep -q 'remoteMemoryLatencyCycles=0' <<< "$baseline"
+          printf '%s\n' "$baseline"
 
       - name: Verify memory completion-rate backpressure
         shell: bash

@@ -2,10 +2,12 @@ name: Scheduler simulator
 
 on:
   push:
+    branches: [main]
     paths:
       - "tools/scheduler-sim/**"
       - ".github/workflows/scheduler-simulator.yml"
   pull_request:
+    branches: [main]
     paths:
       - "tools/scheduler-sim/**"
       - ".github/workflows/scheduler-simulator.yml"

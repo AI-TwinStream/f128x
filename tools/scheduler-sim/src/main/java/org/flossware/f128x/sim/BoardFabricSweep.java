@@ -111,6 +111,7 @@ public final class BoardFabricSweep {
             int issueWidthPerCluster, double remoteFraction, double memoryFraction,
             double dependencyFraction, int dependencyLatency, int localMemoryLatency,
             int remoteMemoryLatency, int fabricLatency, int fabricBytesPerCycle,
+            int localMemoryBytesPerCycle, int fabricHopLatency,
             int requestBytes, int queueCapacity) {
         int clusterCount = boards * clustersPerBoard;
         List<ArrayDeque<Integer>> ready = new ArrayList<>(clusterCount);
@@ -138,6 +139,7 @@ public final class BoardFabricSweep {
         long maxOutstanding = 0;
         long outstandingCount = 0;
         long fabricAvailableCycle = 0;
+        long[] boardMemoryAvailableCycle = new long[boards];
         long[] boardIssues = new long[boards];
         int measuredCycles = cycles - warmup;
 
@@ -187,7 +189,7 @@ public final class BoardFabricSweep {
                                     memoryEnd + remoteMemoryLatency, requestEnd);
                             long responseEnd = responseStart + requestCycles;
                             long hops = 32 - Integer.numberOfLeadingZeros(boards - 1);
-                            long roundTripFabricLatency = 2L * hops * fabricHopLatency;
+                            long roundTripFabricLatency = 2L * (fabricLatency + hops * fabricHopLatency);
                             completionCycle = responseEnd + roundTripFabricLatency;
                             fabricAvailableCycle = responseEnd;
                             remoteRequests++;

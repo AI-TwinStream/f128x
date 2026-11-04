@@ -84,6 +84,16 @@ jobs:
           printf '%s\n' "$sequential"
           printf '%s\n' "$random"
           printf '%s\n' "$shared"
+      - name: Exercise cache hierarchy in scheduler
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -Df128x.cache.enabled=true -Df128x.addressPattern=shared_region -Df128x.addressStride=64 -Df128x.addressRegionBytes=4096 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 200 0.25 20000 42 16 128)"
+          grep -q 'cacheHierarchyEnabled=true' <<< "$output"
+          grep -q '^memoryClass=L1 ' <<< "$output"
+          grep -q '^memoryClass=L2 ' <<< "$output"
+          grep -q '^memoryClass=DRAM ' <<< "$output"
+          printf '%s\n' "$output"
       - name: Exercise modular board and backplane model
         shell: bash
         run: |

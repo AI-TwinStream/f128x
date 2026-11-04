@@ -243,6 +243,7 @@ public final class ContextSweep {
         long memoryBytesIssued = 0;
         long memoryBytesCompleted = 0;
         long memoryServiceCycles = 0;
+        long memoryBankRequests = 0;
         long bankConflictRequests = 0;
         long bankConflictWaitCycles = 0;
         int maxBankOutstanding = 0;
@@ -438,7 +439,9 @@ public final class ContextSweep {
                     long nominalReadyCycle = (long) cycle
                             + memoryClass.latency() + localityPenalty;
                     long completionCycle = nominalReadyCycle;
-                    if (memorySystemEnabled) {
+                    if (memorySystemEnabled && (!cacheHierarchyEnabled
+                            || cacheResult == CacheSweep.Result.DRAM_MISS)) {
+                        memoryBankRequests++;
                         MemoryAddressing.Location location = MemoryAddressing.map(
                                 syntheticAddress, memoryChannels, memoryBanksPerChannel,
                                 addressMapping);
@@ -666,7 +669,8 @@ public final class ContextSweep {
                         + "aggregateMemoryBandwidthBytesPerCycle=%d "
                         + "bankConflictPenalty=%d memoryBytesIssued=%d "
                         + "memoryBytesCompleted=%d memoryServiceCycles=%d "
-                        + "bankConflictRequests=%d bankConflictWaitCycles=%d "
+                        + "memoryBankRequests=%d bankConflictRequests=%d "
+                        + "bankConflictWaitCycles=%d "
                         + "maxBankOutstanding=%d "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
                         + "memoryCompletionRate=%d cycles=%d warmup=%d measuredIPC=%.4f "
@@ -712,7 +716,8 @@ public final class ContextSweep {
                 memoryBandwidthBytesPerCycle,
                 aggregateMemoryBandwidthBytesPerCycle, bankConflictPenalty,
                 memoryBytesIssued, memoryBytesCompleted, memoryServiceCycles,
-                bankConflictRequests, bankConflictWaitCycles, maxBankOutstanding,
+                memoryBankRequests, bankConflictRequests, bankConflictWaitCycles,
+                maxBankOutstanding,
                 maxOutstanding, memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
                 maxQueueOccupancy, queueFullAttempts, queueWaiterCycles,

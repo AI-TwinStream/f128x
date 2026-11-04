@@ -305,7 +305,7 @@ final class FabricTopologySweep {
     private record Transaction(long injectionCycle, int source, int target) {}
     private record Result(String topology, int boards, String pattern, int links,
             int bisectionEdges, int perLinkBytesPerCycle, int bisectionBytesPerCycle,
-            int injectionInterval, int operations, double averageLatency, double p95Latency,
+            int injectionInterval, int memoryLanes, int operations, double averageLatency, double p95Latency,
             double completionCycle, double operationsPerCycle) {}
 
     private FabricTopologySweep() {}
@@ -316,8 +316,8 @@ final class FabricTopologySweep {
             for (String pattern : new String[] {"uniform", "hotspot", "paired"}) {
                 for (String topology : new String[] {"shared", "ring", "mesh"}) {
                     for (int links : new int[] {1, 2, 4}) {
-                        Result first = simulate(boards, pattern, topology, links, 64, 42L, 2);
-                        Result second = simulate(boards, pattern, topology, links, 64, 42L, 2);
+                        Result first = simulate(boards, pattern, topology, links, 64, 42L, 2, 1);
+                        Result second = simulate(boards, pattern, topology, links, 64, 42L, 2, 1);
                         if (!first.equals(second) || first.operations() != boards * 64
                                 || first.averageLatency() <= 0.0 || first.p95Latency() <= 0) {
                             throw new IllegalStateException("Fabric topology deterministic smoke failed: "
@@ -338,25 +338,29 @@ final class FabricTopologySweep {
             throw new IllegalArgumentException("operationsPerBoard must be positive");
         }
         int injectionInterval = Integer.getInteger("f128x.fabric.injectionInterval", 2);
+        int memoryLanes = Integer.getInteger("f128x.fabric.memoryLanesPerBoard", 1);
+        if (memoryLanes < 1) {
+            throw new IllegalArgumentException("memoryLanesPerBoard must be positive");
+        }
         if (injectionInterval < 1) {
             throw new IllegalArgumentException("injectionInterval must be positive");
         }
-        System.out.printf("fabric-topology-sim=0.1 operationsPerBoard=%d seed=%d injectionInterval=%d%n",
-                operationsPerBoard, seed, injectionInterval);
+        System.out.printf("fabric-topology-sim=0.1 operationsPerBoard=%d seed=%d injectionInterval=%d memoryLanesPerBoard=%d%n",
+                operationsPerBoard, seed, injectionInterval, memoryLanes);
         for (int boards : new int[] {4, 8, 16}) {
             for (String pattern : new String[] {"uniform", "hotspot", "paired"}) {
                 for (String topology : new String[] {"shared", "ring", "mesh"}) {
                     for (int links : new int[] {1, 2, 4}) {
                         Result result = simulate(boards, pattern, topology,
-                                links, operationsPerBoard, seed, injectionInterval);
+                                links, operationsPerBoard, seed, injectionInterval, memoryLanes);
                         System.out.printf("topology=%s boards=%d pattern=%s linksPerNeighbor=%d "
                                         + "bisectionEdges=%d perLinkBytesPerCycle=%d "
-                                        + "bisectionBandwidthBytesPerCycle=%d injectionInterval=%d remoteOperations=%d "
+                                        + "bisectionBandwidthBytesPerCycle=%d injectionInterval=%d memoryLanesPerBoard=%d remoteOperations=%d "
                                         + "averageLatency=%.2f p95Latency=%.2f completionCycle=%.2f "
                                         + "operationsPerCycle=%.5f%n",
                                 result.topology(), result.boards(), result.pattern(),
                                 result.links(), result.bisectionEdges(), result.perLinkBytesPerCycle(),
-                                result.bisectionBytesPerCycle(), result.injectionInterval(),
+                                result.bisectionBytesPerCycle(), result.injectionInterval(), result.memoryLanes(),
                                 result.operations(), result.averageLatency(),
                                 result.p95Latency(), result.completionCycle(),
                                 result.operationsPerCycle());
@@ -367,7 +371,7 @@ final class FabricTopologySweep {
     }
 
     private static Result simulate(int boards, String pattern, String topology,
-            int links, int operationsPerBoard, long seed, int injectionInterval) {
+            int links, int operationsPerBoard, long seed, int injectionInterval, int memoryLanes) {
         if (boards < 2 || links < 1 || operationsPerBoard < 1
                 || !(pattern.equals("uniform") || pattern.equals("hotspot")
                         || pattern.equals("paired"))
@@ -386,7 +390,9 @@ final class FabricTopologySweep {
         if (injectionInterval < 1) {
             throw new IllegalArgumentException("injectionInterval must be positive");
         }
-        final int memoryLanes = 1;
+        if (memoryLanes < 1) {
+            throw new IllegalArgumentException("memoryLanesPerBoard must be positive");
+        }
 
         Network network = new Network(boards, topology, links, fabricBytesPerCycle);
         double[][] memoryAvailable = new double[boards][memoryLanes];
@@ -438,7 +444,7 @@ final class FabricTopologySweep {
                 (int) Math.ceil(latencies.length * 0.95) - 1)];
         return new Result(topology, boards, pattern, links, bisectionEdges,
                 fabricBytesPerCycle, fabricBytesPerCycle * bisectionEdges * links,
-                injectionInterval, latencies.length, average, p95, lastCompletion,
+                injectionInterval, memoryLanes, latencies.length, average, p95, lastCompletion,
                 (double) latencies.length / lastCompletion);
     }
 

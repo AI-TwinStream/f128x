@@ -1,4 +1,4 @@
-# Scheduler Simulation 0.9
+# Scheduler Simulation 0.10
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.
 
@@ -51,6 +51,7 @@ A workspace's home cluster is its workspace ID modulo cluster count. A thread be
 A byte-oriented memory service model can be enabled with these JVM properties:
 
 - `-Df128x.memoryRequestBytes=64`: fixed bytes per memory request; default 64.
+- `-Df128x.memoryRequestMinBytes=16` and `-Df128x.memoryRequestMaxBytes=256`: optional inclusive request-size range. When omitted, both inherit `memoryRequestBytes`; sizes are sampled uniformly from the configured range.
 - `-Df128x.memoryChannels=4`: number of independent memory channels; default 1.
 - `-Df128x.memoryBanksPerChannel=8`: banks per channel; default 1.
 - `-Df128x.memoryBandwidthBytesPerCycle=16`: byte service budget per channel per cycle; default 0 (unbounded/disabled).
@@ -159,7 +160,7 @@ This revision still does not model:
 - Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
 - Cache hit/miss generation from working sets or real address traces; channel/bank assignment currently uses synthetic addresses.
 - DRAM row buffers, row hits, refresh, burst transfers, read/write turnarounds, or controller scheduling policy.
-- Variable request sizes, read/write behavior, coherence, translation, or TLBs. The current byte model uses one fixed request size and an equal per-bank share of channel bandwidth.
+- Variable request sizes, read/write behavior, coherence, translation, or TLBs. The current byte model uses a uniform request-size range and an equal per-bank share of channel bandwidth; it does not model workload-specific size distributions.
 - Shared-register conflicts or synchronization.
 - Physically independent per-cluster issue pipelines, distributed physical arbitration, network/clock/power costs, detailed cache-coherence or NUMA behavior, and fairness bounds. Migration delay and remote-memory latency are configurable aggregate penalties only.
 - Interrupts, exceptions, priorities, or OS behavior.
@@ -171,6 +172,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add variable request sizes, configurable address-to-channel/bank mapping, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md).
+The next model revision should add configurable address-to-channel/bank mapping, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md), and [Scheduler Simulation 0.10 Results](../../docs/research/scheduler-simulation-0.10-results.md).
 
 No architectural decision about 65,536 contexts follows from this model alone.

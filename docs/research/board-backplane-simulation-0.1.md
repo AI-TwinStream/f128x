@@ -114,15 +114,13 @@ This is deliberately a small first model. It does not yet include:
 
 The shared full-duplex fabric and single local-memory lane per board are bottleneck candidates, not claims about a proposed electrical interface. The model assumes one local service lane per board and a single globally serialized fabric; it is intended to expose trade-offs, not select a physical interconnect.
 
-The first four configurations compare packaging and fabric pressure at equal aggregate issue capacity. If they differ, the cause in this model is the board-local placement and remote-memory serialization, not additional execution width. The 4×4 configuration is a separate scale-up point.
+The first four configurations compare packaging and fabric pressure at equal aggregate issue capacity. If they differ, the cause in this model is board-local placement, memory-lane service capacity, and remote-memory serialization, not additional execution width. The 4×4 configuration is a separate scale-up point. The published four-seed table above uses the original one-lane-per-board and uniform-remote baseline; results from the new lane-count and remote-pattern sweeps must be reported separately.
 
 No ISA, board count, interconnect protocol, or memory-consistency decision follows from these experiments alone.
 
 ## Next experiments
 
-1. Add per-board local-memory bandwidth and queueing.
-2. Compare a shared fabric with switched point-to-point links and a ring/mesh proxy.
-3. Add explicit workspace placement and controlled remote access patterns.
-4. Add optional thread/workspace migration and charge migration traffic.
-5. Sweep fabric bandwidth and latency to find the break-even region.
-6. Add multiple deterministic seeds and workload profiles before using results to guide architecture.
+1. Compare a shared fabric with switched point-to-point links and a ring/mesh proxy.
+2. Add optional thread/workspace migration and charge migration traffic.
+3. Sweep fabric bandwidth, local-memory lane count, and latency to find break-even regions.
+4. Add representative workload profiles and multiple deterministic seeds for the hotspot and paired traffic patterns before using results to guide architecture.

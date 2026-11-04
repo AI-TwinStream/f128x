@@ -121,7 +121,9 @@ The program reports:
 - Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, service-backlog cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
 - Per-class issue and completion counts.
-- Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index. It is not normalized by the amount of time each workspace had runnable threads, so heterogeneous workloads can lower it without implying scheduler starvation.
+- Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index.
+- Measured runnable-thread cycles per workspace, instructions issued per runnable-thread-cycle, and Jain fairness across workspace service rates. Runnable-thread cycles are sampled after wakeups and before issue selection, so every thread eligible to compete that cycle contributes one opportunity. The normalized rate is delivered issue service divided by these opportunities. Workspaces with no measured runnable opportunity are excluded from the normalized Jain calculation; a workspace with opportunities but no service remains included with a zero rate.
+- The raw issue-count index remains useful as a workload outcome, but it is not a scheduler fairness metric under heterogeneous readiness. The normalized metric is still a model-level measure: it does not account for priorities, differing instruction costs, or a hardware scheduler's physical arbitration costs.
 
 The warmup interval is excluded from measured IPC. Other counters are whole-run diagnostics.
 

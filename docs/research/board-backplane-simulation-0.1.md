@@ -68,13 +68,12 @@ java \
 
 ## Preliminary results
 
-A local smoke experiment was run with OpenJDK 21 using the same simulator logic committed on this branch. The repository workflow separately compiles and exercises the committed source with JDK 25; its result must be checked before treating this as CI-validated.
+Four full-default runs were executed locally with OpenJDK 21, using seeds 42, 7, 101, and 2026. The repository workflow compiles and smoke-tests the committed source with JDK 25; its run status is not yet visible through the available GitHub status interface, so this is not being represented as a completed JDK 25 CI pass.
 
 Configuration:
 
-- 256 contexts, 16 workspaces, 16 threads/workspace.
-- 4,000 cycles, 400 warmup cycles.
-- Four deterministic seeds: 42, 7, 101, 2026.
+- 1,024 contexts, 64 workspaces, 16 threads/workspace.
+- 30,000 cycles, first 3,000 excluded from IPC.
 - 30% memory instructions; 15% dependency-stall instructions among non-memory instructions.
 - 64 bytes/cycle per board-local memory service lane.
 - 128 bytes/cycle in each fabric direction.
@@ -86,18 +85,18 @@ The table shows mean measured IPC across the four seeds:
 
 | Remote-memory probability | 1 board × 8 clusters | 2 × 4 | 4 × 2 | 8 × 1 | 4 × 4 (16-wide) |
 |---:|---:|---:|---:|---:|---:|
-| 10% | 3.3253 | 6.7020 | 7.7341 | 7.7358 | 8.9507 |
-| 50% | 3.3253 | 6.3908 | 6.5706 | 6.5728 | 6.6389 |
-| 90% | 3.3253 | 3.7291 | 3.7294 | 3.7307 | 3.7279 |
+| 10% | 3.3268 | 6.6553 | 8.0000 | 8.0000 | 13.3189 |
+| 50% | 3.3268 | 6.6080 | 6.6525 | 6.6523 | 6.6532 |
+| 90% | 3.3268 | 3.7068 | 3.7066 | 3.7066 | 3.7067 |
 
 **Important:** A one-board system has no remote board, so its remote probability is necessarily zero regardless of the configured percentage. Its identical result in all three rows is expected. Do not read the first column as an equal-remote-traffic control.
 
 ### What this says, and what it does not
 
-- With mostly local traffic, moving from one board to four increases modeled aggregate local-memory service capacity and raises IPC. Eight boards add almost nothing beyond four in this workload.
-- At 50% remote traffic, the benefit of moving from two to four/eight boards is small. The shared fabric and remote access path begin to dominate.
-- At 90% remote traffic, adding boards provides essentially no throughput gain. The model's shared interconnect and remote service path erase the additional local-memory capacity.
-- Doubling execution capacity from eight to sixteen issue slots helps only in the low-remote case. It does not help in the high-remote case.
+- With mostly local traffic, adding boards adds local-memory service capacity. Four boards reach the eight-wide issue ceiling; eight boards add no further throughput in this workload.
+- At 50% remote traffic, the two-, four-, and eight-board configurations are nearly indistinguishable. More local memory lanes are offset by remote traffic.
+- At 90% remote traffic, adding boards provides essentially no throughput gain. The modeled remote path dominates.
+- Doubling execution capacity from eight to sixteen issue slots helps substantially only in the low-remote case. At 50% and 90% remote traffic, the additional issue capacity is almost entirely unused.
 
 These results are **not** evidence that four boards are optimal. They demonstrate that the assumed ratio of board-local memory capacity to inter-board traffic can dominate the benefit of adding execution clusters. The model is intentionally simple, and its one local-memory service lane per board and single full-duplex fabric path are strong assumptions. More seeds reduce random noise but do not validate those assumptions against real hardware.
 

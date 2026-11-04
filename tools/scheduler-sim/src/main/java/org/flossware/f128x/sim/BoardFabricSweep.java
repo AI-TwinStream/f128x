@@ -305,8 +305,10 @@ final class FabricTopologySweep {
     private record Transaction(long injectionCycle, int source, int target) {}
     private record Result(String topology, int boards, String pattern, int links,
             int bisectionEdges, int perLinkBytesPerCycle, int bisectionBytesPerCycle,
-            int injectionInterval, int memoryLanes, int operations, double averageLatency, double p95Latency,
-            double completionCycle, double operationsPerCycle) {}
+            int injectionInterval, int memoryLanes, String arbitration, int operations,
+            double averageLatency, double p95Latency, double completionCycle,
+            double operationsPerCycle, double minSourceMeanLatency,
+            double maxSourceMeanLatency, double latencyFairnessJain) {}
 
     private FabricTopologySweep() {}
 
@@ -342,28 +344,35 @@ final class FabricTopologySweep {
         if (memoryLanes < 1) {
             throw new IllegalArgumentException("memoryLanesPerBoard must be positive");
         }
+        String arbitration = System.getProperty("f128x.fabric.arbitration", "round_robin");
+        if (!(arbitration.equals("fixed") || arbitration.equals("round_robin"))) {
+            throw new IllegalArgumentException("arbitration must be fixed or round_robin");
+        }
         if (injectionInterval < 1) {
             throw new IllegalArgumentException("injectionInterval must be positive");
         }
-        System.out.printf("fabric-topology-sim=0.1 operationsPerBoard=%d seed=%d injectionInterval=%d memoryLanesPerBoard=%d%n",
-                operationsPerBoard, seed, injectionInterval, memoryLanes);
+        System.out.printf("fabric-topology-sim=0.1 operationsPerBoard=%d seed=%d injectionInterval=%d memoryLanesPerBoard=%d arbitration=%s%n",
+                operationsPerBoard, seed, injectionInterval, memoryLanes, arbitration);
         for (int boards : new int[] {4, 8, 16}) {
             for (String pattern : new String[] {"uniform", "hotspot", "paired"}) {
                 for (String topology : new String[] {"shared", "ring", "mesh"}) {
                     for (int links : new int[] {1, 2, 4}) {
                         Result result = simulate(boards, pattern, topology,
-                                links, operationsPerBoard, seed, injectionInterval, memoryLanes);
+                                links, operationsPerBoard, seed, injectionInterval, memoryLanes, arbitration);
                         System.out.printf("topology=%s boards=%d pattern=%s linksPerNeighbor=%d "
                                         + "bisectionEdges=%d perLinkBytesPerCycle=%d "
-                                        + "bisectionBandwidthBytesPerCycle=%d injectionInterval=%d memoryLanesPerBoard=%d remoteOperations=%d "
-                                        + "averageLatency=%.2f p95Latency=%.2f completionCycle=%.2f "
-                                        + "operationsPerCycle=%.5f%n",
+                                        + "bisectionBandwidthBytesPerCycle=%d injectionInterval=%d memoryLanesPerBoard=%d "
+                                        + "arbitration=%s remoteOperations=%d averageLatency=%.2f "
+                                        + "p95Latency=%.2f completionCycle=%.2f operationsPerCycle=%.5f "
+                                        + "minSourceMeanLatency=%.2f maxSourceMeanLatency=%.2f "
+                                        + "latencyFairnessJain=%.5f%n",
                                 result.topology(), result.boards(), result.pattern(),
                                 result.links(), result.bisectionEdges(), result.perLinkBytesPerCycle(),
                                 result.bisectionBytesPerCycle(), result.injectionInterval(), result.memoryLanes(),
-                                result.operations(), result.averageLatency(),
+                                result.arbitration(), result.operations(), result.averageLatency(),
                                 result.p95Latency(), result.completionCycle(),
-                                result.operationsPerCycle());
+                                result.operationsPerCycle(), result.minSourceMeanLatency(),
+                                result.maxSourceMeanLatency(), result.latencyFairnessJain());
                     }
                 }
             }
@@ -371,12 +380,14 @@ final class FabricTopologySweep {
     }
 
     private static Result simulate(int boards, String pattern, String topology,
-            int links, int operationsPerBoard, long seed, int injectionInterval, int memoryLanes) {
+            int links, int operationsPerBoard, long seed, int injectionInterval,
+            int memoryLanes, String arbitration) {
         if (boards < 2 || links < 1 || operationsPerBoard < 1
                 || !(pattern.equals("uniform") || pattern.equals("hotspot")
                         || pattern.equals("paired"))
                 || !(topology.equals("shared") || topology.equals("ring")
-                        || topology.equals("mesh"))) {
+                        || topology.equals("mesh"))
+                || !(arbitration.equals("fixed") || arbitration.equals("round_robin"))) {
             throw new IllegalArgumentException("Invalid fabric topology parameter");
         }
         final int requestBytes = 64;
@@ -414,9 +425,15 @@ final class FabricTopologySweep {
             }
         }
         transactions.sort(Comparator.comparingLong(Transaction::injectionCycle)
-                .thenComparingInt(Transaction::source));
+                .thenComparingInt(transaction -> arbitration.equals("fixed")
+                        ? transaction.source()
+                        : Math.floorMod(transaction.source()
+                                - (int) ((transaction.injectionCycle() / injectionInterval) % boards),
+                                boards)));
 
         double[] latencies = new double[transactions.size()];
+        double[] sourceLatencyTotals = new double[boards];
+        int[] sourceOperations = new int[boards];
         double lastCompletion = 0.0;
         int index = 0;
         for (Transaction transaction : transactions) {
@@ -431,7 +448,10 @@ final class FabricTopologySweep {
                     memoryEnd + memoryLatency, requestBytes, true) + fabricBaseLatency;
             int hops = network.hops(transaction.source(), transaction.target());
             double completion = responseEnd + 2.0 * hops * hopLatency;
-            latencies[index++] = completion - transaction.injectionCycle();
+            double latency = completion - transaction.injectionCycle();
+            latencies[index++] = latency;
+            sourceLatencyTotals[transaction.source()] += latency;
+            sourceOperations[transaction.source()]++;
             lastCompletion = Math.max(lastCompletion, completion);
         }
         Arrays.sort(latencies);
@@ -442,10 +462,28 @@ final class FabricTopologySweep {
         double average = total / latencies.length;
         double p95 = latencies[Math.min(latencies.length - 1,
                 (int) Math.ceil(latencies.length * 0.95) - 1)];
+        double minSourceMeanLatency = Double.POSITIVE_INFINITY;
+        double maxSourceMeanLatency = 0.0;
+        double reciprocalLatencyTotal = 0.0;
+        double reciprocalLatencySquares = 0.0;
+        for (int source = 0; source < boards; source++) {
+            if (sourceOperations[source] == 0) {
+                throw new IllegalStateException("A source received no arbitration service");
+            }
+            double sourceMean = sourceLatencyTotals[source] / sourceOperations[source];
+            minSourceMeanLatency = Math.min(minSourceMeanLatency, sourceMean);
+            maxSourceMeanLatency = Math.max(maxSourceMeanLatency, sourceMean);
+            double reciprocal = 1.0 / sourceMean;
+            reciprocalLatencyTotal += reciprocal;
+            reciprocalLatencySquares += reciprocal * reciprocal;
+        }
+        double latencyFairnessJain = reciprocalLatencyTotal * reciprocalLatencyTotal
+                / (boards * reciprocalLatencySquares);
         return new Result(topology, boards, pattern, links, bisectionEdges,
                 fabricBytesPerCycle, fabricBytesPerCycle * bisectionEdges * links,
-                injectionInterval, memoryLanes, latencies.length, average, p95, lastCompletion,
-                (double) latencies.length / lastCompletion);
+                injectionInterval, memoryLanes, arbitration, latencies.length, average, p95,
+                lastCompletion, (double) latencies.length / lastCompletion,
+                minSourceMeanLatency, maxSourceMeanLatency, latencyFairnessJain);
     }
 
     private static int bisectionEdges(int boards, String topology) {

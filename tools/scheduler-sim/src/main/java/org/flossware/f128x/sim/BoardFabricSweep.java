@@ -140,7 +140,8 @@ public final class BoardFabricSweep {
         long idleClusterCycles = 0;
         long maxOutstanding = 0;
         long outstandingCount = 0;
-        long fabricAvailableCycle = 0;
+        long requestFabricAvailableCycle = 0;
+        long responseFabricAvailableCycle = 0;
         long[] boardMemoryAvailableCycle = new long[boards];
         long[] boardIssues = new long[boards];
         int measuredCycles = cycles - warmup;
@@ -178,7 +179,7 @@ public final class BoardFabricSweep {
                             long requestCycles = Math.max(1,
                                     (requestBytes + fabricBytesPerCycle - 1L)
                                             / fabricBytesPerCycle);
-                            long requestStart = Math.max(cycle, fabricAvailableCycle);
+                            long requestStart = Math.max(cycle, requestFabricAvailableCycle);
                             long requestEnd = requestStart + requestCycles;
                             long memoryCycles = Math.max(1,
                                     (requestBytes + localMemoryBytesPerCycle - 1L)
@@ -188,12 +189,13 @@ public final class BoardFabricSweep {
                             long memoryEnd = memoryStart + memoryCycles;
                             boardMemoryAvailableCycle[targetBoard] = memoryEnd;
                             long responseStart = Math.max(
-                                    memoryEnd + remoteMemoryLatency, requestEnd);
+                                    memoryEnd + remoteMemoryLatency, responseFabricAvailableCycle);
                             long responseEnd = responseStart + requestCycles;
                             long hops = 32 - Integer.numberOfLeadingZeros(boards - 1);
                             long roundTripFabricLatency = 2L * (fabricLatency + hops * fabricHopLatency);
                             completionCycle = responseEnd + roundTripFabricLatency;
-                            fabricAvailableCycle = responseEnd;
+                            requestFabricAvailableCycle = requestEnd;
+                            responseFabricAvailableCycle = responseEnd;
                             remoteRequests++;
                             fabricBytes += 2L * requestBytes;
                         } else {

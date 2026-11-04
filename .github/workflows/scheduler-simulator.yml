@@ -291,6 +291,7 @@ jobs:
           class=org.flossware.f128x.sim.ContextSweep
           baseline="$(java -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
           bounded="$(java -Df128x.memoryRequestBytes=64 -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -Df128x.memoryBandwidthBytesPerCycle=16 -Df128x.bankConflictPenalty=2 -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
+          echo "$bounded"
           grep -q 'memorySystemEnabled=true cacheHierarchyEnabled=false memoryRequestBytes=64 memoryRequestBytesMin=64 memoryRequestBytesMax=64' <<< "$bounded"
           grep -q 'memoryChannels=4 memoryBanksPerChannel=8 memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' <<< "$bounded"
           grep -Eq 'bankConflictRequests=[1-9][0-9]*' <<< "$bounded"

@@ -37,7 +37,7 @@ Defaults:
 - 4,096 outstanding memory requests globally.
 - Each cluster issues at most one instruction per cycle in the baseline topology sweep.
 
-A workspace is assigned to a board by workspace ID modulo board count, then to a board-local cluster. All its threads follow that placement. Local memory requests use a fixed latency and do not consume fabric bandwidth; there is no local-memory bandwidth or queueing limit in this revision. Remote requests serialize on one global fabric service lane; the fabric service time is the ceiling of round-trip bytes divided by configured bytes/cycle. A memory request occupies one outstanding slot until completion. A thread has at most one outstanding memory request.
+A workspace is assigned to a board by workspace ID modulo board count, then to a board-local cluster. All its threads follow that placement. Each board has one modeled local-memory service lane with a configurable byte rate; local requests queue on that board and do not consume fabric bandwidth. Remote requests select another board, serialize a request and response on one global fabric service lane, and queue at the target board's local-memory lane. Fabric latency includes a base per-direction component plus a logarithmic switch-hop proxy. A memory request occupies one outstanding slot until completion. A thread has at most one outstanding memory request.
 
 The model reports IPC, utilization against configured aggregate issue capacity, per-board issue counts, remote request count, fabric bytes, queue-full attempts, idle cluster issue slots, and maximum outstanding requests.
 
@@ -69,15 +69,15 @@ java \
 
 This is deliberately a small first model. It does not yet include:
 
-- Per-board local-memory bandwidth, channels, banks, or contention.
-- Multiple fabric links, switch topology, routing, arbitration fairness, or link directionality.
+- Local-memory channels/banks, read/write contention, refresh, or realistic controller scheduling.
+- Multiple parallel fabric links, actual switch topology, routing, arbitration fairness, or link directionality. The hop count is only a logarithmic latency proxy.
 - Cache coherence, cache hierarchy, directory traffic, atomics, or consistency.
 - Board-to-board DMA, I/O traffic, interrupts, board failure, hot-plug, or reset behavior.
 - Thread migration between boards or workspace migration.
 - Clock, power, thermal, area, pin-count, signal-integrity, or physical packaging costs.
 - Workload traces, address locality, real instruction streams, or compiler behavior.
 
-The shared fabric is intentionally a bottleneck candidate, not a claim about a proposed electrical interface. The fixed local-memory latency also means this revision cannot determine how many memory channels a board needs.
+The shared fabric and single local-memory lane per board are bottleneck candidates, not claims about a proposed electrical interface. The model assumes one local service lane per board and a single globally serialized fabric; it is intended to expose trade-offs, not select a physical interconnect.
 
 The first four configurations compare packaging and fabric pressure at equal aggregate issue capacity. If they differ, the cause in this model is the board-local placement and remote-memory serialization, not additional execution width. The 4×4 configuration is a separate scale-up point.
 

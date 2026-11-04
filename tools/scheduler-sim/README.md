@@ -57,6 +57,14 @@ Finite queue with three latency classes:
 java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42 4 128 0.70 4 0.20 20 200
 ```
 
+Add the optional dependency fraction and latency after the five memory-class arguments:
+
+```sh
+java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42 4 128 0.70 4 0.20 20 200 0.10 12
+```
+
+The dependency fraction applies to non-memory instructions. A selected dependency-bound instruction issues, then makes its thread unavailable for the configured dependency latency. This approximates serialized data-dependency stalls without modelling operands, producer-consumer graphs, or forwarding.
+
 Arguments:
 
 ```text
@@ -102,7 +110,6 @@ This revision still does not model:
 
 - Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
 - Cache hit/miss generation from addresses or working sets.
-- Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
 - Memory bandwidth, banks, channels, row buffers, arbitration, or service-rate limits.
 - Different request sizes, read/write behavior, coherence, translation, or TLBs.
 - Shared-register conflicts or synchronization.

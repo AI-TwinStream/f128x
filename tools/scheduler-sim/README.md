@@ -31,6 +31,14 @@ The scheduler strategy is selected with the JVM property `-Df128x.scheduler=`:
 
 The distributed strategy is a logical work-stealing experiment using a global issue-width budget. It does not yet model independent per-cluster issue pipelines, physical arbitration, migration cost, or locality penalties. The hierarchical strategy similarly models workspace fairness, not a concrete hardware arbiter.
 
+Workspace workload skew can be introduced with JVM properties:
+
+- `-Df128x.hotWorkspaceRatio=0.25`: fraction of workspaces assigned the hot profile; the first `ceil(workspaces × ratio)` workspaces are hot.
+- `-Df128x.hotMemoryFraction=0.90` and `-Df128x.coldMemoryFraction=0.05`: memory-operation fractions for hot and cold workspaces.
+- `-Df128x.hotDependencyFraction=0.20` and `-Df128x.coldDependencyFraction=0.02`: serialized dependency-stall fractions for non-memory instructions.
+
+When omitted, hot and cold fractions both inherit the command-line workload fractions, so the default remains uniform. These controls let the scheduler policies be compared under skewed readiness rather than only identical workspaces.
+
 The default is `fifo`. A deterministic seed makes runs repeatable. Each thread can issue at most one instruction per cycle.
 
 ### Memory latency classes

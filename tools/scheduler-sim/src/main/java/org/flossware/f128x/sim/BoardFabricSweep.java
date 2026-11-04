@@ -119,7 +119,7 @@ public final class BoardFabricSweep {
             int workspace = thread / threadsPerWorkspace;
             int board = workspace % boards;
             int cluster = board * clustersPerBoard
-                    + (workspace % clustersPerBoard);
+                    + ((workspace / boards) % clustersPerBoard);
             homeCluster[thread] = cluster;
             ready.get(cluster).addLast(thread);
         }

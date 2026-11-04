@@ -54,6 +54,7 @@ public final class ContextSweep {
                 ? Double.parseDouble(args[13]) : 0.0;
         int dependencyLatency = args.length >= 15
                 ? Integer.parseInt(args[14]) : 1;
+        int dependencyChains = Integer.getInteger("f128x.dependencyChains", 1);
         int memoryCompletionRate = args.length == 14
                 ? Integer.parseInt(args[13])
                 : args.length == 16 ? Integer.parseInt(args[15])
@@ -102,6 +103,7 @@ public final class ContextSweep {
                 || memoryFraction < 0.0 || memoryFraction > 1.0
                 || !Double.isFinite(dependencyFraction) || dependencyFraction < 0.0
                 || dependencyFraction > 1.0 || dependencyLatency < 1
+                || dependencyChains < 1 || dependencyChains > 128
                 || memoryCompletionRate < 1 || !Double.isFinite(hotWorkspaceRatio)
                 || hotWorkspaceRatio < 0.0 || hotWorkspaceRatio > 1.0
                 || !Double.isFinite(hotMemoryFraction) || hotMemoryFraction < 0.0
@@ -176,6 +178,8 @@ public final class ContextSweep {
         boolean[] waitingForThreadSlot = new boolean[contexts];
         boolean[] waitingForQueueSlot = new boolean[contexts];
         int[] pendingClass = new int[contexts];
+        long[][] dependencyReadyCycles = new long[contexts][dependencyChains];
+        int[] dependencyChainCursor = new int[contexts];
         java.util.Arrays.fill(pendingClass, -1);
 
         for (int thread = 0; thread < contexts; thread++) {
@@ -192,6 +196,7 @@ public final class ContextSweep {
         long dependencyWaiterCycles = 0;
         long serviceBacklogCycles = 0;
         long dependencyIssues = 0;
+        long dependencyIssuesOverlapped = 0;
         long completedDependencies = 0;
         long remoteWakeups = 0;
         long remoteMemoryIssues = 0;
@@ -443,9 +448,30 @@ public final class ContextSweep {
                         workspaceMeasuredIssues[thread / 16]++;
                     }
                     if (random.nextDouble() < threadDependencyFraction) {
+                        int chain = selectReadyDependencyChain(
+                                dependencyReadyCycles[thread],
+                                dependencyChainCursor[thread], cycle);
+                        if (chain < 0) {
+                            throw new IllegalStateException(
+                                    "Scheduled thread has no ready dependency chain");
+                        }
                         dependencyIssues++;
-                        dependencyWakeups.add(new DependencyWakeup(
-                                (long) cycle + dependencyLatency, thread));
+                        dependencyReadyCycles[thread][chain] =
+                                (long) cycle + dependencyLatency;
+                        dependencyChainCursor[thread] = (chain + 1) % dependencyChains;
+
+                        int otherReadyChain = selectReadyDependencyChain(
+                                dependencyReadyCycles[thread],
+                                dependencyChainCursor[thread], (long) cycle + 1);
+                        if (otherReadyChain >= 0) {
+                            dependencyIssuesOverlapped++;
+                            requeue[requeueCount++] = thread;
+                        } else {
+                            long nextReadyCycle = earliestDependencyReadyCycle(
+                                    dependencyReadyCycles[thread]);
+                            dependencyWakeups.add(new DependencyWakeup(
+                                    nextReadyCycle, thread));
+                        }
                     } else {
                         requeue[requeueCount++] = thread;
                     }
@@ -559,6 +585,7 @@ public final class ContextSweep {
                         + "coldMemoryFraction=%.3f hotDependencyFraction=%.3f "
                         + "coldDependencyFraction=%.3f issueWidth=%d memoryFraction=%.3f "
                         + "dependencyFraction=%.3f dependencyLatency=%d "
+                        + "dependencyChains=%d "
                         + "clusterIssueWidth=%d effectiveIssueCapacity=%d "
                         + "clusterBudgetUtilization=%.4f "
                         + "migrationLatency=%d remoteMemoryLatencyPenalty=%d "
@@ -586,8 +613,8 @@ public final class ContextSweep {
                         + "idleCycles=%d readyAtEnd=%d "
                         + "waitingAtThreadLimitAtEnd=%d "
                         + "waitingAtQueueLimitAtEnd=%d outstandingAtEnd=%d "
-                        + "dependencyIssues=%d completedDependencies=%d "
-                        + "dependenciesInFlightAtEnd=%d "
+                        + "dependencyIssues=%d dependencyIssuesOverlapped=%d "
+                        + "completedDependencies=%d dependenciesInFlightAtEnd=%d "
                         + "workspaceIssuesMin=%d workspaceIssuesMax=%d "
                         + "workspaceIssueJainFairness=%.6f "
                         + "workspaceRunnableThreadCycles=%d "
@@ -605,7 +632,8 @@ public final class ContextSweep {
                 hotWorkspaceCount, hotWorkspaceRatio, hotMemoryFraction,
                 coldMemoryFraction, hotDependencyFraction, coldDependencyFraction,
                 issueWidth, memoryFraction, dependencyFraction,
-                dependencyLatency, clusterIssueWidth, effectiveIssueCapacity,
+                dependencyLatency, dependencyChains, clusterIssueWidth,
+                effectiveIssueCapacity,
                 clusterBudgetUtilization, migrationLatency,
                 remoteMemoryLatencyPenalty, ready.migrations(), remoteWakeups,
                 totalRemoteThreadCycles, remoteMemoryIssues,
@@ -623,7 +651,8 @@ public final class ContextSweep {
                 maxQueueOccupancy, queueFullAttempts, queueWaiterCycles,
                 dependencyWaiterCycles, serviceBacklogCycles, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
-                dependencyIssues, completedDependencies, dependencyWakeups.size(),
+                dependencyIssues, dependencyIssuesOverlapped,
+                completedDependencies, dependencyWakeups.size(),
                 minWorkspaceIssues, maxWorkspaceIssues, workspaceIssueJainFairness,
                 totalRunnableThreadCycles, totalRunnableWorkspaceCycles,
                 workspacesWithRunnableOpportunity,
@@ -1019,6 +1048,25 @@ public final class ContextSweep {
                 }
             }
         }
+    }
+
+    private static int selectReadyDependencyChain(
+            long[] readyCycles, int start, long cycle) {
+        for (int offset = 0; offset < readyCycles.length; offset++) {
+            int chain = (start + offset) % readyCycles.length;
+            if (readyCycles[chain] <= cycle) {
+                return chain;
+            }
+        }
+        return -1;
+    }
+
+    private static long earliestDependencyReadyCycle(long[] readyCycles) {
+        long earliest = Long.MAX_VALUE;
+        for (long readyCycle : readyCycles) {
+            earliest = Math.min(earliest, readyCycle);
+        }
+        return earliest;
     }
 
     private static int selectMemoryClass(

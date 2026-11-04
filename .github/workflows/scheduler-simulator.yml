@@ -90,6 +90,15 @@ jobs:
           grep -Eq 'dependencyIssues=[1-9][0-9]*' <<< "$output"
           printf '%s\n' "$output"
 
+      - name: Verify memory completion-rate backpressure
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.50 50000 19 4 128 0.70 4 0.20 20 200 1)"
+          grep -q 'memoryCompletionRate=1' <<< "$output"
+          grep -Eq 'serviceBacklogCycles=[1-9][0-9]*' <<< "$output"
+          printf '%s\\n' "$output"
+
       - name: Verify finite queue backpressure
         shell: bash
         run: |
@@ -110,6 +119,10 @@ jobs:
           fi
           if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 1 8 0.70 4 0.20 20 200 1.5 12; then
             echo "Expected invalid dependency fraction to fail" >&2
+            exit 1
+          fi
+          if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 1 8 0.70 4 0.20 20 200 0; then
+            echo "Expected invalid completion rate to fail" >&2
             exit 1
           fi
           if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 0; then

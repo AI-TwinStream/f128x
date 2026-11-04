@@ -300,7 +300,8 @@ jobs:
             fi
           }
           check "memory system enabled with 64-byte requests" 'memorySystemEnabled=true cacheHierarchyEnabled=false memoryRequestBytes=64 memoryRequestBytesMin=64 memoryRequestBytesMax=64' "$bounded"
-          check "four-channel/eight-bank bandwidth configuration" 'memoryChannels=4 memoryBanksPerChannel=8 memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' "$bounded"
+          check "four-channel/eight-bank configuration" 'memoryChannels=4 memoryBanksPerChannel=8' "$bounded"
+          check "configured bandwidth and bank penalty" 'memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' "$bounded"
           check "bank conflicts observed" 'bankConflictRequests=[1-9][0-9]*' "$bounded"
           check "bank conflict wait observed" 'bankConflictWaitCycles=[1-9][0-9]*' "$bounded"
           check "DRAM service cycles observed" 'memoryServiceCycles=[1-9][0-9]*' "$bounded"

@@ -422,3 +422,39 @@ Latency and completion values are in model cycles. Bandwidth values are bytes/cy
 - At four links (768 aggregate cut bytes/cycle), the 16-board uniform cases converge: shared 7.74352, ring 7.67580, mesh 7.70347 operations/cycle. Under this offered load, the common fabric capacity is no longer the dominant bottleneck.
 - One-link hotspot behavior needs separate interpretation: the destination memory service lane is a bottleneck shared by these topologies. Fabric bandwidth alone cannot solve endpoint serialization.
 - This remains a deterministic, single-seed comparison with a simplified reservation-order model. Multi-seed and injection-rate sweeps are next; no architecture should be selected from these numbers alone.
+
+
+## Three-seed normalized sensitivity check
+
+The CI workflow repeated the complete 81-case matrix at seeds 7 and 2027 in addition to the primary seed 42. All 243 measured cases passed in [GitHub Actions run 41931612205](https://github.com/AI-TwinStream/f128x/actions/runs/41931612205). Each seed used 2,048 operations per board. The table below reports the arithmetic mean across the three seeds for selected 16-board cases; throughput is aggregate completed operations per cycle.
+
+| Traffic | Topology | Links | Mean latency | Mean p95 latency | Mean operations/cycle | Per-seed operations/cycle |
+|---|---|---:|---:|---:|---:|---|
+| uniform | shared | 1 | 3542.94 | 6616.11 | 2.96486 | 2.96436, 2.96516, 2.96507 |
+| uniform | ring | 1 | 7032.58 | 13162.78 | 1.81428 | 1.78142, 1.84667, 1.81476 |
+| uniform | mesh | 1 | 373.65 | 543.89 | 7.04342 | 6.82809, 7.18229, 7.11987 |
+| uniform | shared | 4 | 139.58 | 155.22 | 7.74556 | 7.74352, 7.73743, 7.75574 |
+| uniform | ring | 4 | 155.12 | 178.56 | 7.68041 | 7.67580, 7.67341, 7.69202 |
+| uniform | mesh | 4 | 142.80 | 159.56 | 7.70589 | 7.70347, 7.70710, 7.70710 |
+| hotspot | shared | 1 | 13438.02 | 25419.00 | 1.06234 | 1.06234, 1.06234, 1.06234 |
+| hotspot | ring | 1 | 12621.09 | 25346.33 | 1.06145 | 1.06145, 1.06145, 1.06145 |
+| hotspot | mesh | 1 | 14858.81 | 29867.67 | 0.91918 | 0.91918, 0.91918, 0.91918 |
+| hotspot | shared | 4 | 13437.50 | 25418.67 | 1.06236 | 1.06236, 1.06236, 1.06236 |
+| hotspot | ring | 4 | 12621.09 | 25346.33 | 1.06145 | 1.06145, 1.06145, 1.06145 |
+| hotspot | mesh | 4 | 12618.45 | 25343.67 | 1.06150 | 1.06150, 1.06150, 1.06150 |
+| paired | shared | 1 | 3539.83 | 6612.00 | 2.96597 | 2.96597, 2.96597, 2.96597 |
+| paired | ring | 1 | 126.33 | 126.33 | 7.76432 | 7.76432, 7.76432, 7.76432 |
+| paired | mesh | 1 | 127.67 | 127.67 | 7.76186 | 7.76186, 7.76186, 7.76186 |
+| paired | shared | 4 | 126.17 | 126.67 | 7.76370 | 7.76370, 7.76370, 7.76370 |
+| paired | ring | 4 | 126.33 | 126.33 | 7.76432 | 7.76432, 7.76432, 7.76432 |
+| paired | mesh | 4 | 127.67 | 127.67 | 7.76186 | 7.76186, 7.76186, 7.76186 |
+
+### What the repeat tells us
+
+- The mesh retains a strong advantage over the ring for 16-board uniform traffic at the one-link budget, but the spread varies by seed. The three-seed mean is 7.04342 operations/cycle for mesh versus 1.81428 for ring. The mesh's mean latency also varies materially, so more seeds and a more realistic arbitration policy are warranted.
+- At four links, uniform throughput converges to roughly 7.68–7.75 operations/cycle across all three topologies. With this offered load, the 768-byte/cycle bisection budget and other system limits dominate the differences.
+- Hotspot traffic converges near 1.06 operations/cycle for shared and ring and near 1.06 for mesh at four links. Mesh with one link falls to 0.91918 because its per-link service rate is lower under the normalized cut budget. This illustrates that equal bisection capacity does not equalize per-hop latency or endpoint contention.
+- Paired traffic is largely insensitive to the seed and is served efficiently by ring and mesh because each source communicates with its neighbor. The shared reference remains constrained by its global serialized resource at one link.
+- The shared model is an abstract single-resource reference, not a physically equivalent nonblocking crossbar. The results compare the stated models under equal minimum cut bandwidth, not area, energy, cable length, radix, or implementation cost.
+
+The normalized model and three-seed result set are now suitable for sensitivity exploration, not for selecting a final physical topology. Next work should vary injection interval/load and add fairer arbitration plus multiple destination memory lanes, so network and endpoint bottlenecks can be separated.

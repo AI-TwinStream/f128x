@@ -27,7 +27,7 @@ public final class ContextSweep {
 
     public static void main(String[] args) {
         if (args.length != 6 && args.length != 7
-                && args.length != 8 && args.length != 13 && args.length != 15) {
+                && args.length != 8 && args.length != 13 && args.length != 14\n                && args.length != 15 && args.length != 16) {
             usage();
             System.exit(2);
         }
@@ -44,11 +44,15 @@ public final class ContextSweep {
                 ? Integer.parseInt(args[7]) : Integer.MAX_VALUE;
         double dependencyFraction = args.length == 15
                 ? Double.parseDouble(args[13]) : 0.0;
-        int dependencyLatency = args.length == 15
+        int dependencyLatency = args.length >= 15
                 ? Integer.parseInt(args[14]) : 1;
+        int memoryCompletionRate = args.length == 14
+                ? Integer.parseInt(args[13])
+                : args.length == 16 ? Integer.parseInt(args[15])
+                : Integer.MAX_VALUE;
 
         MemoryClass[] memoryClasses;
-        if (args.length == 13 || args.length == 15) {
+        if (args.length >= 13) {
             double l1Fraction = Double.parseDouble(args[8]);
             int l1Latency = Integer.parseInt(args[9]);
             double l2Fraction = Double.parseDouble(args[10]);
@@ -74,7 +78,7 @@ public final class ContextSweep {
                 || cycles < 1 || maxOutstanding < 1
                 || memoryQueueCapacity < 1 || memoryFraction < 0.0
                 || memoryFraction > 1.0 || dependencyFraction < 0.0
-                || dependencyFraction > 1.0 || dependencyLatency < 1) {
+                || dependencyFraction > 1.0 || dependencyLatency < 1\n                || memoryCompletionRate < 1) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
         for (MemoryClass memoryClass : memoryClasses) {
@@ -107,7 +111,7 @@ public final class ContextSweep {
         long idleCycles = 0;
         long queueFullAttempts = 0;
         long queueWaiterCycles = 0;
-        long dependencyWaiterCycles = 0;
+        long dependencyWaiterCycles = 0;\n        long serviceBacklogCycles = 0;
         long dependencyIssues = 0;
         long completedDependencies = 0;
         long maxQueueOccupancy = 0;
@@ -127,8 +131,11 @@ public final class ContextSweep {
                 completedDependencies++;
             }
 
+            int completionsThisCycle = 0;
             while (!completions.isEmpty()
-                    && completions.peek().cycle() <= cycle) {
+                    && completions.peek().cycle() <= cycle
+                    && completionsThisCycle < memoryCompletionRate) {
+                completionsThisCycle++;
                 Completion completion = completions.remove();
                 int thread = completion.thread();
                 int latencyClass = completion.latencyClass();
@@ -143,6 +150,11 @@ public final class ContextSweep {
                         ready.addLast(thread);
                     }
                 }
+            }
+
+            if (!completions.isEmpty()
+                    && completions.peek().cycle() <= cycle) {
+                serviceBacklogCycles++;
             }
 
             // Wake only as many FIFO queue waiters as there are returned credits.
@@ -251,11 +263,11 @@ public final class ContextSweep {
                 "contexts=%d issueWidth=%d memoryFraction=%.3f "
                         + "dependencyFraction=%.3f dependencyLatency=%d "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
-                        + "cycles=%d warmup=%d measuredIPC=%.4f "
+                        + "memoryCompletionRate=%d cycles=%d warmup=%d measuredIPC=%.4f "
                         + "issueUtilization=%.4f memoryIssues=%d "
                         + "completedRequests=%d maxThreadOutstanding=%d "
                         + "maxQueueOccupancy=%d queueFullAttempts=%d queueWaiterCycles=%d "
-                        + "dependencyWaiterCycles=%d "
+                        + "dependencyWaiterCycles=%d serviceBacklogCycles=%d "
                         + "idleCycles=%d readyAtEnd=%d "
                         + "waitingAtThreadLimitAtEnd=%d "
                         + "waitingAtQueueLimitAtEnd=%d outstandingAtEnd=%d "
@@ -263,10 +275,10 @@ public final class ContextSweep {
                         + "dependenciesInFlightAtEnd=%d seed=%d%n",
                 contexts, issueWidth, memoryFraction, dependencyFraction,
                 dependencyLatency, maxOutstanding,
-                memoryQueueCapacity, cycles, warmup, ipc, utilization,
+                memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
                 maxQueueOccupancy, queueFullAttempts, queueWaiterCycles,
-                dependencyWaiterCycles, idleCycles, ready.size(),
+                dependencyWaiterCycles, serviceBacklogCycles, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
                 dependencyIssues, completedDependencies, dependencyWakeups.size(),
                 seed);
@@ -296,11 +308,14 @@ public final class ContextSweep {
                     <memory-fraction> <cycles> <seed>
                     [max-outstanding [memory-queue-capacity
                     l1-fraction l1-latency l2-fraction l2-latency dram-latency
-                    [dependency-fraction dependency-latency]]]
+                    [dependency-fraction dependency-latency
+                    [max-memory-completions-per-cycle]]]
 
                 Use all five memory-class arguments together. The L1 and L2
                 fractions are conditional probabilities among memory
                 instructions; DRAM receives the remaining probability.
+                The optional completion-rate argument caps completed memory
+                requests per cycle; it is not a byte-bandwidth model.
 
                 Example:
                   ContextSweep 4096 4 300 0.25 200000 42 4 128

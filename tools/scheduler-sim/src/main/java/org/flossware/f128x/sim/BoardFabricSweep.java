@@ -308,7 +308,8 @@ final class FabricTopologySweep {
             int injectionInterval, int memoryLanes, String arbitration, String routing, int operations,
             double averageLatency, double p95Latency, double completionCycle,
             double operationsPerCycle, double minSourceMeanLatency,
-            double maxSourceMeanLatency, double latencyFairnessJain) {}
+            double maxSourceMeanLatency, double latencyFairnessJain,
+            long adaptiveRouteSelections) {}
 
     private FabricTopologySweep() {}
 
@@ -380,14 +381,15 @@ final class FabricTopologySweep {
                                         + "arbitration=%s routing=%s remoteOperations=%d averageLatency=%.2f "
                                         + "p95Latency=%.2f completionCycle=%.2f operationsPerCycle=%.5f "
                                         + "minSourceMeanLatency=%.2f maxSourceMeanLatency=%.2f "
-                                        + "latencyFairnessJain=%.5f%n",
+                                        + "latencyFairnessJain=%.5f adaptiveRouteSelections=%d%n",
                                 result.topology(), result.boards(), result.pattern(),
                                 result.links(), result.bisectionEdges(), result.perLinkBytesPerCycle(),
                                 result.bisectionBytesPerCycle(), result.injectionInterval(), result.memoryLanes(),
                                 result.arbitration(), result.routing(), result.operations(), result.averageLatency(),
                                 result.p95Latency(), result.completionCycle(),
                                 result.operationsPerCycle(), result.minSourceMeanLatency(),
-                                result.maxSourceMeanLatency(), result.latencyFairnessJain());
+                                result.maxSourceMeanLatency(), result.latencyFairnessJain(),
+                                result.adaptiveRouteSelections());
                     }
                 }
             }
@@ -499,7 +501,8 @@ final class FabricTopologySweep {
                 fabricBytesPerCycle, fabricBytesPerCycle * bisectionEdges * links,
                 injectionInterval, memoryLanes, arbitration, routing, latencies.length, average, p95,
                 lastCompletion, (double) latencies.length / lastCompletion,
-                minSourceMeanLatency, maxSourceMeanLatency, latencyFairnessJain);
+                minSourceMeanLatency, maxSourceMeanLatency, latencyFairnessJain,
+                network.adaptiveRouteSelections());
     }
 
     private static int bisectionEdges(int boards, String topology) {
@@ -573,6 +576,7 @@ final class FabricTopologySweep {
         private final List<List<Integer>> neighbors;
         private final Map<Long, Integer> directedEdges = new HashMap<>();
         private final double[][][] available;
+        private long adaptiveRouteSelections;
 
         Network(int boards, String topology, int links, int bytesPerCycle, String routing) {
             this.boards = boards;
@@ -666,7 +670,14 @@ final class FabricTopologySweep {
                     best = candidate;
                 }
             }
+            if (!best.equals(shortest)) {
+                adaptiveRouteSelections++;
+            }
             return best;
+        }
+
+        long adaptiveRouteSelections() {
+            return adaptiveRouteSelections;
         }
 
         private List<Integer> shortestRoute(int source, int target) {

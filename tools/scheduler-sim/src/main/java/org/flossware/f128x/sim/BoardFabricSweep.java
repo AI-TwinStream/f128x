@@ -305,7 +305,7 @@ final class FabricTopologySweep {
     private record Transaction(long injectionCycle, int source, int target) {}
     private record Result(String topology, int boards, String pattern, int links,
             int bisectionEdges, int perLinkBytesPerCycle, int bisectionBytesPerCycle,
-            int injectionInterval, int memoryLanes, String arbitration, int operations,
+            int injectionInterval, int memoryLanes, String arbitration, String routing, int operations,
             double averageLatency, double p95Latency, double completionCycle,
             double operationsPerCycle, double minSourceMeanLatency,
             double maxSourceMeanLatency, double latencyFairnessJain) {}
@@ -319,18 +319,20 @@ final class FabricTopologySweep {
                 for (String topology : new String[] {"shared", "ring", "mesh"}) {
                     for (int links : new int[] {1, 2, 4}) {
                         Result first = simulate(boards, pattern, topology,
-                                links, 64, 42L, 2, 1, "round_robin");
+                                links, 64, 42L, 2, 1, "round_robin", "adaptive");
                         Result second = simulate(boards, pattern, topology,
-                                links, 64, 42L, 2, 1, "round_robin");
+                                links, 64, 42L, 2, 1, "round_robin", "adaptive");
                         Result fixed = simulate(boards, pattern, topology,
-                                links, 64, 42L, 2, 1, "fixed");
+                                links, 64, 42L, 2, 1, "fixed", "fixed");
                         if (!first.equals(second) || first.operations() != boards * 64
                                 || first.averageLatency() <= 0.0 || first.p95Latency() <= 0
                                 || first.minSourceMeanLatency() > first.maxSourceMeanLatency()
                                 || first.latencyFairnessJain() < 0.0
                                 || first.latencyFairnessJain() > 1.0000001
                                 || !fixed.arbitration().equals("fixed")
-                                || !first.arbitration().equals("round_robin")) {
+                                || !first.arbitration().equals("round_robin")
+                                || !first.routing().equals("adaptive")
+                                || !fixed.routing().equals("fixed")) {
                             throw new IllegalStateException("Fabric arbitration smoke failed: "
                                     + topology + "/" + boards + "/" + pattern + "/" + links);
                         }
@@ -357,28 +359,32 @@ final class FabricTopologySweep {
         if (!(arbitration.equals("fixed") || arbitration.equals("round_robin"))) {
             throw new IllegalArgumentException("arbitration must be fixed or round_robin");
         }
+        String routing = System.getProperty("f128x.fabric.routing", "fixed");
+        if (!(routing.equals("fixed") || routing.equals("adaptive"))) {
+            throw new IllegalArgumentException("routing must be fixed or adaptive");
+        }
         if (injectionInterval < 1) {
             throw new IllegalArgumentException("injectionInterval must be positive");
         }
-        System.out.printf("fabric-topology-sim=0.1 operationsPerBoard=%d seed=%d injectionInterval=%d memoryLanesPerBoard=%d arbitration=%s%n",
-                operationsPerBoard, seed, injectionInterval, memoryLanes, arbitration);
+        System.out.printf("fabric-topology-sim=0.1 operationsPerBoard=%d seed=%d injectionInterval=%d memoryLanesPerBoard=%d arbitration=%s routing=%s%n",
+                operationsPerBoard, seed, injectionInterval, memoryLanes, arbitration, routing);
         for (int boards : new int[] {4, 8, 16}) {
             for (String pattern : new String[] {"uniform", "hotspot", "paired"}) {
                 for (String topology : new String[] {"shared", "ring", "mesh"}) {
                     for (int links : new int[] {1, 2, 4}) {
                         Result result = simulate(boards, pattern, topology,
-                                links, operationsPerBoard, seed, injectionInterval, memoryLanes, arbitration);
+                                links, operationsPerBoard, seed, injectionInterval, memoryLanes, arbitration, routing);
                         System.out.printf("topology=%s boards=%d pattern=%s linksPerNeighbor=%d "
                                         + "bisectionEdges=%d perLinkBytesPerCycle=%d "
                                         + "bisectionBandwidthBytesPerCycle=%d injectionInterval=%d memoryLanesPerBoard=%d "
-                                        + "arbitration=%s remoteOperations=%d averageLatency=%.2f "
+                                        + "arbitration=%s routing=%s remoteOperations=%d averageLatency=%.2f "
                                         + "p95Latency=%.2f completionCycle=%.2f operationsPerCycle=%.5f "
                                         + "minSourceMeanLatency=%.2f maxSourceMeanLatency=%.2f "
                                         + "latencyFairnessJain=%.5f%n",
                                 result.topology(), result.boards(), result.pattern(),
                                 result.links(), result.bisectionEdges(), result.perLinkBytesPerCycle(),
                                 result.bisectionBytesPerCycle(), result.injectionInterval(), result.memoryLanes(),
-                                result.arbitration(), result.operations(), result.averageLatency(),
+                                result.arbitration(), result.routing(), result.operations(), result.averageLatency(),
                                 result.p95Latency(), result.completionCycle(),
                                 result.operationsPerCycle(), result.minSourceMeanLatency(),
                                 result.maxSourceMeanLatency(), result.latencyFairnessJain());
@@ -390,13 +396,14 @@ final class FabricTopologySweep {
 
     private static Result simulate(int boards, String pattern, String topology,
             int links, int operationsPerBoard, long seed, int injectionInterval,
-            int memoryLanes, String arbitration) {
+            int memoryLanes, String arbitration, String routing) {
         if (boards < 2 || links < 1 || operationsPerBoard < 1
                 || !(pattern.equals("uniform") || pattern.equals("hotspot")
                         || pattern.equals("paired"))
                 || !(topology.equals("shared") || topology.equals("ring")
                         || topology.equals("mesh"))
-                || !(arbitration.equals("fixed") || arbitration.equals("round_robin"))) {
+                || !(arbitration.equals("fixed") || arbitration.equals("round_robin"))
+                || !(routing.equals("fixed") || routing.equals("adaptive"))) {
             throw new IllegalArgumentException("Invalid fabric topology parameter");
         }
         final int requestBytes = 64;
@@ -414,7 +421,7 @@ final class FabricTopologySweep {
             throw new IllegalArgumentException("memoryLanesPerBoard must be positive");
         }
 
-        Network network = new Network(boards, topology, links, fabricBytesPerCycle);
+        Network network = new Network(boards, topology, links, fabricBytesPerCycle, routing);
         double[][] memoryAvailable = new double[boards][memoryLanes];
         List<Transaction> transactions = new ArrayList<>(boards * operationsPerBoard);
         for (int source = 0; source < boards; source++) {
@@ -562,15 +569,17 @@ final class FabricTopologySweep {
         private final String topology;
         private final int links;
         private final int bytesPerCycle;
+        private final String routing;
         private final List<List<Integer>> neighbors;
         private final Map<Long, Integer> directedEdges = new HashMap<>();
         private final double[][][] available;
 
-        Network(int boards, String topology, int links, int bytesPerCycle) {
+        Network(int boards, String topology, int links, int bytesPerCycle, String routing) {
             this.boards = boards;
             this.topology = topology;
             this.links = links;
             this.bytesPerCycle = bytesPerCycle;
+            this.routing = routing;
             this.neighbors = new ArrayList<>(boards);
             for (int board = 0; board < boards; board++) {
                 neighbors.add(new ArrayList<>());
@@ -604,9 +613,9 @@ final class FabricTopologySweep {
         }
 
         double transfer(int source, int target, double earliest, int bytes, boolean response) {
-            List<Integer> route = route(source, target);
-            double cursor = earliest;
             int direction = response ? 1 : 0;
+            List<Integer> route = route(source, target, direction, earliest, bytes);
+            double cursor = earliest;
             double serviceCycles = bytes / (double) bytesPerCycle;
             for (int edge : route) {
                 int selected = 0;
@@ -624,10 +633,43 @@ final class FabricTopologySweep {
         }
 
         int hops(int source, int target) {
-            return route(source, target).size();
+            return shortestRoute(source, target).size();
         }
 
-        private List<Integer> route(int source, int target) {
+        private List<Integer> route(int source, int target, int direction,
+                double earliest, int bytes) {
+            List<Integer> shortest = shortestRoute(source, target);
+            if (routing.equals("fixed") || topology.equals("shared")) {
+                return shortest;
+            }
+            int[] distance = distancesTo(target);
+            List<List<Integer>> candidates = new ArrayList<>();
+            enumerateShortestRoutes(source, target, distance, new ArrayList<>(), candidates);
+            double bestFinish = Double.POSITIVE_INFINITY;
+            List<Integer> best = shortest;
+            double serviceCycles = bytes / (double) bytesPerCycle;
+            for (List<Integer> candidate : candidates) {
+                double cursor = earliest;
+                for (int edge : candidate) {
+                    int selected = 0;
+                    for (int lane = 1; lane < links; lane++) {
+                        if (available[direction][edge][lane]
+                                < available[direction][edge][selected]) {
+                            selected = lane;
+                        }
+                    }
+                    cursor = Math.max(cursor, available[direction][edge][selected])
+                            + serviceCycles;
+                }
+                if (cursor < bestFinish) {
+                    bestFinish = cursor;
+                    best = candidate;
+                }
+            }
+            return best;
+        }
+
+        private List<Integer> shortestRoute(int source, int target) {
             if (topology.equals("shared")) {
                 return List.of(0);
             }
@@ -656,6 +698,39 @@ final class FabricTopologySweep {
                 path.addFirst(previousEdge[current]);
             }
             return new ArrayList<>(path);
+        }
+
+        private int[] distancesTo(int target) {
+            int[] distance = new int[boards];
+            Arrays.fill(distance, Integer.MAX_VALUE);
+            ArrayDeque<Integer> queue = new ArrayDeque<>();
+            distance[target] = 0;
+            queue.add(target);
+            while (!queue.isEmpty()) {
+                int current = queue.removeFirst();
+                for (int next : neighbors.get(current)) {
+                    if (distance[next] == Integer.MAX_VALUE) {
+                        distance[next] = distance[current] + 1;
+                        queue.addLast(next);
+                    }
+                }
+            }
+            return distance;
+        }
+
+        private void enumerateShortestRoutes(int current, int target, int[] distance,
+                List<Integer> path, List<List<Integer>> routes) {
+            if (current == target) {
+                routes.add(List.copyOf(path));
+                return;
+            }
+            for (int next : neighbors.get(current)) {
+                if (distance[next] == distance[current] - 1) {
+                    path.add(directedEdges.get(edgeKey(current, next)));
+                    enumerateShortestRoutes(next, target, distance, path, routes);
+                    path.remove(path.size() - 1);
+                }
+            }
         }
 
         private void addIfPresent(int source, int row, int column, int columns) {

@@ -305,8 +305,8 @@ final class FabricTopologySweep {
     private record Transaction(long injectionCycle, int source, int target) {}
     private record Result(String topology, int boards, String pattern, int links,
             int bisectionEdges, int perLinkBytesPerCycle, int bisectionBytesPerCycle,
-            int operations, double averageLatency, long p95Latency,
-            long completionCycle, double operationsPerCycle) {}
+            int operations, double averageLatency, double p95Latency,
+            double completionCycle, double operationsPerCycle) {}
 
     private FabricTopologySweep() {}
 
@@ -348,7 +348,7 @@ final class FabricTopologySweep {
                         System.out.printf("topology=%s boards=%d pattern=%s linksPerNeighbor=%d "
                                         + "bisectionEdges=%d perLinkBytesPerCycle=%d "
                                         + "bisectionBandwidthBytesPerCycle=%d remoteOperations=%d "
-                                        + "averageLatency=%.2f p95Latency=%d completionCycle=%d "
+                                        + "averageLatency=%.2f p95Latency=%.2f completionCycle=%.2f "
                                         + "operationsPerCycle=%.5f%n",
                                 result.topology(), result.boards(), result.pattern(),
                                 result.links(), result.bisectionEdges(), result.perLinkBytesPerCycle(),
@@ -373,9 +373,6 @@ final class FabricTopologySweep {
         final int requestBytes = 64;
         final int targetBisectionBytesPerCycle = 192;
         final int bisectionEdges = bisectionEdges(boards, topology);
-        if (targetBisectionBytesPerCycle % bisectionEdges != 0) {
-            throw new IllegalStateException("Target bisection bandwidth is not divisible by cut size");
-        }
         final int fabricBytesPerCycle = targetBisectionBytesPerCycle / bisectionEdges;
         final int memoryBytesPerCycle = 64;
         final int memoryLatency = 80;
@@ -385,7 +382,7 @@ final class FabricTopologySweep {
         final int memoryLanes = 1;
 
         Network network = new Network(boards, topology, links, fabricBytesPerCycle);
-        long[][] memoryAvailable = new long[boards][memoryLanes];
+        double[][] memoryAvailable = new double[boards][memoryLanes];
         List<Transaction> transactions = new ArrayList<>(boards * operationsPerBoard);
         for (int source = 0; source < boards; source++) {
             SplittableRandom random = new SplittableRandom(seed + source * 0x9E3779B97F4A7C15L);
@@ -406,33 +403,31 @@ final class FabricTopologySweep {
         transactions.sort(Comparator.comparingLong(Transaction::injectionCycle)
                 .thenComparingInt(Transaction::source));
 
-        long[] latencies = new long[transactions.size()];
-        long lastCompletion = 0;
+        double[] latencies = new double[transactions.size()];
+        double lastCompletion = 0.0;
         int index = 0;
         for (Transaction transaction : transactions) {
-            long requestEnd = network.transfer(transaction.source(), transaction.target(),
+            double requestEnd = network.transfer(transaction.source(), transaction.target(),
                     transaction.injectionCycle(), requestBytes, false)
                     + fabricBaseLatency;
             int lane = earliestLane(memoryAvailable[transaction.target()]);
-            long memoryStart = Math.max(requestEnd, memoryAvailable[transaction.target()][lane]);
-            long memoryEnd = memoryStart
-                    + Math.max(1, (requestBytes + memoryBytesPerCycle - 1L)
-                            / memoryBytesPerCycle);
+            double memoryStart = Math.max(requestEnd, memoryAvailable[transaction.target()][lane]);
+            double memoryEnd = memoryStart + requestBytes / (double) memoryBytesPerCycle;
             memoryAvailable[transaction.target()][lane] = memoryEnd;
-            long responseEnd = network.transfer(transaction.target(), transaction.source(),
+            double responseEnd = network.transfer(transaction.target(), transaction.source(),
                     memoryEnd + memoryLatency, requestBytes, true) + fabricBaseLatency;
             int hops = network.hops(transaction.source(), transaction.target());
-            long completion = responseEnd + 2L * hops * hopLatency;
+            double completion = responseEnd + 2.0 * hops * hopLatency;
             latencies[index++] = completion - transaction.injectionCycle();
             lastCompletion = Math.max(lastCompletion, completion);
         }
         Arrays.sort(latencies);
-        long total = 0;
-        for (long latency : latencies) {
+        double total = 0.0;
+        for (double latency : latencies) {
             total += latency;
         }
         double average = (double) total / latencies.length;
-        long p95 = latencies[Math.min(latencies.length - 1,
+        double p95 = latencies[Math.min(latencies.length - 1,
                 (int) Math.ceil(latencies.length * 0.95) - 1)];
         return new Result(topology, boards, pattern, links, bisectionEdges,
                 fabricBytesPerCycle, fabricBytesPerCycle * bisectionEdges * links,
@@ -492,7 +487,7 @@ final class FabricTopologySweep {
         if (target < boards) edge[source][target] = true;
     }
 
-    private static int earliestLane(long[] available) {
+    private static int earliestLane(double[] available) {
         int selected = 0;
         for (int lane = 1; lane < available.length; lane++) {
             if (available[lane] < available[selected]) {
@@ -509,7 +504,7 @@ final class FabricTopologySweep {
         private final int bytesPerCycle;
         private final List<List<Integer>> neighbors;
         private final Map<Long, Integer> directedEdges = new HashMap<>();
-        private final long[][][] available;
+        private final double[][][] available;
 
         Network(int boards, String topology, int links, int bytesPerCycle) {
             this.boards = boards;
@@ -545,14 +540,14 @@ final class FabricTopologySweep {
                     }
                 }
             }
-            available = new long[2][directedEdges.size()][links];
+            available = new double[2][directedEdges.size()][links];
         }
 
-        long transfer(int source, int target, long earliest, int bytes, boolean response) {
+        double transfer(int source, int target, double earliest, int bytes, boolean response) {
             List<Integer> route = route(source, target);
-            long cursor = earliest;
+            double cursor = earliest;
             int direction = response ? 1 : 0;
-            long serviceCycles = Math.max(1, (bytes + bytesPerCycle - 1L) / bytesPerCycle);
+            double serviceCycles = bytes / (double) bytesPerCycle;
             for (int edge : route) {
                 int selected = 0;
                 for (int lane = 1; lane < links; lane++) {
@@ -561,7 +556,7 @@ final class FabricTopologySweep {
                         selected = lane;
                     }
                 }
-                long start = Math.max(cursor, available[direction][edge][selected]);
+                double start = Math.max(cursor, available[direction][edge][selected]);
                 cursor = start + serviceCycles;
                 available[direction][edge][selected] = cursor;
             }

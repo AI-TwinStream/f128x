@@ -1,7 +1,7 @@
 # Context Capacity and Latency-Hiding Model 0.2
 
 **Date:** 2026-11-04  
-**Status:** First-order analytical model plus an initial executable experiment  
+**Status:** First-order analytical model plus an executable experiment with per-thread outstanding-request limits  
 **Related:** Context state and residency, scheduling progress and interrupts, scheduler simulation.
 
 ## 1. Purpose
@@ -72,6 +72,25 @@ For this narrow workload, issue utilization saturates at 512 contexts. More cont
 
 This is one parameter point and one seed, not a performance claim about a real processor.
 
+## 3.1 Per-thread memory-level parallelism experiment
+
+The simulator now accepts an optional `max-outstanding` argument. A thread may continue issuing while it has fewer than this number of memory requests in flight; reaching the limit makes it wait until a request completes. A value of 1 reproduces the original blocking-thread behavior.
+
+The following sweep was run by GitHub Actions with Temurin JDK 25.0.5. Fixed parameters: issue width 4, latency 300 cycles, memory-operation probability 0.25, 200,000 cycles, warmup 10,000 cycles, and seed 42. The table reports the smallest tested context count that reached 4.0000 measured IPC.
+
+| Max outstanding requests per thread | 64 contexts | 128 contexts | 256 contexts | 512 contexts | First tested saturation point |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 0.8430 IPC | 1.6901 IPC | 3.3523 IPC | 4.0000 IPC | 512 |
+| 2 | 1.6898 IPC | 3.3521 IPC | 4.0000 IPC | 4.0000 IPC | 256 |
+| 4 | 3.3513 IPC | 4.0000 IPC | 4.0000 IPC | 4.0000 IPC | 128 |
+| 8 | 4.0000 IPC | 4.0000 IPC | 4.0000 IPC | 4.0000 IPC | 64 |
+
+This demonstrates that per-thread memory-level parallelism changes the number of independent contexts needed to keep a fixed-width issue engine busy. In this model, increasing the outstanding-request limit from 1 to 8 moves the first tested saturation point from 512 contexts to 64.
+
+This result is deliberately narrow. It does not establish that real threads can expose 8 independent misses, that a real memory system can sustain them, or that the cost of tracking and servicing those requests is negligible. The simulator assumes independent memory operations, one fixed latency, no shared memory queue or bandwidth ceiling, and one instruction per thread per cycle. It also uses one seed; multiple seeds and workload-derived request/dependency traces remain necessary.
+
+The CI sweep is reproducible in `.github/workflows/scheduler-simulator.yml`. It is an experiment harness, not a benchmark claim about physical hardware.
+
 ## 4. Important limitations
 
 The model must be extended to account for:
@@ -129,7 +148,7 @@ Extend the model with:
 - Scheduler selection/wakeup latency and hierarchical topologies.
 - Per-workspace and per-thread fairness measurements.
 
-Run context counts from 64 through 65,536 across issue widths, blocking fractions, latency distributions, and multiple seeds. Collect sustained issue rate, utilization, ready-queue depth, per-thread service distribution, wait-time percentiles, memory queue occupancy, and scheduler overhead.
+Run context counts from 64 through 65,536 across issue widths, memory-operation fractions, latency distributions, outstanding-request limits, and multiple seeds. Add dependency chains, shared-state contention, and scheduler topology alternatives. Collect sustained issue rate, utilization, ready-queue depth, per-thread service distribution, wait-time percentiles, memory queue occupancy, and scheduler overhead.
 
 ## 8. Decision gates
 

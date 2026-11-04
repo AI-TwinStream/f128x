@@ -244,6 +244,14 @@ jobs:
             echo "Expected negative remote-memory penalty to fail" >&2
             exit 1
           fi
+          if java -Df128x.memoryRequestMinBytes=0 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected non-positive minimum request size to fail" >&2
+            exit 1
+          fi
+          if java -Df128x.memoryRequestMinBytes=256 -Df128x.memoryRequestMaxBytes=128 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected inverted request-size range to fail" >&2
+            exit 1
+          fi
           if java -Df128x.scheduler=distributed -Df128x.clusters=0 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
             echo "Expected invalid cluster count to fail" >&2
             exit 1

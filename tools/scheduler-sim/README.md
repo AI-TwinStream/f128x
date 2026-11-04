@@ -282,3 +282,16 @@ The arbitration point is the global ingress ordering in this transaction-level
 model; it is not yet independent per-hop switch arbitration or a flit/packet
 arbiter. CI runs the full 81-case matrix under both policies and checks
 deterministic arbitration smoke coverage.
+
+
+### Congestion-aware shortest-path routing
+
+The switched-fabric model also accepts
+`-Df128x.fabric.routing=fixed|adaptive`. Fixed routing preserves the
+deterministic breadth-first path used by the baseline. Adaptive routing
+enumerates equal-hop shortest paths and selects the path with the lowest
+predicted link-availability completion time using the current request or
+response direction's link reservations. Results report
+`adaptiveRouteSelections` so CI can verify that the adaptive policy actually
+chooses alternate paths. This is source-selected, snapshot-based adaptive
+routing, not per-hop packet deflection or a deadlock-free adaptive router.

@@ -70,7 +70,7 @@ jobs:
 
       - name: Exercise multi-class finite-queue model
         run: |
-          java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1024 4 300 0.25 100000 42 4 128 0.70 4 0.20 20 200
+          java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1024 4 300 0.25 100000 42 4 128 0.70 4 0.20 20 200 0.10 12
 
       - name: Verify finite queue backpressure and latency classes
         shell: bash
@@ -80,8 +80,8 @@ jobs:
           grep -q 'memoryQueueCapacity=8' <<< "$output"
           grep -q 'memoryClass=L1' <<< "$output"
           grep -q 'memoryClass=L2' <<< "$output"
-          grep -q 'memoryClass=DRAM' <<< "$output"
-          awk '{ for (i=1; i<=NF; i++) { split($i, pair, "="); if (pair[1] == "maxQueueOccupancy" && pair[2] > 8) exit 1; if (pair[1] == "queueFullStalls" && pair[2] < 1) exit 1; } }' <<< "$output"
+          grep -q 'memoryClass=DRAM' <<< "$output"\n          grep -q 'dependencyFraction=0.100' <<< "$output"\n          grep -Eq 'dependencyIssues=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'queueFullStalls=[1-9][0-9]*' <<< "$output"\n          awk '{ for (i=1; i<=NF; i++) { split($i, pair, "="); if (pair[1] == "maxQueueOccupancy" && pair[2] > 8) exit 1; } }' <<< "$output"
 
       - name: Verify invalid arguments fail
         run: |
@@ -89,7 +89,7 @@ jobs:
             echo "Expected invalid invocation to fail" >&2
             exit 1
           fi
-          if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 0; then
+          if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 1 8 0.70 4 0.20 20 200 1.5 12; then\n            echo "Expected invalid dependency fraction to fail" >&2\n            exit 1\n          fi\n          if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 0;
             echo "Expected max-outstanding=0 to fail" >&2
             exit 1
           fi

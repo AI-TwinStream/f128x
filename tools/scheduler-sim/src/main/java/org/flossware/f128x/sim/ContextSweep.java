@@ -302,7 +302,8 @@ public final class ContextSweep {
                 }
                 outstandingByThread[thread]--;
                 memoryBytesCompleted += completion.requestBytes();
-                if (memorySystemEnabled) {
+                if (memorySystemEnabled && (!cacheHierarchyEnabled
+                        || completion.cacheResult() == CacheSweep.Result.DRAM_MISS)) {
                     int channel = completion.channel();
                     int bank = completion.bank();
                     bankOutstanding[channel][bank]--;

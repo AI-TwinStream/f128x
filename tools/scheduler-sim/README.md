@@ -19,8 +19,9 @@ At each simulated cycle:
 5. Each selected instruction is a memory operation with probability `memory-fraction`.
 6. Memory operations are assigned to one of the configured latency classes.
 7. An operation is issued only when the shared outstanding-request capacity has a free slot. Otherwise, that selected memory instruction waits for queue credit and does not consume an issue slot.
-8. A non-memory instruction may optionally incur a serialized dependency stall, controlled by `dependency-fraction` and `dependency-latency`. This is a coarse stall model, not a dependency graph.
-9. A thread may continue issuing while it has fewer than `max-outstanding` accepted memory requests in flight.
+8. Completed requests are limited by an optional maximum number of completions per cycle. Requests that reach their nominal latency but cannot complete remain outstanding and contribute service-backlog cycles.
+9. A non-memory instruction may optionally incur a serialized dependency stall, controlled by `dependency-fraction` and `dependency-latency`. This is a coarse stall model, not a dependency graph.
+10. A thread may continue issuing while it has fewer than `max-outstanding` accepted memory requests in flight.
 
 The scheduler uses one FIFO ready queue and one FIFO queue-credit wait list. A deterministic seed makes runs repeatable. Each thread can issue at most one instruction per cycle.
 
@@ -65,6 +66,8 @@ java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.2
 
 The dependency fraction applies to non-memory instructions. A selected dependency-bound instruction issues, then makes its thread unavailable for the configured dependency latency. This approximates serialized data-dependency stalls without modelling operands, producer-consumer graphs, or forwarding.
 
+To limit memory request completions to one per cycle, append `1` after the memory-class arguments (14 arguments total). This delays completions that are ready but cannot be serviced in the current cycle. Append the same value after the dependency pair when both options are enabled (16 arguments total). The limit is requests completed per cycle, not bytes transferred per cycle.
+
 Arguments:
 
 ```text
@@ -72,7 +75,7 @@ Arguments:
 <memory-fraction> <cycles> <seed>
 [max-outstanding [memory-queue-capacity
 [l1-fraction l1-latency l2-fraction l2-latency dram-latency
-[dependency-fraction dependency-latency]]]]
+[dependency-fraction dependency-latency [max-memory-completions-per-cycle]]]]
 ```
 
 The original six-argument invocation remains valid. `max-outstanding` defaults to 1. The shared memory queue defaults to effectively unbounded capacity unless explicitly configured. Supply all five latency-class arguments together.
@@ -98,7 +101,7 @@ The program reports:
 - Accepted memory requests and completions.
 - Maximum per-thread outstanding requests.
 - Maximum shared request-queue occupancy.
-- Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, and idle cycles.
+- Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, service-backlog cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
 - Per-class issue and completion counts.
 
@@ -117,12 +120,12 @@ This revision still does not model:
 - Interrupts, exceptions, priorities, or OS behavior.
 - Physical register-file banking, ports, timing, area, or power.
 
-The shared queue is a finite count of simultaneously outstanding requests. Queue-full attempts count each failed admission attempt; queue-waiter cycles accumulate the number of threads waiting for a queue slot per cycle. These are distinct measurements. It is not a bandwidth model. Fixed latency classes do not increase with queue occupancy. Dependency stalls are independent of memory requests and apply only to non-memory instructions. The independent memory-operation probability and class distribution are input assumptions, not measured workload properties.
+The shared queue is a finite count of simultaneously outstanding requests. Queue-full attempts count each failed admission attempt; queue-waiter cycles accumulate the number of threads waiting for a queue slot per cycle. These are distinct measurements. The optional completion rate limits requests completed per cycle, but does not model bytes per cycle, bank conflicts, channels, or request-size effects. Fixed latency classes do not increase with queue occupancy. Dependency stalls are independent of memory requests and apply only to non-memory instructions. The independent memory-operation probability and class distribution are input assumptions, not measured workload properties.
 
 ## Interpretation
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add explicit memory service-rate or bandwidth limits, richer dependency graphs, and scheduler-topology alternatives, then calibrate inputs from representative workload traces.
+The next model revision should add byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and scheduler-topology alternatives, then calibrate inputs from representative workload traces.
 
 No architectural decision about 65,536 contexts follows from this model alone.

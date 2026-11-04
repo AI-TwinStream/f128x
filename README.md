@@ -1,5 +1,7 @@
 # f128x
 
+![f128x Modular Architecture](docs/architecture/images/f128x-modular-architecture-0.1.jpg)
+
 f128x is a FlossWare processor-architecture research project. It began as a 128-bit successor exploration inspired by the Texas Instruments TMS9900 and its workspace-oriented programming model. The current direction explores a massively multithreaded, workspace-oriented general-purpose processor.
 
 The project is not a TMS9900 ISA clone and does not promise TMS9900 binary compatibility. The f128x workspace is a proposed resource-sharing and protection abstraction, not the TMS9900's memory-resident register workspace. That terminology is under review.

@@ -34,7 +34,29 @@ jobs:
           mkdir -p build/scheduler-sim
           javac --release 25 -Xlint:all -Werror \
             -d build/scheduler-sim \
-            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java
+            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
+            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
+
+      - name: Exercise modular board and backplane model
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.f128x.sim.BoardFabricSweep
+          options=(-Df128x.contexts=256 -Df128x.workspaces=16 -Df128x.cycles=4000 -Df128x.warmup=400 -Df128x.seed=42)
+          first="$(java "${options[@]}" -cp build/scheduler-sim "$class")"
+          second="$(java "${options[@]}" -cp build/scheduler-sim "$class")"
+          test "$first" = "$second"
+          grep -q 'boards=1 clustersPerBoard=8 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=2 clustersPerBoard=4 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=4 clustersPerBoard=2 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=8 clustersPerBoard=1 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=4 clustersPerBoard=4 issueWidthPerCluster=1 aggregateIssueWidth=16' <<< "$first"
+          grep -Eq 'remoteRequests=[1-9][0-9]*' <<< "$first"
+          grep -Eq 'fabricBytes=[1-9][0-9]*' <<< "$first"
+          grep -q 'remoteFraction=0.10' <<< "$first"
+          grep -q 'remoteFraction=0.50' <<< "$first"
+          grep -q 'remoteFraction=0.90' <<< "$first"
+          printf '%s\\n' "$first"
 
       - name: Run deterministic smoke test
         shell: bash

@@ -318,11 +318,20 @@ final class FabricTopologySweep {
             for (String pattern : new String[] {"uniform", "hotspot", "paired"}) {
                 for (String topology : new String[] {"shared", "ring", "mesh"}) {
                     for (int links : new int[] {1, 2, 4}) {
-                        Result first = simulate(boards, pattern, topology, links, 64, 42L, 2, 1);
-                        Result second = simulate(boards, pattern, topology, links, 64, 42L, 2, 1);
+                        Result first = simulate(boards, pattern, topology,
+                                links, 64, 42L, 2, 1, "round_robin");
+                        Result second = simulate(boards, pattern, topology,
+                                links, 64, 42L, 2, 1, "round_robin");
+                        Result fixed = simulate(boards, pattern, topology,
+                                links, 64, 42L, 2, 1, "fixed");
                         if (!first.equals(second) || first.operations() != boards * 64
-                                || first.averageLatency() <= 0.0 || first.p95Latency() <= 0) {
-                            throw new IllegalStateException("Fabric topology deterministic smoke failed: "
+                                || first.averageLatency() <= 0.0 || first.p95Latency() <= 0
+                                || first.minSourceMeanLatency() > first.maxSourceMeanLatency()
+                                || first.latencyFairnessJain() < 0.0
+                                || first.latencyFairnessJain() > 1.0000001
+                                || !fixed.arbitration().equals("fixed")
+                                || !first.arbitration().equals("round_robin")) {
+                            throw new IllegalStateException("Fabric arbitration smoke failed: "
                                     + topology + "/" + boards + "/" + pattern + "/" + links);
                         }
                         cases++;

@@ -35,7 +35,34 @@ jobs:
           javac --release 25 -Xlint:all -Werror \
             -d build/scheduler-sim \
             tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
+            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
             tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
+
+      - name: Test deterministic address generation and mapping
+        shell: bash
+        run: |
+          set -euo pipefail
+          javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim \
+            -d build/scheduler-sim \
+            tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/MemoryAddressingTest.java
+          java -cp build/scheduler-sim org.flossware.f128x.sim.MemoryAddressingTest
+          class=org.flossware.f128x.sim.ContextSweep
+          for pattern in random sequential strided shared_region; do
+            output="$(java -Df128x.addressPattern="$pattern" -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -cp build/scheduler-sim "$class" 64 4 80 0.50 10000 42 4 128)"
+            grep -q "addressPattern=$pattern" <<< "$output"
+          done
+          low="$(java -Df128x.addressPattern=strided -Df128x.addressStride=8192 -Df128x.addressMapping=low_order -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -cp build/scheduler-sim "$class" 64 4 80 0.50 10000 42 4 128)"
+          xor="$(java -Df128x.addressPattern=strided -Df128x.addressStride=8192 -Df128x.addressMapping=xor -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -cp build/scheduler-sim "$class" 64 4 80 0.50 10000 42 4 128)"
+          grep -q 'addressMapping=low_order' <<< "$low"
+          grep -q 'addressMapping=xor' <<< "$xor"
+          if java -Df128x.addressPattern=unknown -cp build/scheduler-sim "$class" 64 4 80 0.50 1000 42; then
+            echo "Expected unknown address pattern to fail" >&2
+            exit 1
+          fi
+          if java -Df128x.addressStride=0 -cp build/scheduler-sim "$class" 64 4 80 0.50 1000 42; then
+            echo "Expected non-positive address stride to fail" >&2
+            exit 1
+          fi
 
       - name: Exercise modular board and backplane model
         shell: bash

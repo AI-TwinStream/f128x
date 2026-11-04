@@ -57,7 +57,17 @@ A byte-oriented memory service model can be enabled with these JVM properties:
 - `-Df128x.memoryBandwidthBytesPerCycle=16`: byte service budget per channel per cycle; default 0 (unbounded/disabled).
 - `-Df128x.bankConflictPenalty=2`: extra cycles a bank remains unavailable after servicing a request; default 0.
 
-The memory-system model is disabled by default to preserve the earlier fixed-latency behavior. It becomes active when bandwidth is configured, channel or bank count exceeds one, or a bank-conflict penalty is set. When active, requests are assigned to channels and banks using deterministic synthetic addresses. Bandwidth is divided evenly among a channel's banks; each bank services one request at a time. The transfer time is `ceil(requestBytes × banksPerChannel / bandwidthBytesPerCycle)` cycles when a bandwidth limit is configured. With bandwidth disabled but bank contention enabled, each bank services one request per cycle. Aggregate configured bandwidth is `memoryChannels × memoryBandwidthBytesPerCycle`.
+The memory-system model is disabled by default to preserve the earlier fixed-latency behavior. It becomes active when bandwidth is configured, channel or bank count exceeds one, or a bank-conflict penalty is set. When active, requests are assigned to channels and banks using configurable synthetic addresses. The default pattern remains random. Select a pattern with `-Df128x.addressPattern=`:
+- `random`: seeded pseudo-random byte addresses (default).
+- `sequential`: cache-line sequential addresses in a per-thread region.
+- `strided`: per-thread addresses separated by `-Df128x.addressStride=4096` bytes (default 64).
+- `shared_region`: threads generate addresses in the same bounded region, exposing inter-thread overlap; configure its size with `-Df128x.addressRegionBytes=1048576` (default 1 MiB).
+
+Address-to-channel/bank mapping is selected with `-Df128x.addressMapping=`:
+- `low_order`: interleave 64-byte cache lines across channels, then banks (default).
+- `xor`: fold higher cache-line address bits into channel and bank selection to test whether structured strides can be dispersed.
+
+The random pattern consumes the same seeded random value as the previous implementation, preserving the random workload stream. Sequential, strided, and shared-region patterns are deterministic for a given thread and its memory-request sequence. Bandwidth is divided evenly among a channel's banks; each bank services one request at a time. The transfer time is `ceil(requestBytes × banksPerChannel / bandwidthBytesPerCycle)` cycles when a bandwidth limit is configured. With bandwidth disabled but bank contention enabled, each bank services one request per cycle. Aggregate configured bandwidth is `memoryChannels × memoryBandwidthBytesPerCycle`.
 
 This is a first-order bank service model. It does not consume real address traces or model burst transfers, DRAM row hits, refresh, read/write turnarounds, or a physical controller's scheduling policy.
 
@@ -81,7 +91,12 @@ From the repository root:
 
 ```sh
 mkdir -p build/scheduler-sim
-javac --release 25 -Xlint:all -Werror -d build/scheduler-sim tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java
+javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java
+javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim -d build/scheduler-sim \
+  tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/MemoryAddressingTest.java
+java -cp build/scheduler-sim org.flossware.f128x.sim.MemoryAddressingTest
 ```
 
 Single-latency compatibility mode:
@@ -158,7 +173,7 @@ The warmup interval is excluded from measured IPC. Other counters are whole-run 
 This revision still does not model:
 
 - Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
-- Cache hit/miss generation from working sets or real address traces; channel/bank assignment currently uses synthetic addresses.
+- Cache hit/miss generation from working sets or real address traces; channel/bank assignment now supports random, sequential, strided, and shared-region synthetic addresses with low-order or XOR mapping, but no working-set reuse yet.
 - DRAM row buffers, row hits, refresh, burst transfers, read/write turnarounds, or controller scheduling policy.
 - Variable request sizes, read/write behavior, coherence, translation, or TLBs. The current byte model uses a uniform request-size range and an equal per-bank share of channel bandwidth; it does not model workload-specific size distributions.
 - Shared-register conflicts or synchronization.
@@ -172,7 +187,7 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add configurable address-to-channel/bank mapping, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md), and [Scheduler Simulation 0.10 Results](../../docs/research/scheduler-simulation-0.10-results.md), and [Scheduler Simulation 0.11 Results](../../docs/research/scheduler-simulation-0.11-results.md).
+The next model revision should add working-set reuse and cache hit/miss behavior, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md), and [Scheduler Simulation 0.10 Results](../../docs/research/scheduler-simulation-0.10-results.md), and [Scheduler Simulation 0.11 Results](../../docs/research/scheduler-simulation-0.11-results.md).
 
 No architectural decision about 65,536 contexts follows from this model alone.
 

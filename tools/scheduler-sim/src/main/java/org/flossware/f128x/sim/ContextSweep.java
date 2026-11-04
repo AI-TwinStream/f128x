@@ -137,6 +137,15 @@ public final class ContextSweep {
                 "f128x.memoryBandwidthBytesPerCycle", 0);
         int bankConflictPenalty = Integer.getInteger(
                 "f128x.bankConflictPenalty", 0);
+        String addressPatternName = System.getProperty("f128x.addressPattern", "random");
+        String addressMappingName = System.getProperty("f128x.addressMapping", "low_order");
+        MemoryAddressing.Pattern addressPattern =
+                MemoryAddressing.Pattern.parse(addressPatternName);
+        MemoryAddressing.Mapping addressMapping =
+                MemoryAddressing.Mapping.parse(addressMappingName);
+        long addressStride = Long.getLong("f128x.addressStride", 64L);
+        long addressRegionBytes = Long.getLong("f128x.addressRegionBytes", 1L << 20);
+        long[] memoryAddressSequences = new long[contexts];
         boolean memorySystemEnabled = memoryBandwidthBytesPerCycle > 0
                 || memoryChannels > 1 || memoryBanksPerChannel > 1
                 || bankConflictPenalty > 0;
@@ -148,7 +157,8 @@ public final class ContextSweep {
                 || memoryRequestMaxBytes < memoryRequestMinBytes
                 || memoryChannels < 1 || memoryBanksPerChannel < 1
                 || memoryBandwidthBytesPerCycle < 0
-                || bankConflictPenalty < 0) {
+                || bankConflictPenalty < 0 || addressStride < 1
+                || addressRegionBytes < 1) {
             throw new IllegalArgumentException(
                     "Cluster count and cluster issue width must be positive; "
                             + "migration and remote-memory penalties cannot be negative");
@@ -376,12 +386,15 @@ public final class ContextSweep {
                     int bank = 0;
                     long completionCycle = nominalReadyCycle;
                     if (memorySystemEnabled) {
-                        long syntheticAddress = random.nextLong();
-                        channel = (int) Long.remainderUnsigned(
-                                syntheticAddress, memoryChannels);
-                        bank = (int) Long.remainderUnsigned(
-                                Long.divideUnsigned(syntheticAddress, memoryChannels),
-                                memoryBanksPerChannel);
+                        long addressEntropy = random.nextLong();
+                        long syntheticAddress = MemoryAddressing.address(
+                                addressPattern, thread, memoryAddressSequences[thread]++,
+                                addressEntropy, addressStride, addressRegionBytes);
+                        MemoryAddressing.Location location = MemoryAddressing.map(
+                                syntheticAddress, memoryChannels, memoryBanksPerChannel,
+                                addressMapping);
+                        channel = location.channel();
+                        bank = location.bank();
                         long bankReadyCycle = bankAvailableCycle[channel][bank];
                         long bankWait = Math.max(0L,
                                 bankReadyCycle - nominalReadyCycle);
@@ -597,6 +610,7 @@ public final class ContextSweep {
                         + "memoryRequestBytesObservedMin=%d "
                         + "memoryRequestBytesObservedMax=%d "
                         + "memoryChannels=%d memoryBanksPerChannel=%d "
+                        + "addressPattern=%s addressMapping=%s addressStride=%d addressRegionBytes=%d "
                         + "memoryBandwidthBytesPerCycle=%d "
                         + "aggregateMemoryBandwidthBytesPerCycle=%d "
                         + "bankConflictPenalty=%d memoryBytesIssued=%d "
@@ -641,6 +655,9 @@ public final class ContextSweep {
                 memoryRequestBytes, memoryRequestMinBytes,
                 memoryRequestMaxBytes, minObservedRequestBytes,
                 maxObservedRequestBytes, memoryChannels, memoryBanksPerChannel,
+                addressPattern.name().toLowerCase(java.util.Locale.ROOT),
+                addressMapping.name().toLowerCase(java.util.Locale.ROOT),
+                addressStride, addressRegionBytes,
                 memoryBandwidthBytesPerCycle,
                 aggregateMemoryBandwidthBytesPerCycle, bankConflictPenalty,
                 memoryBytesIssued, memoryBytesCompleted, memoryServiceCycles,

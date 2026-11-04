@@ -318,7 +318,7 @@ public final class ContextSweep {
             maxWorkspaceIssues = Math.max(maxWorkspaceIssues, count);
             sumWorkspaceSquares += (double) count * count;
         }
-        double workspaceJainFairness = totalWorkspaceIssues == 0 ? 1.0
+        double workspaceIssueJainFairness = totalWorkspaceIssues == 0 ? 1.0
                 : (double) totalWorkspaceIssues * totalWorkspaceIssues
                         / (workspaceIssues.length * sumWorkspaceSquares);
 
@@ -341,7 +341,7 @@ public final class ContextSweep {
                         + "dependencyIssues=%d completedDependencies=%d "
                         + "dependenciesInFlightAtEnd=%d "
                         + "workspaceIssuesMin=%d workspaceIssuesMax=%d "
-                        + "workspaceJainFairness=%.6f seed=%d%n",
+                        + "workspaceIssueJainFairness=%.6f seed=%d%n",
                 ready.name(), ready.clusterCount(), ready.steals(),
                 ready.selectionProbes(), contexts, workspaceCount,
                 hotWorkspaceCount, hotWorkspaceRatio, hotMemoryFraction,
@@ -354,7 +354,7 @@ public final class ContextSweep {
                 dependencyWaiterCycles, serviceBacklogCycles, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
                 dependencyIssues, completedDependencies, dependencyWakeups.size(),
-                minWorkspaceIssues, maxWorkspaceIssues, workspaceJainFairness, seed);
+                minWorkspaceIssues, maxWorkspaceIssues, workspaceIssueJainFairness, seed);
 
         for (int i = 0; i < memoryClasses.length; i++) {
             System.out.printf("memoryClass=%s latency=%d issues=%d completions=%d%n",

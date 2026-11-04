@@ -351,6 +351,7 @@ public final class ContextSweep {
 
     private static final class FifoReadyScheduler implements ReadyScheduler {
         private final ArrayDeque<Integer> queue;
+        private long selectionProbes;
 
         private FifoReadyScheduler(int capacity) {
             queue = new ArrayDeque<>(capacity);
@@ -368,6 +369,7 @@ public final class ContextSweep {
 
         @Override
         public int poll() {
+            selectionProbes++;
             return queue.isEmpty() ? -1 : queue.removeFirst();
         }
 
@@ -393,7 +395,7 @@ public final class ContextSweep {
 
         @Override
         public long selectionProbes() {
-            return 0;
+            return selectionProbes;
         }
     }
 
@@ -461,7 +463,7 @@ public final class ContextSweep {
 
         @Override
         public int clusterCount() {
-            return workspaceQueues.size();
+            return 1;
         }
 
         @Override

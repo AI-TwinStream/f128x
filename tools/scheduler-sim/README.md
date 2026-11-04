@@ -262,6 +262,6 @@ Run it with:
 java -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep
 ```
 
-Use `-Df128x.fabric.operationsPerBoard=2048` and `-Df128x.fabric.seed=42` to control workload size and seed. The normal `BoardFabricSweep` CI smoke path also runs a deterministic switched-mesh check, so this experiment is compiled and exercised by the existing workflow.
+Use `-Df128x.fabric.operationsPerBoard=2048`, `-Df128x.fabric.seed=42`, and `-Df128x.fabric.injectionInterval=2` to control workload size, seed, and per-source injection spacing. Smaller intervals increase offered load; larger intervals reduce it. CI runs the full topology matrix at intervals 1, 2, and 4, and repeats the interval-2 matrix across multiple seeds. The normal `BoardFabricSweep` CI smoke path also runs a deterministic switched-mesh check, so this experiment is compiled and exercised by the existing workflow.
 
 This is a topology sensitivity model, not a routing or electrical model. It uses deterministic shortest-path routing, fixed injection intervals, FIFO link availability, one destination-memory service lane, and no packet arbitration policy, virtual channels, adaptive routing, failures, congestion control, or physical link costs. The shared topology is a single serialized fabric resource per direction; ring and mesh topologies have per-directed-hop resources, with the configured number of parallel links per neighbor. Compare like-for-like board counts, patterns, and link counts; do not interpret the absolute throughput as a hardware prediction.

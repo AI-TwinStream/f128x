@@ -254,7 +254,7 @@ The board model is intentionally separate from `ContextSweep`. The lane count is
 - Uniform, hotspot, and paired remote destinations.
 - Four-, eight-, and sixteen-board organizations.
 
-Each source board injects a deterministic stream of 64-byte remote requests. Request and response directions have independent link availability, each traversed hop consumes link service, and destination memory has one service lane. The report includes mean and p95 request-to-response latency plus aggregate completed operations per cycle.
+Each source board injects a deterministic stream of 64-byte remote requests. Request and response directions have independent link availability, each traversed hop consumes link service, and destination memory has one service lane. For each topology and board count, the simulator computes the minimum balanced bisection edge cut and sets per-link bandwidth so the one-link case has the same 128-byte/cycle aggregate bisection bandwidth. The 2/4-link cases scale that common budget proportionally, identically across topologies. Output reports cut size, per-link bandwidth, aggregate bisection bandwidth, mean and p95 request-to-response latency, and aggregate completed operations per cycle.
 
 Run it with:
 

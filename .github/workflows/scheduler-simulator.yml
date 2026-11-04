@@ -218,6 +218,20 @@ jobs:
           done
           echo "PASS: full topology matrix at injection intervals 1 and 4"
 
+      - name: Sweep destination memory service lanes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for lanes in 2 4; do
+            output="$(java -Df128x.fabric.operationsPerBoard=2048 -Df128x.fabric.seed=42 -Df128x.fabric.injectionInterval=2 -Df128x.fabric.memoryLanesPerBoard="$lanes" -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "memoryLanesPerBoard=$lanes" <<< "$output"
+            echo "fabric-memory-lanes=$lanes"
+            echo "$output"
+          done
+          echo "PASS: full topology matrix at two and four destination memory lanes"
+
       - name: Run deterministic smoke test
         shell: bash
         run: |

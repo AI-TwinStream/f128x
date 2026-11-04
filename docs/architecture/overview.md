@@ -1,80 +1,105 @@
 # f128x Architecture Overview
 
-## 1. Purpose
+## 1. Purpose and lineage
 
-f128x defines a native 128-bit general-purpose processor architecture. The initial implementation target is an FPGA-based CPU replacement for the TI-99/4A's TMS9900, not an accelerator that leaves the TMS9900 as the primary CPU.
+f128x is a 128-bit evolution of the Texas Instruments TMS9900 architecture. It takes the TMS9900's workspace-oriented model as a point of departure and redesigns it for a much larger register file, native 128-bit computation, and a modern implementation.
 
-The architecture must remain platform-independent. TI-99/4A integration is a platform implementation and compatibility problem, not the definition of the ISA itself.
+This is not an attempt to reproduce the TMS9900 ISA or to preserve its binary encoding. The goal is to preserve and improve architectural ideas, not fossilize implementation limits.
 
-## 2. Architectural width model
+The architecture remains platform-independent. TI-99/4A integration is a platform implementation and compatibility problem, not the definition of the ISA itself.
 
-The term *128-bit* applies first to the programmer-visible general-purpose register width and native scalar integer datapath. It does not force every other width to 128 bits.
+## 2. Selected working baseline
 
-| Dimension | Initial direction | Rationale |
-|---|---|---|
-| General-purpose registers | 128 bits | Native programmer-visible integer state |
-| Scalar integer operations | 128 bits | Native add, subtract, logic, compare, shifts and rotates |
-| Address width | Separate parameter/architectural decision | 128-bit pointers are not automatically useful or efficient |
-| Instruction encoding | To be specified | Must balance extensibility and decode simplicity |
-| External memory bus | Platform-specific | FPGA and TI-99/4A interfaces have different constraints |
-| Vector/SIMD | Later ISA extension | Do not conflate scalar 128-bit operations with SIMD lanes |
-| Floating point | Later specification | Define formats and exception behavior explicitly |
+| Architectural element | Working direction |
+|---|---|
+| General-purpose registers | **128 registers** |
+| GPR width | **128 bits each** |
+| Total GPR storage | **16,384 bits / 2,048 bytes (2 KiB)** |
+| Native scalar integer width | 128 bits |
+| Register implementation | Hardware register file |
+| Workspace heritage | Retain as a modernized workspace/window mechanism; semantics to be specified |
+| PC and status | Dedicated architectural control state |
+| Address width | Independent decision; do not assume 128 bits |
+| Instruction encoding | Open decision |
+| External memory bus | Platform-specific |
+| SIMD/vector | Separate design decision; 128-bit scalar GPRs do not automatically define SIMD |
+| Floating point | Separate specification |
 
-## 3. Initial CPU model
+The 128-register choice is the ambitious successor baseline. It replaces the original TMS9900's sixteen 16-bit workspace registers as the design target. The architecture must not quietly fall back to sixteen registers for implementation convenience.
 
-The first architecture revision should specify:
+## 3. TMS9900 ideas to preserve or evolve
 
-- A programmer-visible register file of 128-bit general-purpose registers.
-- A dedicated program counter with a documented width and alignment model.
-- A documented status/condition register.
-- Native 128-bit add, subtract, bitwise operations, compare, shifts and rotates.
-- Load/store operations with explicit sizes and alignment semantics.
-- A defined calling convention, stack model, and exception/interrupt model.
-- Privilege and memory-protection requirements before an operating-system ABI is designed.
+- **Workspace-oriented programming:** retain a first-class concept for organizing register context and making context changes efficient.
+- **Register-indirect and indexed addressing heritage:** evaluate which addressing modes remain useful in a modern load/store and memory model.
+- **Orthogonal operations:** favor consistent instruction semantics and predictable operand forms.
+- **Memory-to-memory heritage:** preserve the useful programming intent where appropriate, but do not require every operation to execute directly against memory. Evaluate explicit load/store operations and specialized memory operations on their merits.
+- **Control state separation:** retain explicit PC/status/control state, with a modern exception and interrupt model.
 
-Register count, instruction encoding, endianness, privilege levels, and exact address width remain open decisions until evaluated together. They must not be silently inferred from the name f128x.
+The architecture must document which concepts are preserved, transformed, or deliberately dropped.
 
-## 4. Memory and addressing
+## 4. Width model
 
-Keep these concepts distinct:
+Keep these dimensions independent:
 
-1. **Register width:** width of architectural general-purpose registers.
-2. **Integer width:** width of native scalar arithmetic.
-3. **Virtual address width:** width of addresses generated by software and translated by the architecture, if virtual memory is supported.
-4. **Physical address width:** width of addresses presented to the memory system.
-5. **External bus width:** width of a particular memory or peripheral interface.
+1. **Register width:** 128 bits for each GPR.
+2. **Scalar integer width:** native 128-bit arithmetic, logical, compare, shift, and rotate operations.
+3. **Memory access width:** define byte, 16-bit word, and wider accesses explicitly. The supported set and atomicity guarantees remain to be specified.
+4. **Virtual address width:** software-visible address width, if virtual memory is supported.
+5. **Physical address width:** width presented to the memory subsystem.
+6. **Instruction encoding:** instruction length and operand encoding, independent of GPR width.
+7. **External bus width:** property of a particular implementation/platform.
 
-The initial implementation should choose an address width appropriate to the intended memory map and FPGA resources. A 128-bit register can hold a pointer, but that alone does not make the pointer a valid 128-bit address.
+A 128-bit register can hold a pointer, but the architecture must define which bits are meaningful for an address. A 128-bit datapath does not force 128-bit pointers or buses.
 
-## 5. Compatibility strategy
+## 5. CPU state
 
-The f128x CPU is not TMS9900 binary compatible. Compatibility should be provided at explicit boundaries:
+The architectural specification must define:
+
+- 128 × 128-bit GPRs.
+- Dedicated program counter and status register.
+- Workspace/window control state, if retained in the final model.
+- Exception, interrupt, privilege, and address-space control state.
+- Defined reset state and exception entry/return behavior.
+
+The register-file document records the working organization and open questions. Do not treat implementation details such as banking, bypass paths, or physical register-file port counts as ISA requirements unless software can observe them.
+
+## 6. Memory and addressing
+
+The architecture should make a clear distinction between register operations and memory operations. Define byte order, byte addressing, load/store sizes, alignment, atomicity, and memory ordering before an ABI is frozen.
+
+The initial address width should be selected from realistic platform and software requirements. The TI-99/4A compatibility subsystem may expose a much smaller legacy address space than native f128x software.
+
+## 7. Compatibility strategy
+
+f128x is not TMS9900 binary compatible. Compatibility should be provided at explicit boundaries:
 
 - Peripheral bus adapters for TI-99/4A devices.
-- A platform support layer for reset, interrupts, timers, and device discovery.
-- Optional emulation or translation for selected legacy software, evaluated separately.
+- Platform firmware and drivers for reset, interrupts, timers, video, sound, and input.
+- Optional TMS9900 emulation or translation, evaluated separately.
+- Optional source-level or API-level migration tools.
 
 Do not burden the core ISA with accidental constraints from the original machine.
 
-## 6. Verification principles
+## 8. Verification principles
 
 - Define instruction semantics before RTL implementation.
-- Create executable reference models and instruction-level tests.
-- Test arithmetic boundary cases, carry/borrow, signedness, shifts, and overflow semantics.
-- Add formal properties for register, ALU, control-flow, and memory interface behavior where practical.
+- Create an executable reference model and instruction-level tests.
+- Test arithmetic boundaries, carry/borrow, signedness, shifts, rotates, and overflow semantics.
+- Verify all 128 GPRs, including register aliasing, window transitions, and exception preservation.
+- Add formal properties for register, ALU, control-flow, and memory-interface behavior where practical.
 - Keep ISA conformance tests independent of any one FPGA board.
 
-## 7. Open decisions
+## 9. Open decisions
 
-- Number of 128-bit general-purpose registers.
-- Register zero semantics, if any.
+- Exact workspace/window semantics and whether windows overlap.
+- Register access rules for GPRs 0 through 127.
 - Instruction encoding and instruction length strategy.
 - Endianness and byte-addressing model.
 - Address width and physical memory map.
-- Load/store sizes, alignment, and unaligned access behavior.
-- Interrupt, exception, and privilege architecture.
-- Whether multiplication/division are mandatory base instructions or extensions.
-- ABI, assembler syntax, compiler/toolchain strategy.
-- FPGA family and board-level implementation.
+- Load/store sizes, alignment, unaligned access behavior, and atomic operations.
+- Interrupt, exception, privilege, and virtual-memory architecture.
+- Multiplication/division and other expensive operations in the base ISA or extensions.
+- ABI, assembler syntax, object format, and compiler/toolchain strategy.
+- FPGA family, register-file implementation, and board-level integration.
 
-These decisions require documented trade-off analysis before the first ISA version is declared stable.
+These decisions require documented trade-off analysis before an ISA version is declared stable.

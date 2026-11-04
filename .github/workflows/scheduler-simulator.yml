@@ -152,21 +152,21 @@ jobs:
         run: |
           set -euo pipefail
           output="$(java -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep)"
-          lines="$(grep -c '^fabricTopology=' <<< "$output")"
+          lines="$(grep -c '^topology=' <<< "$output")"
           test "$lines" -eq 81
-          grep -q 'topology=shared' <<< "$output"
-          grep -q 'topology=ring' <<< "$output"
-          grep -q 'topology=mesh' <<< "$output"
-          grep -q 'boards=4' <<< "$output"
-          grep -q 'boards=8' <<< "$output"
-          grep -q 'boards=16' <<< "$output"
-          grep -q 'remotePattern=uniform' <<< "$output"
-          grep -q 'remotePattern=hotspot' <<< "$output"
-          grep -q 'remotePattern=paired' <<< "$output"
-          grep -q 'parallelLinks=1' <<< "$output"
-          grep -q 'parallelLinks=2' <<< "$output"
-          grep -q 'parallelLinks=4' <<< "$output"
-          printf '%s\\n' "$output"
+          for topology in shared ring mesh; do
+            grep -q "topology=$topology " <<< "$output"
+          done
+          for boards in 4 8 16; do
+            grep -q "boards=$boards " <<< "$output"
+          done
+          for pattern in uniform hotspot paired; do
+            grep -q "pattern=$pattern " <<< "$output"
+          done
+          for links in 1 2 4; do
+            grep -q "linksPerNeighbor=$links " <<< "$output"
+          done
+          echo "$output"
           echo "PASS: full 81-case switched-fabric topology matrix"
 
       - name: Run deterministic smoke test

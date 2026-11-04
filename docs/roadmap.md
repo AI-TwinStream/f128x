@@ -9,6 +9,8 @@ The current architectural direction is a workspace-oriented, massively multithre
 - [x] Add workspace protection and shared-state design questions.
 - [x] Add scheduling progress, fairness, and interrupt design questions.
 - [x] Add early ISA, address-width, ABI, and toolchain workstream.
+- [x] Add a first-order context-capacity and latency-hiding model.
+- [ ] Replace first-order assumptions with workload traces and executable scheduling experiments.
 - [ ] Resolve architectural context observability and residency contract.
 - [ ] Define workspace ownership, isolation, virtualization, and lifecycle.
 - [ ] Define shared-register atomicity and memory-ordering semantics.

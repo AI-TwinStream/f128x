@@ -121,7 +121,7 @@ The program reports:
 - Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, service-backlog cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
 - Per-class issue and completion counts.
-- Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's workspace fairness index.
+- Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index. It is not normalized by the amount of time each workspace had runnable threads, so heterogeneous workloads can lower it without implying scheduler starvation.
 
 The warmup interval is excluded from measured IPC. Other counters are whole-run diagnostics.
 

@@ -497,7 +497,7 @@ final class FabricTopologySweep {
                 / (boards * reciprocalLatencySquares);
         return new Result(topology, boards, pattern, links, bisectionEdges,
                 fabricBytesPerCycle, fabricBytesPerCycle * bisectionEdges * links,
-                injectionInterval, memoryLanes, arbitration, latencies.length, average, p95,
+                injectionInterval, memoryLanes, arbitration, routing, latencies.length, average, p95,
                 lastCompletion, (double) latencies.length / lastCompletion,
                 minSourceMeanLatency, maxSourceMeanLatency, latencyFairnessJain);
     }

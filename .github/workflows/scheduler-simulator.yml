@@ -303,6 +303,7 @@ jobs:
           done="$(grep -o 'memoryBytesCompleted=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
           baseline_ipc="$(grep -o 'measuredIPC=[0-9.]*' <<< "$baseline" | head -n1 | cut -d= -f2)"
           bounded_ipc="$(grep -o 'measuredIPC=[0-9.]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
+          echo "byte-check issues=$issues completed=$completed issued=$issued done=$done baselineIPC=$baseline_ipc boundedIPC=$bounded_ipc"
           test "$issued" -eq "$((issues * 64))"
           test "$done" -eq "$((completed * 64))"
           test "$done" -le "$issued"

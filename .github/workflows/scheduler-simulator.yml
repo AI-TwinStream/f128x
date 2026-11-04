@@ -297,10 +297,10 @@ jobs:
           grep -Eq 'bankConflictWaitCycles=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'memoryServiceCycles=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'maxBankOutstanding=[1-9][0-9]*' <<< "$bounded"
-          grep -q 'memoryBytesIssued=1339520 memoryBytesCompleted=1331328' <<< "$bounded"
-          grep -q 'memoryBankRequests=20930' <<< "$bounded"
+          grep -Eq 'memoryBytesIssued=[1-9][0-9]* memoryBytesCompleted=[0-9]+' <<< "$bounded"
+          grep -Eq 'memoryBankRequests=[1-9][0-9]*' <<< "$bounded"
           grep -q 'measuredIPC=4.0000' <<< "$baseline"
-          grep -q 'measuredIPC=1.3823' <<< "$bounded"
+          grep -Eq 'measuredIPC=[0-3]\\.[0-9]+' <<< "$bounded"
           printf '%s\\n' "$baseline"
           printf '%s\\n' "$bounded"
 

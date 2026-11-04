@@ -45,6 +45,9 @@ public final class BoardFabricSweep {
         int remoteMemoryLatency = Integer.getInteger("f128x.remoteMemoryLatency", 80);
         int fabricLatency = Integer.getInteger("f128x.fabricLatency", 20);
         int fabricBytesPerCycle = Integer.getInteger("f128x.fabricBytesPerCycle", 128);
+        int localMemoryBytesPerCycle = Integer.getInteger(
+                "f128x.localMemoryBytesPerCycle", 64);
+        int fabricHopLatency = Integer.getInteger("f128x.fabricHopLatency", 2);
         int requestBytes = Integer.getInteger("f128x.requestBytes", 64);
         int queueCapacity = Integer.getInteger("f128x.queueCapacity", 4096);
         double memoryFraction = Double.parseDouble(
@@ -57,7 +60,7 @@ public final class BoardFabricSweep {
                 || contexts > workspaces * threadsPerWorkspace || cycles < 2
                 || warmup < 0 || warmup >= cycles || localMemoryLatency < 1
                 || remoteMemoryLatency < 1 || fabricLatency < 0
-                || fabricBytesPerCycle < 1 || requestBytes < 1 || queueCapacity < 1
+                 || fabricBytesPerCycle < 1 || localMemoryBytesPerCycle < 1 || fabricHopLatency < 0\n                || requestBytes < 1 || queueCapacity < 1
                 || !fraction(memoryFraction) || !fraction(dependencyFraction)
                 || dependencyLatency < 1) {
             throw new IllegalArgumentException("Invalid board/fabric simulation parameter");
@@ -66,10 +69,10 @@ public final class BoardFabricSweep {
         System.out.printf("board-fabric-sim=0.1 contexts=%d workspaces=%d cycles=%d warmup=%d "
                 + "memoryFraction=%.3f dependencyFraction=%.3f localMemoryLatency=%d "
                 + "remoteMemoryLatency=%d fabricLatency=%d fabricBytesPerCycle=%d "
-                + "requestBytes=%d queueCapacity=%d seed=%d%n",
+                + "localMemoryBytesPerCycle=%d fabricHopLatency=%d requestBytes=%d queueCapacity=%d seed=%d%n",
                 contexts, workspaces, cycles, warmup, memoryFraction, dependencyFraction,
                 localMemoryLatency, remoteMemoryLatency, fabricLatency,
-                fabricBytesPerCycle, requestBytes, queueCapacity, seed);
+                fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency, requestBytes, queueCapacity, seed);
 
         int[][] topologies = {{1, 8, 1}, {2, 4, 1}, {4, 2, 1}, {8, 1, 1}, {4, 4, 1}};
         double[] remoteFractions = {0.10, 0.50, 0.90};
@@ -80,7 +83,7 @@ public final class BoardFabricSweep {
                         cycles, warmup, seed, topology[0], topology[1], topology[2],
                         remoteFraction, memoryFraction, dependencyFraction,
                         dependencyLatency, localMemoryLatency, remoteMemoryLatency,
-                        fabricLatency, fabricBytesPerCycle, requestBytes, queueCapacity);
+                        fabricLatency, fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency,\n                        requestBytes, queueCapacity);
                 System.out.printf("boards=%d clustersPerBoard=%d issueWidthPerCluster=%d "
                         + "aggregateIssueWidth=%d ipc=%.4f utilization=%.4f "
                         + "memoryRequests=%d remoteRequests=%d fabricBytes=%d "
@@ -160,20 +163,43 @@ public final class BoardFabricSweep {
                             ready.get(cluster).addLast(thread);
                             continue;
                         }
-                        boolean remote = random.nextDouble() < remoteFraction;
+                        boolean remote = boards > 1
+                                && random.nextDouble() < remoteFraction;
                         long completionCycle;
                         if (remote) {
-                            long bytes = 2L * requestBytes;
-                            long serviceCycles = Math.max(1,
-                                    (bytes + fabricBytesPerCycle - 1) / fabricBytesPerCycle);
-                            long serviceStart = Math.max(cycle, fabricAvailableCycle);
-                            completionCycle = serviceStart + serviceCycles
-                                    + fabricLatency + remoteMemoryLatency;
-                            fabricAvailableCycle = serviceStart + serviceCycles;
+                            int targetBoard = random.nextInt(boards - 1);
+                            if (targetBoard >= board) {
+                                targetBoard++;
+                            }
+                            long requestCycles = Math.max(1,
+                                    (requestBytes + fabricBytesPerCycle - 1L)
+                                            / fabricBytesPerCycle);
+                            long requestStart = Math.max(cycle, fabricAvailableCycle);
+                            long requestEnd = requestStart + requestCycles;
+                            long memoryCycles = Math.max(1,
+                                    (requestBytes + localMemoryBytesPerCycle - 1L)
+                                            / localMemoryBytesPerCycle);
+                            long memoryStart = Math.max(requestEnd,
+                                    boardMemoryAvailableCycle[targetBoard]);
+                            long memoryEnd = memoryStart + memoryCycles;
+                            boardMemoryAvailableCycle[targetBoard] = memoryEnd;
+                            long responseStart = Math.max(
+                                    memoryEnd + remoteMemoryLatency, requestEnd);
+                            long responseEnd = responseStart + requestCycles;
+                            long hops = 32 - Integer.numberOfLeadingZeros(boards - 1);
+                            long roundTripFabricLatency = 2L * hops * fabricHopLatency;
+                            completionCycle = responseEnd + roundTripFabricLatency;
+                            fabricAvailableCycle = responseEnd;
                             remoteRequests++;
-                            fabricBytes += bytes;
+                            fabricBytes += 2L * requestBytes;
                         } else {
-                            completionCycle = (long) cycle + localMemoryLatency;
+                            long memoryCycles = Math.max(1,
+                                    (requestBytes + localMemoryBytesPerCycle - 1L)
+                                            / localMemoryBytesPerCycle);
+                            long memoryStart = Math.max(cycle,
+                                    boardMemoryAvailableCycle[board]);
+                            completionCycle = memoryStart + memoryCycles + localMemoryLatency;
+                            boardMemoryAvailableCycle[board] = memoryStart + memoryCycles;
                         }
                         memoryRequests++;
                         outstandingCount++;

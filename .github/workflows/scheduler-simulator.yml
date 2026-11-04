@@ -188,6 +188,22 @@ jobs:
           echo "$output"
           echo "PASS: full 81-case switched-fabric topology matrix"
 
+      - name: Repeat normalized fabric matrix across independent seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          for seed in 7 2027; do
+            output="$(java -Df128x.fabric.operationsPerBoard=2048 -Df128x.fabric.seed="$seed" -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            for bandwidth in 192 384 768; do
+              grep -q "bisectionBandwidthBytesPerCycle=$bandwidth " <<< "$output"
+            done
+            echo "fabric-seed=$seed"
+            echo "$output"
+          done
+          echo "PASS: normalized fabric matrix repeated across seeds 7 and 2027"
+
       - name: Run deterministic smoke test
         shell: bash
         run: |

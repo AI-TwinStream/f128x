@@ -187,7 +187,7 @@ A separate Java 25 entry point, `BoardFabricSweep`, compares modular CPU-board t
 - 8 boards × 1 cluster × 1 issue slot.
 - 4 boards × 4 clusters × 1 issue slot (a 16-wide scale-up case).
 
-The first four hold aggregate issue capacity at eight instructions per cycle. The experiment sweeps 10%, 50%, and 90% remote-memory traffic through a shared bandwidth-limited fabric. Each board has a serialized local-memory service lane with configurable bandwidth; remote requests consume the fabric and the destination board's memory service. Workspaces are homed to boards, and threads remain on their home board. The model reports IPC, utilization, per-board issue counts, remote requests, fabric bytes, queue pressure, and idle issue slots.
+The first four hold aggregate issue capacity at eight instructions per cycle. The experiment sweeps 10%, 50%, and 90% remote-memory traffic through a shared bandwidth-limited fabric. Each board has a serialized local-memory service lane with configurable bandwidth; remote requests consume the full-duplex request/response fabric and the destination board's memory service. Workspaces are homed to boards, and threads remain on their home board. The model reports IPC, utilization, per-board issue counts, remote requests, fabric bytes, queue pressure, and idle issue slots.
 
 Compile both simulators and run the board experiment:
 

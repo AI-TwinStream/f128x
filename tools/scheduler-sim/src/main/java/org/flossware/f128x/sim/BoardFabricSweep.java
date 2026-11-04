@@ -310,13 +310,24 @@ final class FabricTopologySweep {
     private FabricTopologySweep() {}
 
     static void verifyDeterministicSmoke() {
-        Result first = simulate(4, "uniform", "mesh", 2, 256, 42L);
-        Result second = simulate(4, "uniform", "mesh", 2, 256, 42L);
-        if (!first.equals(second) || first.operations() == 0
-                || first.averageLatency() <= 0.0 || first.p95Latency() <= 0) {
-            throw new IllegalStateException("Fabric topology deterministic smoke failed");
+        int cases = 0;
+        for (int boards : new int[] {4, 8, 16}) {
+            for (String pattern : new String[] {"uniform", "hotspot", "paired"}) {
+                for (String topology : new String[] {"shared", "ring", "mesh"}) {
+                    for (int links : new int[] {1, 2, 4}) {
+                        Result first = simulate(boards, pattern, topology, links, 64, 42L);
+                        Result second = simulate(boards, pattern, topology, links, 64, 42L);
+                        if (!first.equals(second) || first.operations() != boards * 64
+                                || first.averageLatency() <= 0.0 || first.p95Latency() <= 0) {
+                            throw new IllegalStateException("Fabric topology deterministic smoke failed: "
+                                    + topology + "/" + boards + "/" + pattern + "/" + links);
+                        }
+                        cases++;
+                    }
+                }
+            }
         }
-        System.out.println("fabricTopologySmoke=passed");
+        System.out.printf("fabricTopologySmoke=passed cases=%d%n", cases);
     }
 
     public static void main(String[] args) {

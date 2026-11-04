@@ -39,7 +39,7 @@ Defaults:
 
 A workspace is assigned to a board by workspace ID modulo board count, then to a board-local cluster. All its threads follow that placement. Each board has a configurable number of independent local-memory service lanes (`f128x.localMemoryLanesPerBoard`, default 1), each with the configured byte rate. A request is assigned to the lane with the earliest available service time; local requests queue on the source board and do not consume fabric bandwidth. Remote targets use `f128x.remotePattern`: `uniform` chooses any other board, `hotspot` directs requests to board 0 (or board 1 when the source is board 0), and `paired` directs requests to the paired board (`board XOR 1`, with a wrap fallback). The request and response use separate full-duplex service lanes on the shared fabric, and the request queues at the target board's local-memory lane. Fabric latency includes a base per-direction component plus a logarithmic switch-hop proxy. A memory request occupies one outstanding slot until completion. A thread has at most one outstanding memory request.
 
-The model reports IPC, utilization against configured aggregate issue capacity, per-board issue counts, remote request count, fabric bytes, queue-full attempts, idle cluster issue slots, and maximum outstanding requests.
+The model reports IPC, utilization against configured aggregate issue capacity, per-board issue counts, remote request count by destination board, fabric bytes, queue-full attempts, idle cluster issue slots, and maximum outstanding requests.
 
 ## Run
 

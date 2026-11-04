@@ -129,7 +129,11 @@ jobs:
             grep -q "remotePattern=$pattern" <<< "$first"
             grep -Eq 'remoteRequests=[1-9][0-9]*' <<< "$first"
             grep -Eq 'boardRemoteRequests=0:[1-9][0-9]*' <<< "$first"
-            printf '%s\\n' "$first"
+            if [[ "$pattern" == hotspot ]]; then
+              grep -Eq 'boardRemoteRequests=0:[1-9][0-9]*,1:[1-9][0-9]*,2:0,3:0' <<< "$first"
+            elif [[ "$pattern" == paired ]]; then
+              grep -Eq 'boardRemoteRequests=0:[1-9][0-9]*,1:[1-9][0-9]*,2:[1-9][0-9]*,3:[1-9][0-9]*' <<< "$first"
+            fi
           done
 
       - name: Run deterministic smoke test

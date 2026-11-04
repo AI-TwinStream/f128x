@@ -10,14 +10,16 @@ The current architectural direction is a workspace-oriented, massively multithre
 - [x] Add scheduling progress, fairness, and interrupt design questions.
 - [x] Add early ISA, address-width, ABI, and toolchain workstream.
 - [x] Add a first-order context-capacity and latency-hiding model.
-- [ ] Replace first-order assumptions with workload traces and executable scheduling experiments.
+- [x] Add a minimal executable cycle-level scheduler simulation.
+- [ ] Extend the simulation with multiple outstanding requests, latency classes, dependencies, and shared-state contention.
+- [ ] Replace illustrative assumptions with workload traces and measured parameters.
 - [ ] Resolve architectural context observability and residency contract.
 - [ ] Define workspace ownership, isolation, virtualization, and lifecycle.
 - [ ] Define shared-register atomicity and memory-ordering semantics.
 - [ ] Select candidate memory consistency model(s).
 - [ ] Define minimum progress/fairness guarantees.
 - [ ] Define interrupt and exception routing/return semantics.
-- [ ] Justify 65,536 contexts with latency/throughput workload modelling.
+- [ ] Justify 65,536 contexts with workload modelling.
 - [ ] Produce register banking, port, area, and timing estimates.
 - [ ] Compare scheduler topologies with executable models.
 - [ ] Complete instruction encoding feasibility study.
@@ -63,8 +65,9 @@ The current architectural direction is a workspace-oriented, massively multithre
 - [ ] Define scheduler fairness and progress guarantees.
 - [ ] Model shared-register banking and conflicts.
 - [ ] Evaluate interrupt and exception delivery across resident contexts.
-- [ ] Model context capacity against latency, throughput, and workload readiness.
-- [ ] Build scheduler simulations before committing to RTL structure.
+- [x] Establish a runnable baseline model for context count, issue width, blocking latency, and blocking fraction.
+- [ ] Extend the model with multiple outstanding operations, dependencies, scheduler hierarchy, and shared-state contention.
+- [ ] Build broader scheduler simulations before committing to RTL structure.
 
 ## 3. ISA, ABI, and toolchain
 

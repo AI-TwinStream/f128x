@@ -567,3 +567,31 @@ not a claim about fairness properties of a physical router. A subsequent
 iteration should move arbitration to individual directed links and model
 competing head-of-line requests explicitly before making router fairness
 claims.
+
+
+## Congestion-aware shortest-path routing (2026-11-04)
+
+The fabric experiment now supports
+`-Df128x.fabric.routing=fixed|adaptive`. Fixed routing retains the original
+deterministic breadth-first path. Adaptive routing enumerates all equal-hop
+shortest paths between the source and destination, then selects the path with
+the smallest predicted link-reservation completion time using the current
+direction's per-link availability and configured parallel lanes. Request and
+response directions make independent choices because their link resources are
+modeled separately.
+
+Each result reports `adaptiveRouteSelections`, the number of transfers for
+which the selected route differs from the fixed breadth-first route. CI runs
+the full 81-case matrix under both policies, verifies that fixed routing makes
+zero alternate selections, and requires adaptive routing to choose an
+alternate path in at least one mesh case. The deterministic smoke exercises
+adaptive routing together with round-robin ingress ordering across the
+existing topology matrix.
+
+**Model boundary:** routing is selected once at source injection from a
+snapshot of current link reservations. It is restricted to equal-hop shortest
+paths and does not perform per-hop deflection, packet-level route repair,
+virtual-channel allocation, escape routing, deadlock analysis, or
+credit-based flow control. The model therefore measures congestion-aware
+path selection within this simplified reservation model, not the behavior of
+a production adaptive router.

@@ -22,14 +22,14 @@ The model uses a deterministic seed so a run can be repeated.
 
 ## Build and run
 
-Requires a JDK supporting records and text blocks (Java 17 or newer).
+Requires **JDK 25 or newer**. Java 25 is the project's baseline for simulator development and CI. The simulator intentionally has no third-party dependencies.
 
 From the repository root:
 
 ```sh
 mkdir -p build/scheduler-sim
-javac -d build/scheduler-sim tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java
-java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42
+javac --release 25 -Xlint:all -Werror -d build/scheduler-sim tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java
+java --enable-preview -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42
 ```
 
 Arguments:

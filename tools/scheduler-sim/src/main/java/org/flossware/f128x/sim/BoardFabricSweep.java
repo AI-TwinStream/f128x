@@ -356,7 +356,7 @@ final class FabricTopologySweep {
         if (memoryLanes < 1) {
             throw new IllegalArgumentException("memoryLanesPerBoard must be positive");
         }
-        int memoryBanks = Integer.getInteger("f128x.fabric.memoryBanksPerBoard", 1);
+        int memoryBanks = Integer.getInteger("f128x.fabric.memoryBanksPerBoard", 8);
         if (memoryBanks < 1) {
             throw new IllegalArgumentException("memoryBanksPerBoard must be positive");
         }

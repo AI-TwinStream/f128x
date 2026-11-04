@@ -221,7 +221,6 @@ public final class ContextSweep {
                     classIssues[selectedClass]++;
                     workspaceIssues[thread / 16]++;
                     issuedThisCycle++;
-                    workspaceIssues[thread / 16]++;
                     if (cycle >= warmup) {
                         measuredIssued++;
                     }
@@ -240,6 +239,7 @@ public final class ContextSweep {
                     }
                 } else {
                     issuedThisCycle++;
+                    workspaceIssues[thread / 16]++;
                     if (cycle >= warmup) {
                         measuredIssued++;
                     }
@@ -324,6 +324,243 @@ public final class ContextSweep {
             System.out.printf("memoryClass=%s latency=%d issues=%d completions=%d%n",
                     memoryClasses[i].name(), memoryClasses[i].latency(),
                     classIssues[i], classCompletions[i]);
+        }
+    }
+
+    private interface ReadyScheduler {
+        void addFirst(int thread);
+        void addLast(int thread);
+        int poll();
+        int size();
+        String name();
+        int clusterCount();
+        long steals();
+        long selectionProbes();
+    }
+
+    private static ReadyScheduler createReadyScheduler(
+            String strategy, int contexts, int clusters) {
+        return switch (strategy.toLowerCase(java.util.Locale.ROOT)) {
+            case "fifo" -> new FifoReadyScheduler(contexts);
+            case "hierarchical" -> new HierarchicalReadyScheduler(contexts);
+            case "distributed" -> new DistributedReadyScheduler(contexts, clusters);
+            default -> throw new IllegalArgumentException(
+                    "Unknown scheduler strategy: " + strategy);
+        };
+    }
+
+    private static final class FifoReadyScheduler implements ReadyScheduler {
+        private final ArrayDeque<Integer> queue;
+
+        private FifoReadyScheduler(int capacity) {
+            queue = new ArrayDeque<>(capacity);
+        }
+
+        @Override
+        public void addFirst(int thread) {
+            queue.addFirst(thread);
+        }
+
+        @Override
+        public void addLast(int thread) {
+            queue.addLast(thread);
+        }
+
+        @Override
+        public int poll() {
+            return queue.isEmpty() ? -1 : queue.removeFirst();
+        }
+
+        @Override
+        public int size() {
+            return queue.size();
+        }
+
+        @Override
+        public String name() {
+            return "fifo";
+        }
+
+        @Override
+        public int clusterCount() {
+            return 1;
+        }
+
+        @Override
+        public long steals() {
+            return 0;
+        }
+
+        @Override
+        public long selectionProbes() {
+            return 0;
+        }
+    }
+
+    private static final class HierarchicalReadyScheduler
+            implements ReadyScheduler {
+        private final List<ArrayDeque<Integer>> workspaceQueues;
+        private final BitSet activeWorkspaces;
+        private int cursor;
+        private int size;
+        private long selectionProbes;
+
+        private HierarchicalReadyScheduler(int contexts) {
+            int workspaces = (contexts + 15) / 16;
+            workspaceQueues = new ArrayList<>(workspaces);
+            for (int i = 0; i < workspaces; i++) {
+                workspaceQueues.add(new ArrayDeque<>(16));
+            }
+            activeWorkspaces = new BitSet(workspaces);
+        }
+
+        @Override
+        public void addFirst(int thread) {
+            int workspace = thread / 16;
+            workspaceQueues.get(workspace).addFirst(thread);
+            activeWorkspaces.set(workspace);
+            size++;
+        }
+
+        @Override
+        public void addLast(int thread) {
+            int workspace = thread / 16;
+            workspaceQueues.get(workspace).addLast(thread);
+            activeWorkspaces.set(workspace);
+            size++;
+        }
+
+        @Override
+        public int poll() {
+            if (size == 0) {
+                return -1;
+            }
+            selectionProbes++;
+            int workspace = activeWorkspaces.nextSetBit(cursor);
+            if (workspace < 0) {
+                workspace = activeWorkspaces.nextSetBit(0);
+            }
+            int thread = workspaceQueues.get(workspace).removeFirst();
+            size--;
+            if (workspaceQueues.get(workspace).isEmpty()) {
+                activeWorkspaces.clear(workspace);
+            }
+            cursor = (workspace + 1) % workspaceQueues.size();
+            return thread;
+        }
+
+        @Override
+        public int size() {
+            return size;
+        }
+
+        @Override
+        public String name() {
+            return "hierarchical";
+        }
+
+        @Override
+        public int clusterCount() {
+            return workspaceQueues.size();
+        }
+
+        @Override
+        public long steals() {
+            return 0;
+        }
+
+        @Override
+        public long selectionProbes() {
+            return selectionProbes;
+        }
+    }
+
+    private static final class DistributedReadyScheduler
+            implements ReadyScheduler {
+        private final List<ArrayDeque<Integer>> clusterQueues;
+        private final int[] ownerCluster;
+        private int cursor;
+        private int size;
+        private long steals;
+        private long selectionProbes;
+
+        private DistributedReadyScheduler(int contexts, int clusters) {
+            if (clusters < 1) {
+                throw new IllegalArgumentException("Cluster count must be positive");
+            }
+            clusterQueues = new ArrayList<>(clusters);
+            for (int i = 0; i < clusters; i++) {
+                clusterQueues.add(new ArrayDeque<>());
+            }
+            ownerCluster = new int[contexts];
+            for (int thread = 0; thread < contexts; thread++) {
+                ownerCluster[thread] = (thread / 16) % clusters;
+            }
+        }
+
+        @Override
+        public void addFirst(int thread) {
+            clusterQueues.get(ownerCluster[thread]).addFirst(thread);
+            size++;
+        }
+
+        @Override
+        public void addLast(int thread) {
+            clusterQueues.get(ownerCluster[thread]).addLast(thread);
+            size++;
+        }
+
+        @Override
+        public int poll() {
+            if (size == 0) {
+                return -1;
+            }
+            selectionProbes++;
+            int source = -1;
+            for (int offset = 0; offset < clusterQueues.size(); offset++) {
+                int candidate = (cursor + offset) % clusterQueues.size();
+                if (!clusterQueues.get(candidate).isEmpty()) {
+                    source = candidate;
+                    break;
+                }
+            }
+            if (source < 0) {
+                return -1;
+            }
+
+            int thread = clusterQueues.get(source).removeFirst();
+            if (source != cursor) {
+                steals++;
+                ownerCluster[thread] = cursor;
+            }
+            size--;
+            cursor = (cursor + 1) % clusterQueues.size();
+            return thread;
+        }
+
+        @Override
+        public int size() {
+            return size;
+        }
+
+        @Override
+        public String name() {
+            return "distributed";
+        }
+
+        @Override
+        public int clusterCount() {
+            return clusterQueues.size();
+        }
+
+        @Override
+        public long steals() {
+            return steals;
+        }
+
+        @Override
+        public long selectionProbes() {
+            return selectionProbes;
         }
     }
 

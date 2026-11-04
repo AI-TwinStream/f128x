@@ -124,3 +124,20 @@ No ISA, board count, interconnect protocol, or memory-consistency decision follo
 2. Add optional thread/workspace migration and charge migration traffic.
 3. Sweep fabric bandwidth, local-memory lane count, and latency to find break-even regions.
 4. Add representative workload profiles and multiple deterministic seeds for the hotspot and paired traffic patterns before using results to guide architecture.
+
+
+## Switched fabric topology sensitivity experiment
+
+The follow-on `FabricTopologySweep` compares the original shared-fabric abstraction with ring and two-dimensional mesh proxies. Each topology is evaluated at 4, 8, and 16 boards, with 1, 2, and 4 parallel links per neighbor, under uniform, hotspot, and paired remote traffic.
+
+The workload injects one 64-byte remote operation per source board every two cycles. Request and response directions have independent link service state. A packet traverses a deterministic shortest path, each hop consumes link service, and the destination has one local-memory service lane. The output reports average and p95 end-to-end latency and aggregate completed operations per cycle.
+
+Run:
+
+```sh
+java -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep
+```
+
+This experiment is intentionally a separate sensitivity model rather than a claim that the original `BoardFabricSweep` has been upgraded to a detailed network simulator. It omits arbitration fairness, virtual channels, adaptive routing, packet fragmentation, credit flow control, congestion control, link failures, and electrical/physical costs. Its fixed injection schedule and deterministic FIFO link reservations are useful for isolating topology and link-parallelism effects, but they are not a substitute for a cycle-accurate network-on-chip or backplane model.
+
+The existing board-fabric smoke path runs a deterministic mesh scenario twice and fails if the results differ. The full topology matrix is opt-in to keep CI runtime bounded. These results should be reported separately from the published four-seed board/backplane baseline.

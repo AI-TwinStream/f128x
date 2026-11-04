@@ -164,6 +164,14 @@ jobs:
           grep -q 'migrationCompletions=0' <<< "$baseline"
           grep -q 'remoteMemoryLatencyCycles=0' <<< "$baseline"
           printf '%s\n' "$baseline"
+          migration_only="$(java -Df128x.scheduler=distributed -Df128x.clusters=8 -Df128x.clusterIssueWidth=1 -Df128x.migrationLatency=3 -Df128x.remoteMemoryLatencyPenalty=0 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -Eq 'migrationWaiterCycles=[1-9][0-9]*' <<< "$migration_only"
+          grep -q 'remoteMemoryLatencyCycles=0' <<< "$migration_only"
+          printf '%s\n' "$migration_only"
+          locality_only="$(java -Df128x.scheduler=distributed -Df128x.clusters=8 -Df128x.clusterIssueWidth=1 -Df128x.migrationLatency=0 -Df128x.remoteMemoryLatencyPenalty=7 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -q 'migrationWaiterCycles=0' <<< "$locality_only"
+          grep -Eq 'remoteMemoryLatencyCycles=[1-9][0-9]*' <<< "$locality_only"
+          printf '%s\n' "$locality_only"
 
       - name: Verify memory completion-rate backpressure
         shell: bash

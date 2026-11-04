@@ -37,7 +37,7 @@ Defaults:
 - 4,096 outstanding memory requests globally.
 - Each cluster issues at most one instruction per cycle in the baseline topology sweep.
 
-A workspace is assigned to a board by workspace ID modulo board count, then to a board-local cluster. All its threads follow that placement. Local memory requests use a fixed latency and do not consume fabric bandwidth. Remote requests serialize on one global fabric service lane; the fabric service time is the ceiling of round-trip bytes divided by configured bytes/cycle. A memory request occupies one outstanding slot until completion. A thread has at most one outstanding memory request.
+A workspace is assigned to a board by workspace ID modulo board count, then to a board-local cluster. All its threads follow that placement. Local memory requests use a fixed latency and do not consume fabric bandwidth; there is no local-memory bandwidth or queueing limit in this revision. Remote requests serialize on one global fabric service lane; the fabric service time is the ceiling of round-trip bytes divided by configured bytes/cycle. A memory request occupies one outstanding slot until completion. A thread has at most one outstanding memory request.
 
 The model reports IPC, utilization against configured aggregate issue capacity, per-board issue counts, remote request count, fabric bytes, queue-full attempts, idle cluster issue slots, and maximum outstanding requests.
 

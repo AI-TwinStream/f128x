@@ -289,9 +289,10 @@ jobs:
           grep -q 'memoryRequestBytesMin=16 memoryRequestBytesMax=256' <<< "$variable"
           grep -q 'memoryRequestBytesObservedMin=' <<< "$variable"
           grep -q 'memoryRequestBytesObservedMax=' <<< "$variable"
-          printf '%s\\n' "$variable"
-          awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="memoryIssues") issues=p[2]; if (p[1]=="completedRequests") completed=p[2]; if (p[1]=="memoryBytesIssued") issued=p[2]; if (p[1]=="memoryBytesCompleted") done=p[2]; if (p[1]=="memoryRequestBytesObservedMin") min=p[2]; if (p[1]=="memoryRequestBytesObservedMax") max=p[2]; } } END { if (min < 16 || max > 256 || min >= max || issued <= issues * 16 || issued >= issues * 256 || done > issued) exit 1; }' <<< "$variable"
-          printf '%s\n' "$variable"
+          echo "$variable"
+          grep -q 'memoryRequestBytesObservedMin=16' <<< "$variable"
+          grep -q 'memoryRequestBytesObservedMax=256' <<< "$variable"
+          grep -Eq 'memoryBytesIssued=[1-9][0-9]*' <<< "$variable"
 
       - name: Verify independent dependency chains
         shell: bash

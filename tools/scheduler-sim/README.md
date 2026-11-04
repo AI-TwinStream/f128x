@@ -140,7 +140,7 @@ The program reports:
 - Accepted memory requests and completions.
 - Maximum per-thread outstanding requests.
 - Maximum shared request-queue occupancy.
-- Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, dependency issues overlapped by another chain, service-backlog cycles, and idle cycles.
+- Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, dependency issues overlapped by another chain, dependency-stall wakeups, threads still waiting on dependencies, service-backlog cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
 - Per-class issue and completion counts.
 - Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index.

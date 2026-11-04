@@ -291,17 +291,24 @@ jobs:
           class=org.flossware.f128x.sim.ContextSweep
           baseline="$(java -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
           bounded="$(java -Df128x.memoryRequestBytes=64 -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -Df128x.memoryBandwidthBytesPerCycle=16 -Df128x.bankConflictPenalty=2 -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
-          printf '%s\\n' "$baseline" "$bounded"
           grep -q 'memorySystemEnabled=true cacheHierarchyEnabled=false memoryRequestBytes=64 memoryRequestBytesMin=64 memoryRequestBytesMax=64' <<< "$bounded"
           grep -q 'memoryChannels=4 memoryBanksPerChannel=8 memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' <<< "$bounded"
           grep -Eq 'bankConflictRequests=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'bankConflictWaitCycles=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'memoryServiceCycles=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'maxBankOutstanding=[1-9][0-9]*' <<< "$bounded"
-          awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="memoryIssues") issues=p[2]; if (p[1]=="completedRequests") completed=p[2]; if (p[1]=="memoryBytesIssued") issued=p[2]; if (p[1]=="memoryBytesCompleted") done=p[2]; if (p[1]=="measuredIPC") ipc=p[2]; } } END { if (issued != issues * 64 || done != completed * 64 || done > issued || ipc >= 4.0) exit 1; }' <<< "$bounded"
-          awk -v baseline="$baseline" '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="measuredIPC") bounded=p[2]; } } END { for (i=1; i<=split(baseline, fields, " "); i++) { split(fields[i], p, "="); if (p[1]=="measuredIPC") base=p[2]; } if (bounded >= base) exit 1; }' <<< "$bounded"
-          printf '%s\n' "$baseline"
-          printf '%s\n' "$bounded"
+          issues="$(grep -o 'memoryIssues=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
+          completed="$(grep -o 'completedRequests=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
+          issued="$(grep -o 'memoryBytesIssued=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
+          done="$(grep -o 'memoryBytesCompleted=[0-9]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
+          baseline_ipc="$(grep -o 'measuredIPC=[0-9.]*' <<< "$baseline" | head -n1 | cut -d= -f2)"
+          bounded_ipc="$(grep -o 'measuredIPC=[0-9.]*' <<< "$bounded" | head -n1 | cut -d= -f2)"
+          test "$issued" -eq "$((issues * 64))"
+          test "$done" -eq "$((completed * 64))"
+          test "$done" -le "$issued"
+          awk -v base="$baseline_ipc" -v current="$bounded_ipc" 'BEGIN { if (current >= base || current >= 4.0) exit 1; }'
+          printf '%s\\n' "$baseline"
+          printf '%s\\n' "$bounded"
 
       - name: Verify independent dependency chains
         shell: bash

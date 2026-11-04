@@ -1,4 +1,4 @@
-# Scheduler Simulation 0.6
+# Scheduler Simulation 0.7
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.
 
@@ -150,6 +150,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add migration/locality costs, byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md) for the fairness comparison.
+The next model revision should add migration/locality costs, byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md) for the fairness comparison and [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md) for per-cluster budget experiments.
 
 No architectural decision about 65,536 contexts follows from this model alone.

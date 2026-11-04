@@ -29,7 +29,9 @@ The scheduler strategy is selected with the JVM property `-Df128x.scheduler=`:
 - `hierarchical`: per-workspace FIFO queues selected round-robin; each workspace owns 16 thread slots.
 - `distributed`: per-cluster queues, with workspaces initially assigned by workspace ID modulo cluster count. The scheduler scans clusters round-robin and steals from another cluster when its target queue is empty. Set the cluster count with `-Df128x.clusters=8`; the default is up to eight clusters.
 
-The distributed strategy is a logical work-stealing experiment using a global issue-width budget. It does not yet model independent per-cluster issue pipelines, physical arbitration, migration cost, or locality penalties. The hierarchical strategy similarly models workspace fairness, not a concrete hardware arbiter.
+The distributed strategy uses a round-robin cluster selector, prefers each target cluster's local ready queue, and steals from another cluster when the target is empty. The global `issue-width` remains a hard aggregate ceiling. Set the per-cluster issue limit with `-Df128x.clusterIssueWidth=2`; it defaults to the global issue width. The effective configured capacity is `min(issue-width, clusters × clusterIssueWidth)`. For example, four clusters with a local width of two can issue at most four instructions per cycle when the global issue width is four. Two clusters with a local width of one can issue at most two, even when the global width is four.
+
+This is a logical per-cluster budget experiment, not a model of physically independent pipelines, distributed arbitration networks, clock/power domains, or cluster-local execution-unit inventories. Work stealing changes a thread's logical owner cluster, but migration and locality costs are not charged. The FIFO and hierarchical policies each use one logical cluster; hierarchical scheduling models workspace selection, not a concrete hardware arbiter.
 
 Workspace workload skew can be introduced with JVM properties:
 
@@ -122,6 +124,7 @@ The program reports:
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
 - Per-class issue and completion counts.
 - Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index.
+- Configured per-cluster issue width, effective aggregate issue capacity, utilization against that capacity, and per-cluster issued-instruction totals.
 - Measured runnable-thread cycles and runnable-workspace cycles per workspace. Both are sampled after wakeups and before issue selection. A runnable-thread cycle counts each ready thread as one service opportunity; a runnable-workspace cycle counts one opportunity when at least one thread in that workspace is ready.
 - Instructions issued per runnable-thread-cycle measures service relative to the total ready-thread opportunity. Instructions issued per runnable-workspace-cycle measures aggregate service relative to the time a workspace had any runnable work. Each has its own Jain fairness index. Workspaces with no measured opportunity at the corresponding level are excluded; a workspace with opportunities but no service remains included with a zero rate.
 - These metrics answer different questions. Equal service per runnable workspace can still mean unequal service per runnable thread when workspace ready populations differ. The raw issue-count index remains a workload outcome, not a scheduler fairness metric under heterogeneous readiness. All are model-level measures and omit priorities, differing instruction costs, and physical arbitration costs.
@@ -137,7 +140,7 @@ This revision still does not model:
 - Byte-level bandwidth, banks, channels, row buffers, or request-size-dependent service rates.
 - Different request sizes, read/write behavior, coherence, translation, or TLBs.
 - Shared-register conflicts or synchronization.
-- Independent per-cluster issue pipelines, physical arbitration, migration costs, fairness bounds, or locality penalties.
+- Physically independent per-cluster issue pipelines, distributed physical arbitration, migration costs, fairness bounds, or locality penalties.
 - Interrupts, exceptions, priorities, or OS behavior.
 - Physical register-file banking, ports, timing, area, or power.
 
@@ -147,6 +150,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add independent per-cluster issue budgets, migration/locality costs, byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md) for the latest comparison.
+The next model revision should add migration/locality costs, byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md) for the fairness comparison.
 
 No architectural decision about 65,536 contexts follows from this model alone.

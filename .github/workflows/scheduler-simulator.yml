@@ -142,6 +142,23 @@ jobs:
           awk -v limit=100000 '/^clusterIssueCount=/{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="issues" && p[2]>limit) exit 1; } }' <<< "$full"
           printf '%s\n' "$full"
 
+      - name: Verify migration and remote-locality penalties
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.f128x.sim.ContextSweep
+          output="$(java -Df128x.scheduler=distributed -Df128x.clusters=8 -Df128x.clusterIssueWidth=1 -Df128x.migrationLatency=3 -Df128x.remoteMemoryLatencyPenalty=7 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -q 'migrationLatency=3 remoteMemoryLatencyPenalty=7' <<< "$output"
+          grep -Eq 'schedulerMigrations=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteWakeups=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteThreadCycles=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteMemoryIssues=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteMemoryLatencyCycles=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'migrationWaiterCycles=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'migrationCompletions=[1-9][0-9]*' <<< "$output"
+          awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="schedulerMigrations") migrations=p[2]; if (p[1]=="schedulerSteals") steals=p[2]; if (p[1]=="remoteMemoryIssues") remote=p[2]; if (p[1]=="remoteMemoryLatencyCycles") penalty=p[2]; } } END { if (migrations != steals || penalty != remote * 7) exit 1; }' <<< "$output"
+          printf '%s\n' "$output"
+
       - name: Verify memory completion-rate backpressure
         shell: bash
         run: |
@@ -179,6 +196,14 @@ jobs:
           fi
           if java -Df128x.hotMemoryFraction=NaN -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
             echo "Expected non-finite workspace memory fraction to fail" >&2
+            exit 1
+          fi
+          if java -Df128x.migrationLatency=-1 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected negative migration latency to fail" >&2
+            exit 1
+          fi
+          if java -Df128x.remoteMemoryLatencyPenalty=-1 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected negative remote-memory penalty to fail" >&2
             exit 1
           fi
           if java -Df128x.scheduler=distributed -Df128x.clusters=0 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then

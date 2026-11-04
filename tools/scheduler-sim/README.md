@@ -1,4 +1,4 @@
-# Scheduler Simulation 0.8
+# Scheduler Simulation 0.9
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.
 
@@ -47,6 +47,18 @@ Distributed scheduling can model migration and remote access penalties:
 - `-Df128x.remoteMemoryLatencyPenalty=7`: extra cycles added to memory-request latency while a thread is remote from its workspace's home cluster; default 0.
 
 A workspace's home cluster is its workspace ID modulo cluster count. A thread becomes remote when work stealing moves it away from that home cluster and becomes local again if it migrates back. The simulator counts migrations, remote wakeups, remote thread-cycles, remote memory issues, added remote-memory latency, and migration-waiter cycles. The remote-memory penalty is applied to every memory operation while remote; this is a deliberately coarse proxy for workspace-local state access, not a cache-coherence or NUMA model.
+
+A byte-oriented memory service model can be enabled with these JVM properties:
+
+- `-Df128x.memoryRequestBytes=64`: fixed bytes per memory request; default 64.
+- `-Df128x.memoryChannels=4`: number of independent memory channels; default 1.
+- `-Df128x.memoryBanksPerChannel=8`: banks per channel; default 1.
+- `-Df128x.memoryBandwidthBytesPerCycle=16`: byte service budget per channel per cycle; default 0 (unbounded/disabled).
+- `-Df128x.bankConflictPenalty=2`: extra cycles a bank remains unavailable after servicing a request; default 0.
+
+The memory-system model is disabled by default to preserve the earlier fixed-latency behavior. It becomes active when bandwidth is configured, channel or bank count exceeds one, or a bank-conflict penalty is set. When active, requests are assigned to channels and banks using deterministic synthetic addresses. Bandwidth is divided evenly among a channel's banks; each bank services one request at a time. The transfer time is `ceil(requestBytes × banksPerChannel / bandwidthBytesPerCycle)` cycles when a bandwidth limit is configured. With bandwidth disabled but bank contention enabled, each bank services one request per cycle. Aggregate configured bandwidth is `memoryChannels × memoryBandwidthBytesPerCycle`.
+
+This is a first-order bank service model. It does not consume real address traces or model burst transfers, DRAM row hits, refresh, read/write turnarounds, or a physical controller's scheduling policy.
 
 The default is `fifo`. A deterministic seed makes runs repeatable. Each thread can issue at most one instruction per cycle.
 
@@ -133,6 +145,7 @@ The program reports:
 - Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index.
 - Configured per-cluster issue width, effective aggregate issue capacity, utilization against that capacity, and per-cluster issued-instruction totals.
 - Scheduler migrations, remote wakeups, remote thread-cycles, remote memory issues and added latency, migration-waiter cycles, and completed migrations.
+- Fixed request bytes issued/completed, configured channel bandwidth, bank service cycles, bank-conflict requests and wait cycles, and maximum outstanding requests per bank.
 - Measured runnable-thread cycles and runnable-workspace cycles per workspace. Both are sampled after wakeups and before issue selection. A runnable-thread cycle counts each ready thread as one service opportunity; a runnable-workspace cycle counts one opportunity when at least one thread in that workspace is ready.
 - Instructions issued per runnable-thread-cycle measures service relative to the total ready-thread opportunity. Instructions issued per runnable-workspace-cycle measures aggregate service relative to the time a workspace had any runnable work. Each has its own Jain fairness index. Workspaces with no measured opportunity at the corresponding level are excluded; a workspace with opportunities but no service remains included with a zero rate.
 - These metrics answer different questions. Equal service per runnable workspace can still mean unequal service per runnable thread when workspace ready populations differ. The raw issue-count index remains a workload outcome, not a scheduler fairness metric under heterogeneous readiness. All are model-level measures and omit priorities, differing instruction costs, and physical arbitration costs.
@@ -144,9 +157,9 @@ The warmup interval is excluded from measured IPC. Other counters are whole-run 
 This revision still does not model:
 
 - Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
-- Cache hit/miss generation from addresses or working sets.
-- Byte-level bandwidth, banks, channels, row buffers, or request-size-dependent service rates.
-- Different request sizes, read/write behavior, coherence, translation, or TLBs.
+- Cache hit/miss generation from working sets or real address traces; channel/bank assignment currently uses synthetic addresses.
+- DRAM row buffers, row hits, refresh, burst transfers, read/write turnarounds, or controller scheduling policy.
+- Variable request sizes, read/write behavior, coherence, translation, or TLBs. The current byte model uses one fixed request size and an equal per-bank share of channel bandwidth.
 - Shared-register conflicts or synchronization.
 - Physically independent per-cluster issue pipelines, distributed physical arbitration, network/clock/power costs, detailed cache-coherence or NUMA behavior, and fairness bounds. Migration delay and remote-memory latency are configurable aggregate penalties only.
 - Interrupts, exceptions, priorities, or OS behavior.
@@ -158,6 +171,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add request sizes, byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), and [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md).
+The next model revision should add variable request sizes, address-based bank mapping, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md).
 
 No architectural decision about 65,536 contexts follows from this model alone.

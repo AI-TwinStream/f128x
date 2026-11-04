@@ -65,6 +65,42 @@ java \
   org.flossware.f128x.sim.BoardFabricSweep
 ```
 
+
+## Preliminary results
+
+A local smoke experiment was run with OpenJDK 21 using the same simulator logic committed on this branch. The repository workflow separately compiles and exercises the committed source with JDK 25; its result must be checked before treating this as CI-validated.
+
+Configuration:
+
+- 256 contexts, 16 workspaces, 16 threads/workspace.
+- 4,000 cycles, 400 warmup cycles.
+- Four deterministic seeds: 42, 7, 101, 2026.
+- 30% memory instructions; 15% dependency-stall instructions among non-memory instructions.
+- 64 bytes/cycle per board-local memory service lane.
+- 128 bytes/cycle in each fabric direction.
+- 64-byte requests; 80-cycle local and remote memory latency.
+- 20-cycle base fabric latency per direction plus two cycles per switch hop.
+- One outstanding memory request per thread; 4,096-request global cap.
+
+The table shows mean measured IPC across the four seeds:
+
+| Remote-memory probability | 1 board × 8 clusters | 2 × 4 | 4 × 2 | 8 × 1 | 4 × 4 (16-wide) |
+|---:|---:|---:|---:|---:|---:|
+| 10% | 3.3253 | 6.7020 | 7.7341 | 7.7358 | 8.9507 |
+| 50% | 3.3253 | 6.3908 | 6.5706 | 6.5728 | 6.6389 |
+| 90% | 3.3253 | 3.7291 | 3.7294 | 3.7307 | 3.7279 |
+
+**Important:** A one-board system has no remote board, so its remote probability is necessarily zero regardless of the configured percentage. Its identical result in all three rows is expected. Do not read the first column as an equal-remote-traffic control.
+
+### What this says, and what it does not
+
+- With mostly local traffic, moving from one board to four increases modeled aggregate local-memory service capacity and raises IPC. Eight boards add almost nothing beyond four in this workload.
+- At 50% remote traffic, the benefit of moving from two to four/eight boards is small. The shared fabric and remote access path begin to dominate.
+- At 90% remote traffic, adding boards provides essentially no throughput gain. The model's shared interconnect and remote service path erase the additional local-memory capacity.
+- Doubling execution capacity from eight to sixteen issue slots helps only in the low-remote case. It does not help in the high-remote case.
+
+These results are **not** evidence that four boards are optimal. They demonstrate that the assumed ratio of board-local memory capacity to inter-board traffic can dominate the benefit of adding execution clusters. The model is intentionally simple, and its one local-memory service lane per board and single full-duplex fabric path are strong assumptions. More seeds reduce random noise but do not validate those assumptions against real hardware.
+
 ## Interpretation cautions
 
 This is deliberately a small first model. It does not yet include:

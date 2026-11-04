@@ -6,139 +6,261 @@ import java.util.PriorityQueue;
 import java.util.SplittableRandom;
 
 /**
- * Small cycle-level latency-hiding experiment.
+ * Cycle-level experiment for context scheduling and memory latency hiding.
  *
- * Each thread can issue at most one instruction per cycle. Each issued
- * instruction independently becomes a long-latency operation with probability
- * memoryFraction. A thread may continue issuing while it has fewer than
- * maxOutstanding memory operations in flight. It becomes ineligible when that
- * limit is reached and becomes ready again when a completion frees a slot.
+ * A thread issues at most one instruction per cycle. Memory instructions are
+ * assigned to latency classes and consume a slot in a finite shared set of
+ * outstanding memory transactions. If no slot is available, the selected
+ * memory instruction waits for queue credit without being issued.
  *
- * This intentionally simple model isolates context count, issue width, memory
- * latency, memory-operation fraction, and per-thread memory-level parallelism.
- * It is not an ISA model, cache model, out-of-order core, or realistic memory
- * hierarchy.
+ * This is an exploratory model, not a realistic cache, DRAM, or core model.
  */
 public final class ContextSweep {
-    private record Wakeup(long cycle, int thread) {}
+    private record Completion(long cycle, int thread, int latencyClass) {}
+
+    private record MemoryClass(String name, double cumulativeFraction,
+            int latency) {}
 
     private ContextSweep() {}
 
     public static void main(String[] args) {
-        if (args.length != 6 && args.length != 7) {
-            System.err.println("""
-                    Usage: ContextSweep <contexts> <issue-width> <latency-cycles>
-                                         <memory-fraction> <cycles> <seed>
-                                         [max-outstanding]
-                    Example: ContextSweep 4096 4 300 0.25 200000 42 2
-                    """);
+        if (args.length != 6 && args.length != 7
+                && args.length != 8 && args.length != 13) {
+            usage();
             System.exit(2);
         }
 
         int contexts = Integer.parseInt(args[0]);
         int issueWidth = Integer.parseInt(args[1]);
-        int latency = Integer.parseInt(args[2]);
+        int defaultLatency = Integer.parseInt(args[2]);
         double memoryFraction = Double.parseDouble(args[3]);
         int cycles = Integer.parseInt(args[4]);
         long seed = Long.parseLong(args[5]);
-        int maxOutstanding = args.length == 7 ? Integer.parseInt(args[6]) : 1;
+        int maxOutstanding = args.length >= 7
+                ? Integer.parseInt(args[6]) : 1;
+        int memoryQueueCapacity = args.length >= 8
+                ? Integer.parseInt(args[7]) : Integer.MAX_VALUE;
 
-        if (contexts < 1 || issueWidth < 1 || latency < 1 || cycles < 1
-                || maxOutstanding < 1 || memoryFraction < 0.0
+        MemoryClass[] memoryClasses;
+        if (args.length == 13) {
+            double l1Fraction = Double.parseDouble(args[8]);
+            int l1Latency = Integer.parseInt(args[9]);
+            double l2Fraction = Double.parseDouble(args[10]);
+            int l2Latency = Integer.parseInt(args[11]);
+            int dramLatency = Integer.parseInt(args[12]);
+            if (l1Fraction < 0.0 || l2Fraction < 0.0
+                    || l1Fraction + l2Fraction > 1.0) {
+                throw new IllegalArgumentException(
+                        "Memory-class fractions must be non-negative and sum to at most 1");
+            }
+            memoryClasses = new MemoryClass[] {
+                    new MemoryClass("L1", l1Fraction, l1Latency),
+                    new MemoryClass("L2", l1Fraction + l2Fraction, l2Latency),
+                    new MemoryClass("DRAM", 1.0, dramLatency)
+            };
+        } else {
+            memoryClasses = new MemoryClass[] {
+                    new MemoryClass("MEM", 1.0, defaultLatency)
+            };
+        }
+
+        if (contexts < 1 || issueWidth < 1 || defaultLatency < 1
+                || cycles < 1 || maxOutstanding < 1
+                || memoryQueueCapacity < 1 || memoryFraction < 0.0
                 || memoryFraction > 1.0) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
+        for (MemoryClass memoryClass : memoryClasses) {
+            if (memoryClass.latency() < 1) {
+                throw new IllegalArgumentException(
+                        "Memory-class latencies must be positive");
+            }
+        }
 
         var ready = new ArrayDeque<Integer>(contexts);
-        var wakeups = new PriorityQueue<>(
-                Comparator.comparingLong(Wakeup::cycle));
-        int[] outstanding = new int[contexts];
-        boolean[] waitingForSlot = new boolean[contexts];
+        var queueWaiters = new ArrayDeque<Integer>();
+        var completions = new PriorityQueue<>(
+                Comparator.comparingLong(Completion::cycle));
+        int[] outstandingByThread = new int[contexts];
+        boolean[] waitingForThreadSlot = new boolean[contexts];
+        boolean[] waitingForQueueSlot = new boolean[contexts];
+        int[] pendingClass = new int[contexts];
+        java.util.Arrays.fill(pendingClass, -1);
+
         for (int thread = 0; thread < contexts; thread++) {
             ready.addLast(thread);
         }
 
         var random = new SplittableRandom(seed);
-        long issued = 0;
-        long blockedIssues = 0;
+        long measuredIssued = 0;
+        long memoryIssues = 0;
         long completedRequests = 0;
         long idleCycles = 0;
-        long measuredIssued = 0;
-        int maxOutstandingObserved = 0;
+        long queueFullStalls = 0;
+        long maxQueueOccupancy = 0;
+        int maxThreadOutstandingObserved = 0;
+        long[] classIssues = new long[memoryClasses.length];
+        long[] classCompletions = new long[memoryClasses.length];
         final int warmup = Math.min(10_000, cycles / 10);
 
         for (int cycle = 0; cycle < cycles; cycle++) {
-            while (!wakeups.isEmpty() && wakeups.peek().cycle() <= cycle) {
-                int thread = wakeups.remove().thread();
-                outstanding[thread]--;
+            while (!completions.isEmpty()
+                    && completions.peek().cycle() <= cycle) {
+                Completion completion = completions.remove();
+                int thread = completion.thread();
+                int latencyClass = completion.latencyClass();
+                outstandingByThread[thread]--;
                 completedRequests++;
-                if (waitingForSlot[thread]
-                        && outstanding[thread] < maxOutstanding) {
-                    waitingForSlot[thread] = false;
-                    ready.addLast(thread);
+                classCompletions[latencyClass]++;
+
+                if (waitingForThreadSlot[thread]
+                        && outstandingByThread[thread] < maxOutstanding) {
+                    waitingForThreadSlot[thread] = false;
+                    if (!waitingForQueueSlot[thread]) {
+                        ready.addLast(thread);
+                    }
                 }
             }
 
-            int slots = Math.min(issueWidth, ready.size());
-            if (slots == 0) {
-                idleCycles++;
-                continue;
+            // A completion may have returned one or more shared queue credits.
+            while (!queueWaiters.isEmpty()) {
+                int thread = queueWaiters.removeFirst();
+                waitingForQueueSlot[thread] = false;
+                ready.addLast(thread);
             }
 
-            int[] requeue = new int[slots];
+            int candidates = ready.size();
+            int issuedThisCycle = 0;
+            int[] requeue = new int[candidates];
             int requeueCount = 0;
-            for (int slot = 0; slot < slots; slot++) {
+
+            // Visit each thread that was ready at cycle start at most once.
+            while (candidates-- > 0 && issuedThisCycle < issueWidth) {
                 int thread = ready.removeFirst();
-                issued++;
-                if (cycle >= warmup) {
-                    measuredIssued++;
+                int selectedClass = pendingClass[thread];
+
+                if (selectedClass < 0
+                        && random.nextDouble() < memoryFraction) {
+                    selectedClass = selectMemoryClass(memoryClasses, random);
+                    pendingClass[thread] = selectedClass;
                 }
 
-                if (random.nextDouble() < memoryFraction) {
-                    blockedIssues++;
-                    outstanding[thread]++;
-                    maxOutstandingObserved = Math.max(
-                            maxOutstandingObserved, outstanding[thread]);
-                    wakeups.add(new Wakeup((long) cycle + latency, thread));
-                    if (outstanding[thread] >= maxOutstanding) {
-                        waitingForSlot[thread] = true;
+                if (selectedClass >= 0) {
+                    if (completions.size() >= memoryQueueCapacity) {
+                        queueFullStalls++;
+                        waitingForQueueSlot[thread] = true;
+                        queueWaiters.addLast(thread);
+                        continue;
+                    }
+
+                    MemoryClass memoryClass = memoryClasses[selectedClass];
+                    completions.add(new Completion(
+                            (long) cycle + memoryClass.latency(),
+                            thread, selectedClass));
+                    pendingClass[thread] = -1;
+                    memoryIssues++;
+                    classIssues[selectedClass]++;
+                    issuedThisCycle++;
+                    if (cycle >= warmup) {
+                        measuredIssued++;
+                    }
+
+                    outstandingByThread[thread]++;
+                    maxThreadOutstandingObserved = Math.max(
+                            maxThreadOutstandingObserved,
+                            outstandingByThread[thread]);
+                    maxQueueOccupancy = Math.max(
+                            maxQueueOccupancy, completions.size());
+
+                    if (outstandingByThread[thread] >= maxOutstanding) {
+                        waitingForThreadSlot[thread] = true;
                     } else {
                         requeue[requeueCount++] = thread;
                     }
                 } else {
+                    issuedThisCycle++;
+                    if (cycle >= warmup) {
+                        measuredIssued++;
+                    }
                     requeue[requeueCount++] = thread;
                 }
             }
 
-            // Requeue only after selecting this cycle's issue bundle.
             for (int i = 0; i < requeueCount; i++) {
                 ready.addLast(requeue[i]);
+            }
+            if (issuedThisCycle == 0) {
+                idleCycles++;
             }
         }
 
         int measuredCycles = Math.max(1, cycles - warmup);
         double ipc = (double) measuredIssued / measuredCycles;
         double utilization = ipc / issueWidth;
-        int waitingAtEnd = 0;
+        int waitingAtThreadLimit = 0;
+        int waitingAtQueueLimit = 0;
         long outstandingAtEnd = 0;
         for (int thread = 0; thread < contexts; thread++) {
-            if (waitingForSlot[thread]) {
-                waitingAtEnd++;
+            if (waitingForThreadSlot[thread]) {
+                waitingAtThreadLimit++;
             }
-            outstandingAtEnd += outstanding[thread];
+            if (waitingForQueueSlot[thread]) {
+                waitingAtQueueLimit++;
+            }
+            outstandingAtEnd += outstandingByThread[thread];
         }
 
         System.out.printf(
-                "contexts=%d issueWidth=%d latency=%d memoryFraction=%.3f "
-                        + "maxOutstanding=%d cycles=%d warmup=%d "
-                        + "measuredIPC=%.4f issueUtilization=%.4f "
-                        + "memoryIssues=%d completedRequests=%d "
-                        + "maxOutstandingObserved=%d idleCycles=%d "
-                        + "readyAtEnd=%d waitingAtLimitAtEnd=%d "
-                        + "outstandingAtEnd=%d seed=%d%n",
-                contexts, issueWidth, latency, memoryFraction, maxOutstanding,
-                cycles, warmup, ipc, utilization, blockedIssues,
-                completedRequests, maxOutstandingObserved, idleCycles,
-                ready.size(), waitingAtEnd, outstandingAtEnd, seed);
+                "contexts=%d issueWidth=%d memoryFraction=%.3f "
+                        + "maxOutstanding=%d memoryQueueCapacity=%d "
+                        + "cycles=%d warmup=%d measuredIPC=%.4f "
+                        + "issueUtilization=%.4f memoryIssues=%d "
+                        + "completedRequests=%d maxThreadOutstanding=%d "
+                        + "maxQueueOccupancy=%d queueFullStalls=%d "
+                        + "idleCycles=%d readyAtEnd=%d "
+                        + "waitingAtThreadLimitAtEnd=%d "
+                        + "waitingAtQueueLimitAtEnd=%d outstandingAtEnd=%d "
+                        + "seed=%d%n",
+                contexts, issueWidth, memoryFraction, maxOutstanding,
+                memoryQueueCapacity, cycles, warmup, ipc, utilization,
+                memoryIssues, completedRequests, maxThreadOutstandingObserved,
+                maxQueueOccupancy, queueFullStalls, idleCycles, ready.size(),
+                waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
+                seed);
+
+        for (int i = 0; i < memoryClasses.length; i++) {
+            System.out.printf("memoryClass=%s latency=%d issues=%d completions=%d%n",
+                    memoryClasses[i].name(), memoryClasses[i].latency(),
+                    classIssues[i], classCompletions[i]);
+        }
+    }
+
+    private static int selectMemoryClass(
+            MemoryClass[] memoryClasses, SplittableRandom random) {
+        double selection = random.nextDouble();
+        for (int i = 0; i < memoryClasses.length; i++) {
+            if (selection < memoryClasses[i].cumulativeFraction()) {
+                return i;
+            }
+        }
+        return memoryClasses.length - 1;
+    }
+
+    private static void usage() {
+        System.err.println("""
+                Usage:
+                  ContextSweep <contexts> <issue-width> <latency-cycles>
+                    <memory-fraction> <cycles> <seed>
+                    [max-outstanding [memory-queue-capacity
+                    l1-fraction l1-latency l2-fraction l2-latency dram-latency]]
+
+                Use all five memory-class arguments together. The L1 and L2
+                fractions are conditional probabilities among memory
+                instructions; DRAM receives the remaining probability.
+
+                Example:
+                  ContextSweep 4096 4 300 0.25 200000 42 4 128
+                    0.70 4 0.20 20 200
+                """);
     }
 }

@@ -94,18 +94,36 @@ public final class CacheSweep {
         }
 
         Result access(int thread, long address) {
+            Result result = probe(thread, address);
+            fill(thread, address, result);
+            return result;
+        }
+
+        Result probe(int thread, long address) {
+            checkThread(thread);
+            if (l1ByThread[thread].contains(address)) {
+                return Result.L1_HIT;
+            }
+            if (l2.contains(address)) {
+                return Result.L2_HIT;
+            }
+            return Result.DRAM_MISS;
+        }
+
+        void fill(int thread, long address, Result result) {
+            checkThread(thread);
+            if (result == Result.L2_HIT) {
+                l1ByThread[thread].insert(address);
+            } else if (result == Result.DRAM_MISS) {
+                l2.insert(address);
+                l1ByThread[thread].insert(address);
+            }
+        }
+
+        private void checkThread(int thread) {
             if (thread < 0 || thread >= l1ByThread.length) {
                 throw new IllegalArgumentException("Thread index out of range");
             }
-            if (l1ByThread[thread].access(address)) {
-                return Result.L1_HIT;
-            }
-            if (l2.access(address)) {
-                l1ByThread[thread].access(address);
-                return Result.L2_HIT;
-            }
-            l1ByThread[thread].access(address);
-            return Result.DRAM_MISS;
         }
     }
 

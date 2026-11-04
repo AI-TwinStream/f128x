@@ -300,7 +300,7 @@ jobs:
           grep -Eq 'memoryBytesIssued=[1-9][0-9]* memoryBytesCompleted=[0-9]+' <<< "$bounded"
           grep -Eq 'memoryBankRequests=[1-9][0-9]*' <<< "$bounded"
           grep -q 'measuredIPC=4.0000' <<< "$baseline"
-          grep -Eq 'measuredIPC=[0-3]\\.[0-9]+' <<< "$bounded"
+          grep -Eq 'measuredIPC=[0-3]\.[0-9]+' <<< "$bounded"
           printf '%s\\n' "$bounded"
 
       - name: Verify independent dependency chains

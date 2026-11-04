@@ -175,3 +175,27 @@ Use the model to compare controlled scenarios and identify where context count, 
 The next model revision should add configurable address-to-channel/bank mapping, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md), and [Scheduler Simulation 0.9 Results](../../docs/research/scheduler-simulation-0.9-results.md), and [Scheduler Simulation 0.10 Results](../../docs/research/scheduler-simulation-0.10-results.md), and [Scheduler Simulation 0.11 Results](../../docs/research/scheduler-simulation-0.11-results.md).
 
 No architectural decision about 65,536 contexts follows from this model alone.
+
+
+## Modular board and backplane experiment
+
+A separate Java 25 entry point, `BoardFabricSweep`, compares modular CPU-board topologies:
+
+- 1 board × 8 clusters × 1 issue slot.
+- 2 boards × 4 clusters × 1 issue slot.
+- 4 boards × 2 clusters × 1 issue slot.
+- 8 boards × 1 cluster × 1 issue slot.
+- 4 boards × 4 clusters × 1 issue slot (a 16-wide scale-up case).
+
+The first four hold aggregate issue capacity at eight instructions per cycle. The experiment sweeps 10%, 50%, and 90% remote-memory traffic through a shared bandwidth-limited fabric. Workspaces are homed to boards, and threads remain on their home board. The model reports IPC, utilization, per-board issue counts, remote requests, fabric bytes, queue pressure, and idle issue slots.
+
+Compile both simulators and run the board experiment:
+
+```sh
+javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
+java -cp build/scheduler-sim org.flossware.f128x.sim.BoardFabricSweep
+```
+
+The board model is intentionally separate from `ContextSweep`. Its first revision does not model local-memory bandwidth, real switch topologies, cache coherence, migration, or physical board costs. See [Board and Backplane Simulation 0.1](../../docs/research/board-backplane-simulation-0.1.md) for assumptions and limitations.

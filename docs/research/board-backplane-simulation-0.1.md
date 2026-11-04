@@ -509,3 +509,26 @@ The normalized model and three-seed result set are now suitable for sensitivity 
 - The one-link mesh is much more sensitive to injection rate: 6.83854 operations/cycle at interval 1, 7.04342 mean across three seeds at interval 2, and 3.92478 at interval 4. The interval-1 mean latency rises to 1,424.38 cycles, indicating queuing under this particular injection schedule.
 - Hotspot traffic stays near 1.06 operations/cycle at intervals 1/2/4 for shared and ring and near 1.06 for mesh with four links. Mesh with one link remains at 0.91918. The single hot destination memory lane is the dominant service bottleneck; increasing fabric bandwidth cannot remove it.
 - This confirms the value of separating fabric bandwidth from endpoint service capacity. The next experiment should add configurable destination memory lanes and test whether hotspot throughput scales with endpoint parallelism, while retaining the equal-bisection constraint.
+
+
+## Destination memory-lane sensitivity (2026-11-04)
+
+The model now accepts `-Df128x.fabric.memoryLanesPerBoard=N`. CI ran the full 81-case topology matrix with two and four destination memory lanes in addition to the one-lane baseline. The full push workflow passed in [GitHub Actions run 41932232583](https://github.com/AI-TwinStream/f128x/actions/runs/41932232583). The selected table shows 16-board hotspot traffic, injection interval 2, and four parallel links per neighbor.
+
+| Memory lanes/board | Topology | Mean latency | p95 latency | Operations/cycle |
+|---:|---|---:|---:|---:|
+| 1 | shared | 13437.50 | 25418.67 | 1.06236 |
+| 1 | ring | 12621.09 | 25346.33 | 1.06145 |
+| 1 | mesh | 12618.45 | 25343.67 | 1.06150 |
+| 2 | shared | 5757.84 | 10826.67 | 2.11616 |
+| 2 | ring | 5422.34 | 10807.00 | 2.11188 |
+| 2 | mesh | 5418.92 | 10803.67 | 2.11261 |
+| 4 | shared | 1918.10 | 3530.67 | 4.19833 |
+| 4 | ring | 1823.67 | 3537.67 | 4.17995 |
+| 4 | mesh | 2379.49 | 4664.33 | 3.63027 |
+
+At one and two lanes, four-link hotspot throughput scales close to linearly with destination memory service capacity, and topology differences are modest. At four lanes, the mesh no longer tracks shared/ring as closely under this particular hotspot mapping, indicating that route/link contention becomes visible after endpoint service capacity is increased.
+
+The 16-board mesh with only one parallel link per neighbor remains at 0.91918 operations/cycle for this hotspot pattern even when destination memory lanes increase from one to four. That is a fabric bottleneck, not a memory-lane bottleneck. This is useful: the experiment can now expose the crossover between endpoint-limited and fabric-limited traffic rather than attributing every slowdown to the network.
+
+These results support continuing with the two independent controls: bisection-normalized fabric links and per-board memory lanes. They do not establish a physical topology winner because routing arbitration, queue fairness, physical link costs, and more realistic memory-bank scheduling remain out of scope.

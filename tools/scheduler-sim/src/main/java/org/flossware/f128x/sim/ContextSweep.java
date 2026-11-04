@@ -79,6 +79,19 @@ public final class ContextSweep {
             };
         }
 
+        int workspaceCount = (contexts + 15) / 16;
+        double hotWorkspaceRatio = Double.parseDouble(
+                System.getProperty("f128x.hotWorkspaceRatio", "0.25"));
+        double hotMemoryFraction = Double.parseDouble(System.getProperty(
+                "f128x.hotMemoryFraction", Double.toString(memoryFraction)));
+        double coldMemoryFraction = Double.parseDouble(System.getProperty(
+                "f128x.coldMemoryFraction", Double.toString(memoryFraction)));
+        double hotDependencyFraction = Double.parseDouble(System.getProperty(
+                "f128x.hotDependencyFraction", Double.toString(dependencyFraction)));
+        double coldDependencyFraction = Double.parseDouble(System.getProperty(
+                "f128x.coldDependencyFraction", Double.toString(dependencyFraction)));
+        int hotWorkspaceCount = (int) Math.ceil(workspaceCount * hotWorkspaceRatio);
+
         if (contexts < 1 || issueWidth < 1 || defaultLatency < 1
                 || cycles < 1 || maxOutstanding < 1
                 || memoryQueueCapacity < 1 || memoryFraction < 0.0
@@ -92,6 +105,12 @@ public final class ContextSweep {
                 || coldDependencyFraction > 1.0) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
+        String schedulerStrategy = System.getProperty("f128x.scheduler", "fifo");
+        int defaultClusters = Math.max(1, Math.min(8, workspaceCount));
+        int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
+        ReadyScheduler ready = createReadyScheduler(
+                schedulerStrategy, contexts, clusterCount);
+
         for (MemoryClass memoryClass : memoryClasses) {
             if (memoryClass.latency() < 1) {
                 throw new IllegalArgumentException(
@@ -99,23 +118,6 @@ public final class ContextSweep {
             }
         }
 
-        String schedulerStrategy = System.getProperty("f128x.scheduler", "fifo");
-        int workspaceCount = (contexts + 15) / 16;
-        int defaultClusters = Math.max(1, Math.min(8, workspaceCount));
-        int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
-        double hotWorkspaceRatio = Double.parseDouble(
-                System.getProperty("f128x.hotWorkspaceRatio", "0.25"));
-        double hotMemoryFraction = Double.parseDouble(System.getProperty(
-                "f128x.hotMemoryFraction", Double.toString(memoryFraction)));
-        double coldMemoryFraction = Double.parseDouble(System.getProperty(
-                "f128x.coldMemoryFraction", Double.toString(memoryFraction)));
-        double hotDependencyFraction = Double.parseDouble(System.getProperty(
-                "f128x.hotDependencyFraction", Double.toString(dependencyFraction)));
-        double coldDependencyFraction = Double.parseDouble(System.getProperty(
-                "f128x.coldDependencyFraction", Double.toString(dependencyFraction)));
-        int hotWorkspaceCount = (int) Math.ceil(workspaceCount * hotWorkspaceRatio);
-        ReadyScheduler ready = createReadyScheduler(
-                schedulerStrategy, contexts, clusterCount);
         var queueWaiters = new ArrayDeque<Integer>();
         var completions = new PriorityQueue<>(
                 Comparator.comparingLong(Completion::cycle));

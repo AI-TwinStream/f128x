@@ -124,6 +124,24 @@ jobs:
             printf '%s\n' "$output"
           done
 
+      - name: Verify per-cluster issue budgets and global capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.f128x.sim.ContextSweep
+          capped="$(java -Df128x.scheduler=distributed -Df128x.clusters=2 -Df128x.clusterIssueWidth=1 -cp build/scheduler-sim "$class" 1024 4 300 0.25 20000 42 4 128 0.70 4 0.20 20 200 0.10 12)"
+          grep -q 'clusterIssueWidth=1 effectiveIssueCapacity=2' <<< "$capped"
+          grep -q 'clusterBudgetUtilization=1.0000' <<< "$capped"
+          awk '/^scheduler=/{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="measuredIPC" && p[2]>2.0001) exit 1; } }' <<< "$capped"
+          awk -v limit=20000 '/^clusterIssueCount=/{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="issues" && p[2]>limit) exit 1; } }' <<< "$capped"
+          printf '%s\n' "$capped"
+          full="$(java -Df128x.scheduler=distributed -Df128x.clusters=4 -Df128x.clusterIssueWidth=2 -cp build/scheduler-sim "$class" 1024 4 300 0.25 50000 42 4 128 0.70 4 0.20 20 200 0.10 12)"
+          grep -q 'clusterIssueWidth=2 effectiveIssueCapacity=4' <<< "$full"
+          grep -q 'measuredIPC=4.0000' <<< "$full"
+          grep -q 'clusterBudgetUtilization=1.0000' <<< "$full"
+          awk -v limit=100000 '/^clusterIssueCount=/{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="issues" && p[2]>limit) exit 1; } }' <<< "$full"
+          printf '%s\n' "$full"
+
       - name: Verify memory completion-rate backpressure
         shell: bash
         run: |

@@ -63,8 +63,7 @@ jobs:
         run: |
           for outstanding in 1 2 4 8; do
             for contexts in 64 128 256 512; do
-              java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep \\
-                "$contexts" 4 300 0.25 200000 42 "$outstanding"
+              java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep "$contexts" 4 300 0.25 200000 42 "$outstanding"
             done
           done
 

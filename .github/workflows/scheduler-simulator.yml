@@ -204,6 +204,20 @@ jobs:
           done
           echo "PASS: normalized fabric matrix repeated across seeds 7 and 2027"
 
+      - name: Sweep fabric injection load
+        shell: bash
+        run: |
+          set -euo pipefail
+          for interval in 1 4; do
+            output="$(java -Df128x.fabric.operationsPerBoard=2048 -Df128x.fabric.seed=42 -Df128x.fabric.injectionInterval="$interval" -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "injectionInterval=$interval" <<< "$output"
+            echo "fabric-injection-interval=$interval"
+            echo "$output"
+          done
+          echo "PASS: full topology matrix at injection intervals 1 and 4"
+
       - name: Run deterministic smoke test
         shell: bash
         run: |

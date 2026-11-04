@@ -460,10 +460,9 @@ public final class ContextSweep {
                                 (long) cycle + dependencyLatency;
                         dependencyChainCursor[thread] = (chain + 1) % dependencyChains;
 
-                        int otherReadyChain = selectReadyDependencyChain(
-                                dependencyReadyCycles[thread],
-                                dependencyChainCursor[thread], (long) cycle + 1);
-                        if (otherReadyChain >= 0) {
+                        if (hasOtherReadyDependencyChain(
+                                dependencyReadyCycles[thread], chain,
+                                (long) cycle + 1)) {
                             dependencyIssuesOverlapped++;
                             requeue[requeueCount++] = thread;
                         } else {
@@ -1059,6 +1058,16 @@ public final class ContextSweep {
             }
         }
         return -1;
+    }
+
+    private static boolean hasOtherReadyDependencyChain(
+            long[] readyCycles, int excludedChain, long cycle) {
+        for (int chain = 0; chain < readyCycles.length; chain++) {
+            if (chain != excludedChain && readyCycles[chain] <= cycle) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static long earliestDependencyReadyCycle(long[] readyCycles) {

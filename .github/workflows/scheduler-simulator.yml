@@ -94,6 +94,17 @@ jobs:
           grep -q '^memoryClass=L2 ' <<< "$output"
           grep -q '^memoryClass=DRAM ' <<< "$output"
           printf '%s\n' "$output"
+      - name: Verify cache hits bypass DRAM bank service
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -Df128x.cache.enabled=true -Df128x.addressPattern=shared_region -Df128x.addressStride=64 -Df128x.addressRegionBytes=4096 -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -Df128x.memoryBandwidthBytesPerCycle=16 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 200 0.25 20000 42 16 128)"
+          grep -q 'cacheHierarchyEnabled=true' <<< "$output"
+          grep -q 'memorySystemEnabled=true' <<< "$output"
+          grep -Eq 'memoryBankRequests=[1-9][0-9]*' <<< "$output"
+          awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="memoryBankRequests") bank=p[2]; if (p[1]=="memoryIssues") issues=p[2]; } } END { if (bank >= issues) exit 1; }' <<< "$output"
+          printf '%s\\n' "$output"
+
       - name: Exercise modular board and backplane model
         shell: bash
         run: |

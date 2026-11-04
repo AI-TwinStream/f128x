@@ -458,3 +458,54 @@ The CI workflow repeated the complete 81-case matrix at seeds 7 and 2027 in addi
 - The shared model is an abstract single-resource reference, not a physically equivalent nonblocking crossbar. The results compare the stated models under equal minimum cut bandwidth, not area, energy, cable length, radix, or implementation cost.
 
 The normalized model and three-seed result set are now suitable for sensitivity exploration, not for selecting a final physical topology. Next work should vary injection interval/load and add fairer arbitration plus multiple destination memory lanes, so network and endpoint bottlenecks can be separated.
+
+
+## Injection-rate sensitivity (2026-11-04)
+
+`f128x.fabric.injectionInterval` now controls the deterministic spacing between per-source requests. The full 81-case matrix was run at intervals 1 and 4 in addition to the interval-2 primary matrix and three-seed repeat. The complete workflow passed in [GitHub Actions run 41931975505](https://github.com/AI-TwinStream/f128x/actions/runs/41931975505); 405 result rows were exercised across the five matrix runs (seed 42 at intervals 1/2/4, and seeds 7/2027 at interval 2). Smaller intervals offer more load; larger intervals reduce offered load. Values below are 16-board selected cases. The interval-2 rows are three-seed means; intervals 1 and 4 are seed 42.
+
+| Interval | Traffic | Topology | Links | Mean latency | p95 latency | Operations/cycle |
+|---:|---|---|---:|---:|---:|---:|
+| 1 | uniform | shared | 1 | 4566.97 | 8563.00 | 2.96436 |
+| 1 | uniform | shared | 4 | 534.58 | 844.33 | 11.19891 |
+| 1 | uniform | ring | 1 | 8282.45 | 15518.00 | 1.78142 |
+| 1 | uniform | ring | 4 | 604.32 | 988.33 | 10.58512 |
+| 1 | uniform | mesh | 1 | 1424.38 | 2470.67 | 6.83854 |
+| 1 | uniform | mesh | 4 | 281.64 | 453.33 | 12.91095 |
+| 1 | hotspot | shared | 1 | 14461.52 | 27364.00 | 1.06234 |
+| 1 | hotspot | shared | 4 | 14461.00 | 27363.67 | 1.06236 |
+| 1 | hotspot | ring | 1 | 13580.62 | 27284.00 | 1.06145 |
+| 1 | hotspot | ring | 4 | 13580.62 | 27284.00 | 1.06145 |
+| 1 | hotspot | mesh | 1 | 15839.67 | 31805.67 | 0.91918 |
+| 1 | hotspot | mesh | 4 | 13577.98 | 27281.67 | 1.06150 |
+| 2 | uniform | shared | 1 | 3542.94 | 6616.11 | 2.96486 |
+| 2 | uniform | shared | 4 | 139.58 | 155.22 | 7.74556 |
+| 2 | uniform | ring | 1 | 7032.58 | 13162.78 | 1.81428 |
+| 2 | uniform | ring | 4 | 155.12 | 178.56 | 7.68041 |
+| 2 | uniform | mesh | 1 | 373.65 | 543.89 | 7.04342 |
+| 2 | uniform | mesh | 4 | 142.80 | 159.56 | 7.70589 |
+| 2 | hotspot | shared | 1 | 13438.02 | 25419.00 | 1.06234 |
+| 2 | hotspot | shared | 4 | 13437.50 | 25418.67 | 1.06236 |
+| 2 | hotspot | ring | 1 | 12621.09 | 25346.33 | 1.06145 |
+| 2 | hotspot | ring | 4 | 12621.09 | 25346.33 | 1.06145 |
+| 2 | hotspot | mesh | 1 | 14858.81 | 29867.67 | 0.91918 |
+| 2 | hotspot | mesh | 4 | 12618.45 | 25343.67 | 1.06150 |
+| 4 | uniform | shared | 1 | 1496.47 | 2727.67 | 2.96436 |
+| 4 | uniform | shared | 4 | 126.76 | 128.33 | 3.93988 |
+| 4 | uniform | ring | 1 | 5213.28 | 9655.00 | 1.78129 |
+| 4 | uniform | ring | 4 | 144.75 | 163.67 | 3.92290 |
+| 4 | uniform | mesh | 1 | 143.59 | 157.00 | 3.92478 |
+| 4 | uniform | mesh | 4 | 138.57 | 151.00 | 3.92541 |
+| 4 | hotspot | shared | 1 | 11391.02 | 21529.00 | 1.06234 |
+| 4 | hotspot | shared | 4 | 11390.50 | 21528.00 | 1.06236 |
+| 4 | hotspot | ring | 1 | 10702.03 | 21469.33 | 1.06145 |
+| 4 | hotspot | ring | 4 | 10702.03 | 21469.33 | 1.06145 |
+| 4 | hotspot | mesh | 1 | 12939.75 | 25991.67 | 0.91918 |
+| 4 | hotspot | mesh | 4 | 10699.39 | 21466.33 | 1.06150 |
+
+### Interpretation
+
+- Uniform traffic at interval 1 is a high-load case. At four links the mesh reaches 12.91095 operations/cycle, versus 11.19891 for shared and 10.58512 for ring. At interval 4, offered load is lower and all four-link topologies settle near 3.92 operations/cycle.
+- The one-link mesh is much more sensitive to injection rate: 6.83854 operations/cycle at interval 1, 7.04342 mean across three seeds at interval 2, and 3.92478 at interval 4. The interval-1 mean latency rises to 1,424.38 cycles, indicating queuing under this particular injection schedule.
+- Hotspot traffic stays near 1.06 operations/cycle at intervals 1/2/4 for shared and ring and near 1.06 for mesh with four links. Mesh with one link remains at 0.91918. The single hot destination memory lane is the dominant service bottleneck; increasing fabric bandwidth cannot remove it.
+- This confirms the value of separating fabric bandwidth from endpoint service capacity. The next experiment should add configurable destination memory lanes and test whether hotspot throughput scales with endpoint parallelism, while retaining the equal-bisection constraint.

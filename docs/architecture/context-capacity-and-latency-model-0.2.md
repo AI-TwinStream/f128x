@@ -1,50 +1,78 @@
 # Context Capacity and Latency-Hiding Model 0.2
 
 **Date:** 2026-11-04  
-**Status:** First-order analytical model; illustrative assumptions only  
-**Related:** [Context state and residency](context-state-and-residency-0.2.md), [Scheduling progress and interrupts](scheduling-progress-and-interrupts-0.2.md)
+**Status:** First-order analytical model plus an initial executable experiment  
+**Related:** Context state and residency, scheduling progress and interrupts, scheduler simulation.
 
 ## 1. Purpose
 
-The 65,536-context target is a design hypothesis, not a performance result. This note establishes a simple model that can be checked, varied, and later replaced or calibrated by a cycle-level simulator.
+The 65,536-context target is a design hypothesis, not a performance result. This note establishes a simple model that can be checked, varied, and later calibrated by workload traces and richer simulation.
 
-The model asks: how many resident hardware thread contexts are needed to sustain a target instruction issue rate when threads become temporarily ineligible during long-latency operations?
+It does **not** prove that f128x needs 65,536 contexts. It also does not model a realistic cache hierarchy, multiple outstanding requests per thread, dependencies, or scheduler overhead.
 
-It does **not** prove that f128x needs 65,536 contexts. Nor does it model all causes of stalls, memory-level parallelism, dependencies, or scheduler overhead.
+## 2. First-order blocking model
 
-## 2. First-order model
+For a deliberately narrow model, define:
 
-Let:
+- L = blocking latency in cycles.
+- q = probability that an issued instruction blocks its thread for L cycles.
+- W = desired aggregate issue rate in instructions per cycle.
+- N = resident hardware thread contexts.
 
-- \(L\) = effective thread-blocking latency in cycles.
-- \(W\) = desired aggregate instruction issue rate in instructions per cycle.
-- \(p\) = fraction of resident contexts that are eligible to issue at a given time.
-- \(N\) = resident hardware thread contexts.
+Assume each thread can issue at most one instruction per cycle. A nonblocking instruction makes the thread eligible again in the next cycle. A blocking instruction prevents that thread from issuing for L cycles. Each thread can have at most one such blocking operation outstanding.
 
-Under the deliberately simple assumption that one issued instruction can block its thread for \(L\) cycles, and each eligible thread can issue at most one instruction per cycle:
+The approximate mean service time per issued instruction for one thread is:
 
-\[
-N \geq \frac{L \times W}{p}
-\]
+    T_thread ≈ 1 + qL
 
-The numerator is the number of simultaneously available thread-issue opportunities needed to cover the latency window. The eligibility fraction converts the required ready contexts into a total resident-context estimate.
+So the approximate aggregate issue capacity across N independent contexts is:
 
-This is a steady-state lower-bound heuristic, not a scheduler implementation formula. It assumes independent threads, enough independent work, no issue bottlenecks other than thread readiness, and a stable eligible fraction.
+    I ≈ N / (1 + qL)
+
+To sustain target issue rate W:
+
+    N ≳ W(1 + qL)
+
+This is a first-order estimate. It assumes independent blocking events, enough work to keep contexts active, constant latency, no queueing feedback, and no other issue bottlenecks. It is not a universal latency-hiding law.
 
 ### Example scenarios
 
-| Effective latency L | Issue rate W | Eligible fraction p | Estimated resident contexts |
+| Blocking latency L | Blocking probability q | Target issue W | Approx. contexts |
 |---:|---:|---:|---:|
-| 100 cycles | 1 inst/cycle | 50% | 200 |
-| 300 cycles | 4 inst/cycle | 50% | 2,400 |
-| 600 cycles | 8 inst/cycle | 25% | 19,200 |
-| 1,000 cycles | 8 inst/cycle | 12.5% | 64,000 |
+| 100 cycles | 0.10 | 1 inst/cycle | 11 |
+| 300 cycles | 0.25 | 4 inst/cycle | 304 |
+| 600 cycles | 0.50 | 8 inst/cycle | 2,408 |
+| 1,000 cycles | 0.75 | 8 inst/cycle | 6,008 |
 
-The final row is close to the 65,536 target, but it is an intentionally demanding combination of latency, issue width, and low eligibility. It is not evidence that the target is generally required.
+These estimates are much smaller than 65,536 for these assumptions. That demonstrates that a huge context count cannot be justified by quoting memory latency alone. A larger target would need additional motivations, such as much higher latency, larger issue width, low runnable fraction, many execution clusters, or architectural capacity goals independent of latency hiding.
 
-Conversely, a system with lower effective latency, narrower issue, higher runnable fraction, or substantial memory-level parallelism may need far fewer contexts.
+## 3. Initial cycle-level experiment
 
-## 3. Important limitations
+The Java program in tools/scheduler-sim implements the simple blocking model with a FIFO ready queue and deterministic random seed.
+
+Example command:
+
+    java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42
+
+The following sample was compiled and run with OpenJDK 21. Parameters: issue width 4, blocking latency 300 cycles, blocking probability 0.25, 200,000 cycles, seed 42. Warmup is 10,000 cycles.
+
+| Contexts | Measured IPC | Issue utilization |
+|---:|---:|---:|
+| 64 | 0.8430 | 21.08% |
+| 128 | 1.6901 | 42.25% |
+| 256 | 3.3523 | 83.81% |
+| 512 | 4.0000 | 100.00% |
+| 1,024 | 4.0000 | 100.00% |
+| 2,048 | 4.0000 | 100.00% |
+| 4,096 | 4.0000 | 100.00% |
+| 16,384 | 4.0000 | 100.00% |
+| 65,536 | 4.0000 | 100.00% |
+
+For this narrow workload, issue utilization saturates at 512 contexts. More contexts do not improve throughput. The analytical estimate of 304 contexts is a mean-based approximation; the simulation needs additional contexts to cover stochastic variation and keep all four issue slots supplied consistently.
+
+This is one parameter point and one seed, not a performance claim about a real processor.
+
+## 4. Important limitations
 
 The model must be extended to account for:
 
@@ -58,27 +86,23 @@ The model must be extended to account for:
 8. **Nonuniform latency:** cache hits, cache misses, translation misses, and I/O have different latency distributions.
 9. **Occupancy and locality:** contexts may be resident but not equally useful to every execution cluster.
 
-The value \(p\) must therefore be measured from workload traces or an executable model. It must not be treated as a universal constant.
+The simulation's blocking probability q is an input assumption, not a measured workload property. It must not be treated as a universal constant.
 
-## 4. Architectural capacity versus implementation residency
+## 5. Architectural capacity versus implementation residency
 
 The current architectural capacity target is:
 
-\[
-4,096\;workspaces \times 16\;threads = 65,536\;thread\;contexts
-\]
+    4,096 workspaces × 16 threads = 65,536 thread contexts
 
 That namespace is distinct from the number of contexts physically resident in a particular implementation at one time. The architecture must define whether nonresident contexts are preserved in backing storage, managed by software, or handled by a hybrid mechanism.
 
 Implementation profiles should be evaluated independently. A smaller implementation can expose fewer simultaneously resident contexts while preserving the same instruction semantics for supported contexts, provided capacity limits and lifecycle behavior are architecturally discoverable.
 
-## 5. Register-state capacity by profile
+## 6. Register-state capacity by profile
 
 Each thread's 128 private 128-bit GPRs represent:
 
-\[
-128 \times 128\;bits = 16,384\;bits = 2\;KiB
-\]
+    128 × 128 bits = 16,384 bits = 2 KiB
 
 Each workspace's 128 shared 128-bit GPRs also represent 2 KiB.
 
@@ -94,31 +118,20 @@ These figures count GPR bits only. They exclude PCs, status/control state, privi
 
 They are capacity figures, not area estimates. SRAM/BRAM mapping, port count, banking, replication, timing, and access topology determine actual implementation cost.
 
-## 6. Required next experiment
+## 7. Required next experiment
 
-Build a parameterized discrete-event or cycle-level model with at least these inputs:
+Extend the model with:
 
-- Context count and workspace/thread distribution.
-- Issue width and execution-unit availability.
-- Latency distributions for representative memory levels.
-- Eligible/runnable fraction, measured over time rather than assumed constant.
-- Per-thread outstanding-request limit and memory-level parallelism.
-- Dependency-chain length and instruction mix.
-- Shared-register contention and synchronization frequency.
-- Scheduler topology, selection latency, wakeup latency, and migration cost.
+- Multiple outstanding requests per thread.
+- Multiple latency classes and queueing.
+- Dependencies and instruction mix.
+- Shared-register contention and synchronization.
+- Scheduler selection/wakeup latency and hierarchical topologies.
+- Per-workspace and per-thread fairness measurements.
 
-Collect at least:
+Run context counts from 64 through 65,536 across issue widths, blocking fractions, latency distributions, and multiple seeds. Collect sustained issue rate, utilization, ready-queue depth, per-thread service distribution, wait-time percentiles, memory queue occupancy, and scheduler overhead.
 
-- Sustained issue rate and utilization.
-- Ready-queue depth and fraction of cycles with insufficient ready work.
-- Per-thread and per-workspace service distribution.
-- Maximum and percentile wait time for continuously eligible threads.
-- Memory concurrency, queue occupancy, and observed latency.
-- Scheduler overhead and cross-cluster traffic.
-
-Run the same workload assumptions against 64, 256, 512, 2,048, 4,096, 16,384, and 65,536 contexts. Include sensitivity sweeps rather than a single “representative” workload.
-
-## 7. Decision gates
+## 8. Decision gates
 
 Do not freeze the 65,536-context target until the model answers:
 
@@ -129,10 +142,10 @@ Do not freeze the 65,536-context target until the model answers:
 5. What is the storage and access cost at each useful point on the curve?
 6. Is the full namespace an architectural requirement, an implementation maximum, or simply a research-scale aspiration?
 
-## 8. Current disposition
+## 9. Current disposition
 
 - Retain 65,536 as a **provisional architectural capacity target** for investigation.
 - Do not claim it is necessary to hide memory latency.
 - Do not equate architectural contexts with simultaneously resident contexts or OS-visible CPUs.
-- Use scaled implementation profiles to validate semantics and explore cost.
-- Require simulation and resource estimates before selecting a physical scheduler or register-file topology.
+- Treat analytical estimates as hypotheses to test, not design proofs.
+- Require richer simulation, workload evidence, and resource estimates before selecting a physical scheduler or register-file topology.

@@ -32,6 +32,10 @@ A 128-bit register does not imply 128-bit addresses, instructions, memory buses,
 - [ISA, ABI, and toolchain plan 0.2](docs/architecture/isa-abi-and-toolchain-plan-0.2.md)
 - [Scheduler simulation](tools/scheduler-sim/README.md)
 
+### Architecture diagrams
+- [Physical system block diagram 0.1](docs/architecture/physical-system-block-diagram-0.1.md)
+- [Logical data paths 0.1](docs/architecture/data-paths-0.1.md)
+
 ### Architecture research baseline
 - [Architecture overview 0.1](docs/architecture/overview-0.1.md)
 - [Scheduling model research 0.1](docs/architecture/scheduling-model-0.1.md)

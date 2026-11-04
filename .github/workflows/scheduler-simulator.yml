@@ -173,6 +173,23 @@ jobs:
           grep -Eq 'remoteMemoryLatencyCycles=[1-9][0-9]*' <<< "$locality_only"
           printf '%s\n' "$locality_only"
 
+      - name: Verify byte bandwidth and bank contention
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.f128x.sim.ContextSweep
+          baseline="$(java -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
+          bounded="$(java -Df128x.memoryRequestBytes=64 -Df128x.memoryChannels=4 -Df128x.memoryBanksPerChannel=8 -Df128x.memoryBandwidthBytesPerCycle=16 -Df128x.bankConflictPenalty=2 -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
+          grep -q 'memorySystemEnabled=true memoryRequestBytes=64 memoryChannels=4 memoryBanksPerChannel=8 memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' <<< "$bounded"
+          grep -Eq 'bankConflictRequests=[1-9][0-9]*' <<< "$bounded"
+          grep -Eq 'bankConflictWaitCycles=[1-9][0-9]*' <<< "$bounded"
+          grep -Eq 'memoryServiceCycles=[1-9][0-9]*' <<< "$bounded"
+          grep -Eq 'maxBankOutstanding=[1-9][0-9]*' <<< "$bounded"
+          awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="memoryIssues") issues=p[2]; if (p[1]=="completedRequests") completed=p[2]; if (p[1]=="memoryBytesIssued") issued=p[2]; if (p[1]=="memoryBytesCompleted") done=p[2]; if (p[1]=="measuredIPC") ipc=p[2]; } } END { if (issued != issues * 64 || done != completed * 64 || done > issued || ipc >= 4.0) exit 1; }' <<< "$bounded"
+          awk -v baseline="$baseline" '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="measuredIPC") bounded=p[2]; } } END { for (i=1; i<=split(baseline, fields, " "); i++) { split(fields[i], p, "="); if (p[1]=="measuredIPC") base=p[2]; } if (bounded >= base) exit 1; }' <<< "$bounded"
+          printf '%s\n' "$baseline"
+          printf '%s\n' "$bounded"
+
       - name: Verify memory completion-rate backpressure
         shell: bash
         run: |

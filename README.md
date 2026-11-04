@@ -17,7 +17,7 @@ The project is not a TMS9900 ISA clone and does not promise TMS9900 binary compa
 
 These are architectural capacity targets, not a requirement that every implementation physically instantiate all contexts or provide arbitrary simultaneous access to every register. Context residency, backing, register banking, and access semantics remain under investigation.
 
-A first-order latency-hiding model has been added. It treats 65,536 contexts as a hypothesis to test, not a proven requirement. See [Context capacity and latency model 0.2](docs/architecture/context-capacity-and-latency-model-0.2.md).
+A first-order latency-hiding model treats 65,536 contexts as a hypothesis to test, not a proven requirement. The executable [scheduler simulation](tools/scheduler-sim/README.md) provides an initial cycle-level experiment. See also [Context capacity and latency model 0.2](docs/architecture/context-capacity-and-latency-model-0.2.md).
 
 A 128-bit register does not imply 128-bit addresses, instructions, memory buses, or execution units. Those are independent design decisions.
 
@@ -30,6 +30,7 @@ A 128-bit register does not imply 128-bit addresses, instructions, memory buses,
 - [Workspace protection and shared state 0.2](docs/architecture/workspace-protection-and-shared-state-0.2.md)
 - [Scheduling progress and interrupts 0.2](docs/architecture/scheduling-progress-and-interrupts-0.2.md)
 - [ISA, ABI, and toolchain plan 0.2](docs/architecture/isa-abi-and-toolchain-plan-0.2.md)
+- [Scheduler simulation](tools/scheduler-sim/README.md)
 
 ### Architecture research baseline
 - [Architecture overview 0.1](docs/architecture/overview-0.1.md)

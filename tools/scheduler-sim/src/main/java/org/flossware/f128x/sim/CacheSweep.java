@@ -41,19 +41,38 @@ public final class CacheSweep {
         }
 
         boolean access(long address) {
+            if (contains(address)) {
+                return true;
+            }
+            insert(address);
+            return false;
+        }
+
+        boolean contains(long address) {
+            long line = Long.divideUnsigned(address, lineBytes);
+            int setIndex = (int) Long.remainderUnsigned(line, setCount);
+            long tag = Long.divideUnsigned(line, setCount);
+            ArrayDeque<Long> set = sets.get(setIndex);
+            if (!set.remove(tag)) {
+                return false;
+            }
+            set.addLast(tag);
+            return true;
+        }
+
+        void insert(long address) {
             long line = Long.divideUnsigned(address, lineBytes);
             int setIndex = (int) Long.remainderUnsigned(line, setCount);
             long tag = Long.divideUnsigned(line, setCount);
             ArrayDeque<Long> set = sets.get(setIndex);
             if (set.remove(tag)) {
                 set.addLast(tag);
-                return true;
+                return;
             }
             if (set.size() == ways) {
                 set.removeFirst();
             }
             set.addLast(tag);
-            return false;
         }
     }
 

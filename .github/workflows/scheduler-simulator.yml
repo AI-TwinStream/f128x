@@ -68,6 +68,16 @@ jobs:
             done
           done
 
+      - name: Repeat MLP sweep across deterministic seeds
+        run: |
+          for seed in 1 7 42 101; do
+            for outstanding in 1 2 4 8; do
+              for contexts in 64 128 256 512; do
+                java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep "$contexts" 4 300 0.25 100000 "$seed" "$outstanding"
+              done
+            done
+          done
+
       - name: Exercise multi-class finite-queue and dependency model
         shell: bash
         run: |

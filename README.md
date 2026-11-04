@@ -1,37 +1,58 @@
 # f128x
 
-**f128x** is an ambitious 128-bit evolution of the Texas Instruments TMS9900 architecture. The project explores how to carry the TMS9900's distinctive workspace-oriented programming model into a modern processor with a substantially larger register file and native 128-bit computation.
+f128x is a FlossWare processor-architecture research project. It began as a 128-bit successor exploration inspired by the Texas Instruments TMS9900 and its workspace-oriented programming model. The current direction expands that concept into a massively multithreaded, workspace-oriented general-purpose processor.
 
-The first platform target is the TI-99/4A, whose TMS9900 heritage gives the project its architectural starting point. f128x is a successor architecture, not a plug-in arithmetic coprocessor and not a promise of TMS9900 binary compatibility.
+The project is not a TMS9900 ISA clone and does not promise TMS9900 binary compatibility.
 
-## Architectural direction
+## Current architectural direction
 
-The current working baseline is:
+| Property | Current target |
+|---|---:|
+| Workspaces | 4,096 |
+| Threads per workspace | 16 |
+| Total architectural thread contexts | 65,536 |
+| Private registers per thread | 128 × 128-bit |
+| Shared registers per workspace | 128 × 128-bit |
+| Aggregate architectural register storage | 136 MiB |
 
-- **128 general-purpose registers (GPRs), each 128 bits wide.**
-- A native 128-bit scalar integer datapath.
-- A hardware register file, with a modernized workspace/window mechanism investigated as an architectural feature.
-- Dedicated control state for the program counter, status, interrupt/exception handling, and address-space control.
-- A TMS9900-derived programming model: workspace-oriented register organization, orthogonal operations where practical, and a deliberate separation between CPU state and platform devices.
-- Explicitly defined byte, word, and wider memory operations.
+These are architectural capacity targets. They do not require every implementation to physically instantiate all contexts or provide arbitrary simultaneous access to every register.
 
-The 128 GPRs contain 2,048 bytes (2 KiB) of architectural register state. That is a deliberate design point, not an accidental consequence of widening the original sixteen workspace registers.
+A 128-bit register does not imply 128-bit addresses, instructions, memory buses, or execution units. Those are independent design decisions.
 
-## Widths are independent
+## Documentation
 
-A 128-bit register does not require 128-bit addresses, instructions, or external buses. Register width, scalar arithmetic width, virtual address width, physical address width, instruction encoding, and platform bus width will be specified independently.
+### Architecture
+- [Architecture overview 0.1](docs/architecture/overview-0.1.md)
+- [Scheduling model research 0.1](docs/architecture/scheduling-model-0.1.md)
+- [Historical register-file and workspace notes](docs/architecture/register-file.md)
+- [Original architecture overview](docs/architecture/overview.md)
 
-## TI-99/4A platform
+### Research
+- [Historical architecture research 0.1](docs/research/historical-architectures-0.1.md)
 
-The TI-99/4A is the first platform target, not a constraint that every f128x implementation must reproduce. The platform work will investigate retaining original video, sound, keyboard, and expansion devices through explicit adapters and bridges. Board-level electrical and timing compatibility must be demonstrated, not assumed.
+### Platform and operating systems
+- [Operating-system strategy 0.1](docs/platforms/os-strategy-0.1.md)
+- [TI-99/4A platform strategy](docs/platforms/ti-99-4a.md)
+
+### Planning
+- [Roadmap](docs/roadmap.md)
+
+## Historical inspiration
+
+The current research priorities are:
+- TMS9900: workspace-oriented register organization.
+- Denelcor HEP and Tera/Cray MTA: fine-grained multithreading and latency hiding.
+- CDC 6600: scoreboarding and functional-unit scheduling.
+- INMOS Transputer: explicit communication between execution domains.
+- XMOS XCore: practical hardware-thread implementation.
+- Cray vector architectures: vector execution and memory throughput.
+
+Historical mechanisms are research inputs, not automatic design requirements.
+
+## Operating-system strategy
+
+NetBSD is the preferred first full OS-porting candidate because of its history of supporting diverse architectures and its machine-dependent/machine-independent separation. DragonFly BSD is a high-priority kernel research reference, especially for scheduler layering, per-CPU scheduling, SMP, and NUMA-aware design. Neither OS choice is frozen.
 
 ## Status
 
-Early architecture definition. The 128 × 128-bit GPR baseline is selected for exploration. Instruction encoding, address width, register-window semantics, ABI, memory model, FPGA target, and board-level interface remain open until documented and tested.
-
-## Documents
-
-- [Architecture overview](docs/architecture/overview.md)
-- [Register file and workspace model](docs/architecture/register-file.md)
-- [TI-99/4A platform strategy](docs/platforms/ti-99-4a.md)
-- [Initial roadmap](docs/roadmap.md)
+Architectural research and specification development. The current workspace/thread capacity and register organization are provisional architectural targets. The ISA, ABI, scheduler microarchitecture, memory model, privilege architecture, and physical implementation are not frozen.

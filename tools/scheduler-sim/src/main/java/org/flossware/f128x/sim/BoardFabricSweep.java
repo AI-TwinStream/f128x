@@ -21,7 +21,8 @@ public final class BoardFabricSweep {
     private record Result(int boards, int clustersPerBoard, int issueWidthPerCluster,
             long instructions, long memoryRequests, long remoteRequests,
             long fabricBytes, long queueFullAttempts, long idleClusterCycles,
-            long measuredCycles, long maxOutstanding, long[] boardIssues) {
+            long measuredCycles, long maxOutstanding, long[] boardIssues,
+            long[] boardRemoteRequests) {
         double ipc() {
             return (double) instructions / measuredCycles;
         }
@@ -115,6 +116,12 @@ public final class BoardFabricSweep {
                             board, result.boardIssues()[board]);
                 }
                 System.out.println();
+                System.out.print("boardRemoteRequests=");
+                for (int board = 0; board < result.boardRemoteRequests().length; board++) {
+                    System.out.printf("%s%d:%d", board == 0 ? "" : ",",
+                            board, result.boardRemoteRequests()[board]);
+                }
+                System.out.println();
             }
         }
     }
@@ -157,6 +164,7 @@ public final class BoardFabricSweep {
         long[][] boardMemoryAvailableCycle =
                 new long[boards][localMemoryLanesPerBoard];
         long[] boardIssues = new long[boards];
+        long[] boardRemoteRequests = new long[boards];
         int measuredCycles = cycles - warmup;
 
         for (int cycle = 0; cycle < cycles; cycle++) {
@@ -211,6 +219,7 @@ public final class BoardFabricSweep {
                             requestFabricAvailableCycle = requestEnd;
                             responseFabricAvailableCycle = responseEnd;
                             remoteRequests++;
+                            boardRemoteRequests[targetBoard]++;
                             fabricBytes += 2L * requestBytes;
                         } else {
                             long memoryCycles = Math.max(1,
@@ -248,7 +257,7 @@ public final class BoardFabricSweep {
         return new Result(boards, clustersPerBoard, issueWidthPerCluster,
                 instructions, memoryRequests, remoteRequests, fabricBytes,
                 queueFullAttempts, idleClusterCycles, measuredCycles,
-                maxOutstanding, boardIssues);
+                maxOutstanding, boardIssues, boardRemoteRequests);
     }
 
     private static int selectEarliestLane(long[] availableCycles) {

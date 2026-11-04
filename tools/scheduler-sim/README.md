@@ -265,3 +265,20 @@ java -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep
 Use `-Df128x.fabric.operationsPerBoard=2048`, `-Df128x.fabric.seed=42`, `-Df128x.fabric.injectionInterval=2`, and `-Df128x.fabric.memoryLanesPerBoard=1` to control workload size, seed, per-source injection spacing, and destination memory service lanes. Smaller intervals increase offered load; larger intervals reduce it. CI runs the full topology matrix at intervals 1, 2, and 4, repeats the interval-2 matrix across multiple seeds, and tests two/four destination memory lanes. The normal `BoardFabricSweep` CI smoke path also runs a deterministic switched-mesh check, so this experiment is compiled and exercised by the existing workflow.
 
 This is a topology sensitivity model, not a routing or electrical model. It uses deterministic shortest-path routing, fixed injection intervals, FIFO link availability, one destination-memory service lane, and no packet arbitration policy, virtual channels, adaptive routing, failures, congestion control, or physical link costs. The shared topology is a single serialized fabric resource per direction; ring and mesh topologies have per-directed-hop resources, with the configured number of parallel links per neighbor. Compare like-for-like board counts, patterns, and link counts; do not interpret the absolute throughput as a hardware prediction.
+
+
+### Fabric arbitration sensitivity
+
+The switched-fabric experiment supports two ingress arbitration orders through
+`-Df128x.fabric.arbitration=fixed|round_robin`. The default remains `fixed`
+to preserve the published baseline. `round_robin` rotates the first source
+served at each injection epoch, preventing a permanently favored low-numbered
+source when multiple sources inject together.
+
+Each result reports minimum and maximum per-source mean latency plus
+`latencyFairnessJain`, the Jain index computed over reciprocal per-source mean
+latency. This is a latency-balance indicator, not a throughput fairness guarantee.
+The arbitration point is the global ingress ordering in this transaction-level
+model; it is not yet independent per-hop switch arbitration or a flit/packet
+arbiter. CI runs the full 81-case matrix under both policies and checks
+deterministic arbitration smoke coverage.

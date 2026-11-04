@@ -291,3 +291,135 @@ Normalization implementation correction: the initial 128-byte/cycle target was n
 
 
 The normalized fabric service model uses fractional cycle availability for links and memory service. This is deliberate: integer-cycle ceiling for a 64-byte packet would make several nominal link bandwidths collapse to the same one-cycle service time, defeating the normalization. Reported latency and completion cycle values may therefore be fractional. The model remains deterministic and is not claiming sub-cycle hardware timing accuracy; fractional cycles are a capacity-accounting device for the comparative experiment.
+
+
+## Equal-bisection topology matrix results (2026-11-04)
+
+The corrected normalized matrix completed successfully in [GitHub Actions run 41931395805](https://github.com/AI-TwinStream/f128x/actions/runs/41931395805), at seed 42 and 2,048 operations per board. All 81 combinations passed. Each topology at a given board count received the same aggregate bisection budget for each link-count setting: 192, 384, or 768 bytes/cycle. Fractional link service cycles are used to preserve the bandwidth ratios for 64-byte packets.
+
+### 16-board results
+
+| Traffic | Topology | Links | Cut edges | Per-link B/cycle | Aggregate cut B/cycle | Mean latency | p95 latency | Operations/cycle |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| uniform | shared | 1 | 1 | 192 | 3543.47 | 6618.00 | 2.96436 |
+| uniform | shared | 2 | 1 | 192 | 837.18 | 1456.67 | 5.83095 |
+| uniform | shared | 4 | 1 | 192 | 138.97 | 154.33 | 7.74352 |
+| uniform | ring | 1 | 2 | 96 | 7258.95 | 13575.00 | 1.78142 |
+| uniform | ring | 2 | 2 | 96 | 1673.13 | 2986.00 | 4.51931 |
+| uniform | ring | 4 | 2 | 96 | 154.56 | 177.67 | 7.67580 |
+| uniform | mesh | 1 | 4 | 48 | 408.05 | 655.67 | 6.82809 |
+| uniform | mesh | 2 | 4 | 48 | 145.70 | 164.00 | 7.70287 |
+| uniform | mesh | 4 | 4 | 48 | 142.58 | 158.67 | 7.70347 |
+| hotspot | shared | 1 | 1 | 192 | 13438.02 | 25419.00 | 1.06234 |
+| hotspot | shared | 2 | 1 | 192 | 13437.63 | 25418.67 | 1.06236 |
+| hotspot | shared | 4 | 1 | 192 | 13437.50 | 25418.67 | 1.06236 |
+| hotspot | ring | 1 | 2 | 96 | 12621.09 | 25346.33 | 1.06145 |
+| hotspot | ring | 2 | 2 | 96 | 12621.09 | 25346.33 | 1.06145 |
+| hotspot | ring | 4 | 2 | 96 | 12621.09 | 25346.33 | 1.06145 |
+| hotspot | mesh | 1 | 4 | 48 | 14858.81 | 29867.67 | 0.91918 |
+| hotspot | mesh | 2 | 4 | 48 | 12618.45 | 25343.67 | 1.06150 |
+| hotspot | mesh | 4 | 4 | 48 | 12618.45 | 25343.67 | 1.06150 |
+| paired | shared | 1 | 1 | 192 | 3539.83 | 6612.00 | 2.96597 |
+| paired | shared | 2 | 1 | 192 | 809.17 | 1423.67 | 5.86539 |
+| paired | shared | 4 | 1 | 192 | 126.17 | 126.67 | 7.76370 |
+| paired | ring | 1 | 2 | 96 | 126.33 | 126.33 | 7.76432 |
+| paired | ring | 2 | 2 | 96 | 126.33 | 126.33 | 7.76432 |
+| paired | ring | 4 | 2 | 96 | 126.33 | 126.33 | 7.76432 |
+| paired | mesh | 1 | 4 | 48 | 127.67 | 127.67 | 7.76186 |
+| paired | mesh | 2 | 4 | 48 | 127.67 | 127.67 | 7.76186 |
+| paired | mesh | 4 | 4 | 48 | 127.67 | 127.67 | 7.76186 |
+
+### Full 81-case results
+
+Latency and completion values are in model cycles. Bandwidth values are bytes/cycle. The `cut` is the minimum balanced bisection edge count for the topology.
+
+| Boards | Traffic | Topology | Links | Cut edges | Per-link B/cycle | Aggregate cut B/cycle | Operations | Mean latency | p95 latency | Completion cycle | Operations/cycle |
+|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 4 | uniform | shared | 1 | 1 | 192 | 192 | 8192 | 126.98 | 128.67 | 4222.33 | 1.94016 |
+| 4 | uniform | shared | 2 | 1 | 192 | 384 | 8192 | 126.43 | 128.00 | 4222.00 | 1.94031 |
+| 4 | uniform | shared | 4 | 1 | 192 | 768 | 8192 | 126.19 | 127.67 | 4221.67 | 1.94047 |
+| 4 | uniform | ring | 1 | 2 | 96 | 192 | 8192 | 129.70 | 135.00 | 4229.67 | 1.93680 |
+| 4 | uniform | ring | 2 | 2 | 96 | 384 | 8192 | 128.74 | 132.67 | 4226.67 | 1.93817 |
+| 4 | uniform | ring | 4 | 2 | 96 | 768 | 8192 | 128.73 | 132.67 | 4226.67 | 1.93817 |
+| 4 | uniform | mesh | 1 | 2 | 96 | 192 | 8192 | 128.22 | 132.00 | 4227.00 | 1.93802 |
+| 4 | uniform | mesh | 2 | 2 | 96 | 384 | 8192 | 128.20 | 132.00 | 4227.00 | 1.93802 |
+| 4 | uniform | mesh | 4 | 2 | 96 | 768 | 8192 | 128.20 | 132.00 | 4227.00 | 1.93802 |
+| 4 | hotspot | shared | 1 | 1 | 192 | 192 | 8192 | 1150.08 | 2072.00 | 6269.00 | 1.30675 |
+| 4 | hotspot | shared | 2 | 1 | 192 | 384 | 8192 | 1149.50 | 2071.00 | 6268.67 | 1.30682 |
+| 4 | hotspot | shared | 4 | 1 | 192 | 768 | 8192 | 1149.00 | 2070.67 | 6268.67 | 1.30682 |
+| 4 | hotspot | ring | 1 | 2 | 96 | 192 | 8192 | 895.87 | 2040.00 | 6273.00 | 1.30591 |
+| 4 | hotspot | ring | 2 | 2 | 96 | 384 | 8192 | 895.87 | 2040.00 | 6273.00 | 1.30591 |
+| 4 | hotspot | ring | 4 | 2 | 96 | 768 | 8192 | 895.87 | 2040.00 | 6273.00 | 1.30591 |
+| 4 | hotspot | mesh | 1 | 2 | 96 | 192 | 8192 | 895.87 | 2040.00 | 6274.00 | 1.30571 |
+| 4 | hotspot | mesh | 2 | 2 | 96 | 384 | 8192 | 895.87 | 2040.00 | 6274.00 | 1.30571 |
+| 4 | hotspot | mesh | 4 | 2 | 96 | 768 | 8192 | 895.87 | 2040.00 | 6274.00 | 1.30571 |
+| 4 | paired | shared | 1 | 1 | 192 | 192 | 8192 | 126.17 | 126.67 | 4220.67 | 1.94093 |
+| 4 | paired | shared | 2 | 1 | 192 | 384 | 8192 | 125.83 | 126.00 | 4220.00 | 1.94123 |
+| 4 | paired | shared | 4 | 1 | 192 | 768 | 8192 | 125.67 | 125.67 | 4219.67 | 1.94139 |
+| 4 | paired | ring | 1 | 2 | 96 | 192 | 8192 | 126.33 | 126.33 | 4220.33 | 1.94108 |
+| 4 | paired | ring | 2 | 2 | 96 | 384 | 8192 | 126.33 | 126.33 | 4220.33 | 1.94108 |
+| 4 | paired | ring | 4 | 2 | 96 | 768 | 8192 | 126.33 | 126.33 | 4220.33 | 1.94108 |
+| 4 | paired | mesh | 1 | 2 | 96 | 192 | 8192 | 126.33 | 126.33 | 4220.33 | 1.94108 |
+| 4 | paired | mesh | 2 | 2 | 96 | 384 | 8192 | 126.33 | 126.33 | 4220.33 | 1.94108 |
+| 4 | paired | mesh | 4 | 2 | 96 | 768 | 8192 | 126.33 | 126.33 | 4220.33 | 1.94108 |
+| 8 | uniform | shared | 1 | 1 | 192 | 192 | 16384 | 817.41 | 1434.00 | 5597.00 | 2.92728 |
+| 8 | uniform | shared | 2 | 1 | 192 | 384 | 16384 | 129.83 | 135.67 | 4223.67 | 3.87909 |
+| 8 | uniform | shared | 4 | 1 | 192 | 768 | 16384 | 128.22 | 133.67 | 4223.00 | 3.87971 |
+| 8 | uniform | ring | 1 | 2 | 96 | 192 | 16384 | 944.93 | 1631.33 | 5808.33 | 2.82077 |
+| 8 | uniform | ring | 2 | 2 | 96 | 384 | 16384 | 136.50 | 147.33 | 4236.00 | 3.86780 |
+| 8 | uniform | ring | 4 | 2 | 96 | 768 | 16384 | 134.98 | 144.33 | 4234.67 | 3.86902 |
+| 8 | uniform | mesh | 1 | 3 | 64 | 192 | 16384 | 134.72 | 143.00 | 4237.00 | 3.86689 |
+| 8 | uniform | mesh | 2 | 3 | 64 | 384 | 16384 | 133.69 | 142.00 | 4237.00 | 3.86689 |
+| 8 | uniform | mesh | 4 | 3 | 64 | 768 | 16384 | 133.45 | 142.00 | 4237.00 | 3.86689 |
+| 8 | hotspot | shared | 1 | 1 | 192 | 192 | 16384 | 5246.04 | 9854.00 | 14461.00 | 1.13298 |
+| 8 | hotspot | shared | 2 | 1 | 192 | 384 | 16384 | 5245.58 | 9853.67 | 14460.67 | 1.13300 |
+| 8 | hotspot | shared | 4 | 1 | 192 | 768 | 16384 | 5245.33 | 9852.67 | 14460.67 | 1.13300 |
+| 8 | hotspot | ring | 1 | 2 | 96 | 192 | 16384 | 4612.02 | 9787.33 | 14472.33 | 1.13209 |
+| 8 | hotspot | ring | 2 | 2 | 96 | 384 | 16384 | 4612.02 | 9787.33 | 14472.33 | 1.13209 |
+| 8 | hotspot | ring | 4 | 2 | 96 | 768 | 16384 | 4612.02 | 9787.33 | 14472.33 | 1.13209 |
+| 8 | hotspot | mesh | 1 | 3 | 64 | 192 | 16384 | 4611.81 | 9787.00 | 14472.00 | 1.13212 |
+| 8 | hotspot | mesh | 2 | 3 | 64 | 384 | 16384 | 4611.81 | 9787.00 | 14472.00 | 1.13212 |
+| 8 | hotspot | mesh | 4 | 3 | 64 | 768 | 16384 | 4611.81 | 9787.00 | 14472.00 | 1.13212 |
+| 8 | paired | shared | 1 | 1 | 192 | 192 | 16384 | 809.17 | 1423.67 | 5586.67 | 2.93270 |
+| 8 | paired | shared | 2 | 1 | 192 | 384 | 16384 | 126.17 | 126.67 | 4220.67 | 3.88185 |
+| 8 | paired | shared | 4 | 1 | 192 | 768 | 16384 | 125.83 | 126.00 | 4220.00 | 3.88246 |
+| 8 | paired | ring | 1 | 2 | 96 | 192 | 16384 | 126.33 | 126.33 | 4220.33 | 3.88216 |
+| 8 | paired | ring | 2 | 2 | 96 | 384 | 16384 | 126.33 | 126.33 | 4220.33 | 3.88216 |
+| 8 | paired | ring | 4 | 2 | 96 | 768 | 16384 | 126.33 | 126.33 | 4220.33 | 3.88216 |
+| 8 | paired | mesh | 1 | 3 | 64 | 192 | 16384 | 129.00 | 137.00 | 4231.00 | 3.87237 |
+| 8 | paired | mesh | 2 | 3 | 64 | 384 | 16384 | 128.50 | 137.00 | 4231.00 | 3.87237 |
+| 8 | paired | mesh | 4 | 3 | 64 | 768 | 16384 | 128.50 | 137.00 | 4231.00 | 3.87237 |
+| 16 | uniform | shared | 1 | 1 | 192 | 192 | 32768 | 3543.47 | 6618.00 | 11054.00 | 2.96436 |
+| 16 | uniform | shared | 2 | 1 | 192 | 384 | 32768 | 837.18 | 1456.67 | 5619.67 | 5.83095 |
+| 16 | uniform | shared | 4 | 1 | 192 | 768 | 32768 | 138.97 | 154.33 | 4231.67 | 7.74352 |
+| 16 | uniform | ring | 1 | 2 | 96 | 192 | 32768 | 7258.95 | 13575.00 | 18394.33 | 1.78142 |
+| 16 | uniform | ring | 2 | 2 | 96 | 384 | 32768 | 1673.13 | 2986.00 | 7250.67 | 4.51931 |
+| 16 | uniform | ring | 4 | 2 | 96 | 768 | 32768 | 154.56 | 177.67 | 4269.00 | 7.67580 |
+| 16 | uniform | mesh | 1 | 4 | 48 | 192 | 32768 | 408.05 | 655.67 | 4799.00 | 6.82809 |
+| 16 | uniform | mesh | 2 | 4 | 48 | 384 | 32768 | 145.70 | 164.00 | 4254.00 | 7.70287 |
+| 16 | uniform | mesh | 4 | 4 | 48 | 768 | 32768 | 142.58 | 158.67 | 4253.67 | 7.70347 |
+| 16 | hotspot | shared | 1 | 1 | 192 | 192 | 32768 | 13438.02 | 25419.00 | 30845.00 | 1.06234 |
+| 16 | hotspot | shared | 2 | 1 | 192 | 384 | 32768 | 13437.63 | 25418.67 | 30844.67 | 1.06236 |
+| 16 | hotspot | shared | 4 | 1 | 192 | 768 | 32768 | 13437.50 | 25418.67 | 30844.67 | 1.06236 |
+| 16 | hotspot | ring | 1 | 2 | 96 | 192 | 32768 | 12621.09 | 25346.33 | 30871.00 | 1.06145 |
+| 16 | hotspot | ring | 2 | 2 | 96 | 384 | 32768 | 12621.09 | 25346.33 | 30871.00 | 1.06145 |
+| 16 | hotspot | ring | 4 | 2 | 96 | 768 | 32768 | 12621.09 | 25346.33 | 30871.00 | 1.06145 |
+| 16 | hotspot | mesh | 1 | 4 | 48 | 192 | 32768 | 14858.81 | 29867.67 | 35649.00 | 0.91918 |
+| 16 | hotspot | mesh | 2 | 4 | 48 | 384 | 32768 | 12618.45 | 25343.67 | 30869.67 | 1.06150 |
+| 16 | hotspot | mesh | 4 | 4 | 48 | 768 | 32768 | 12618.45 | 25343.67 | 30869.67 | 1.06150 |
+| 16 | paired | shared | 1 | 1 | 192 | 192 | 32768 | 3539.83 | 6612.00 | 11048.00 | 2.96597 |
+| 16 | paired | shared | 2 | 1 | 192 | 384 | 32768 | 809.17 | 1423.67 | 5586.67 | 5.86539 |
+| 16 | paired | shared | 4 | 1 | 192 | 768 | 32768 | 126.17 | 126.67 | 4220.67 | 7.76370 |
+| 16 | paired | ring | 1 | 2 | 96 | 192 | 32768 | 126.33 | 126.33 | 4220.33 | 7.76432 |
+| 16 | paired | ring | 2 | 2 | 96 | 384 | 32768 | 126.33 | 126.33 | 4220.33 | 7.76432 |
+| 16 | paired | ring | 4 | 2 | 96 | 768 | 32768 | 126.33 | 126.33 | 4220.33 | 7.76432 |
+| 16 | paired | mesh | 1 | 4 | 48 | 192 | 32768 | 127.67 | 127.67 | 4221.67 | 7.76186 |
+| 16 | paired | mesh | 2 | 4 | 48 | 384 | 32768 | 127.67 | 127.67 | 4221.67 | 7.76186 |
+| 16 | paired | mesh | 4 | 4 | 48 | 768 | 32768 | 127.67 | 127.67 | 4221.67 | 7.76186 |
+
+### Initial interpretation
+
+- At 16 boards and one-link/192-byte-per-cycle bisection, the mesh proxy delivers 6.82809 operations/cycle under uniform traffic, versus 1.78142 for the ring and 2.96436 for the shared reference. The mesh still leads, but the dramatic gap from the original unnormalized matrix is substantially reduced. That is exactly why normalization was necessary.
+- At four links (768 aggregate cut bytes/cycle), the 16-board uniform cases converge: shared 7.74352, ring 7.67580, mesh 7.70347 operations/cycle. Under this offered load, the common fabric capacity is no longer the dominant bottleneck.
+- One-link hotspot behavior needs separate interpretation: the destination memory service lane is a bottleneck shared by these topologies. Fabric bandwidth alone cannot solve endpoint serialization.
+- This remains a deterministic, single-seed comparison with a simplified reservation-order model. Multi-seed and injection-rate sweeps are next; no architecture should be selected from these numbers alone.

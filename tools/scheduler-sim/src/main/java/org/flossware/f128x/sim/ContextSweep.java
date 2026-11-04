@@ -1,7 +1,10 @@
 package org.flossware.f128x.sim;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.SplittableRandom;
 
@@ -91,7 +94,12 @@ public final class ContextSweep {
             }
         }
 
-        var ready = new ArrayDeque<Integer>(contexts);
+        String schedulerStrategy = System.getProperty("f128x.scheduler", "fifo");
+        int workspaceCount = (contexts + 15) / 16;
+        int defaultClusters = Math.max(1, Math.min(8, workspaceCount));
+        int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
+        ReadyScheduler ready = createReadyScheduler(
+                schedulerStrategy, contexts, clusterCount);
         var queueWaiters = new ArrayDeque<Integer>();
         var completions = new PriorityQueue<>(
                 Comparator.comparingLong(Completion::cycle));
@@ -120,6 +128,7 @@ public final class ContextSweep {
         long completedDependencies = 0;
         long maxQueueOccupancy = 0;
         int maxThreadOutstandingObserved = 0;
+        long[] workspaceIssues = new long[workspaceCount];
         long[] classIssues = new long[memoryClasses.length];
         long[] classCompletions = new long[memoryClasses.length];
         final int warmup = Math.min(10_000, cycles / 10);
@@ -183,7 +192,10 @@ public final class ContextSweep {
 
             // Visit each thread that was ready at cycle start at most once.
             while (candidates-- > 0 && issuedThisCycle < issueWidth) {
-                int thread = ready.removeFirst();
+                int thread = ready.poll();
+                if (thread < 0) {
+                    break;
+                }
                 int selectedClass = pendingClass[thread];
 
                 if (selectedClass < 0
@@ -207,7 +219,9 @@ public final class ContextSweep {
                     pendingClass[thread] = -1;
                     memoryIssues++;
                     classIssues[selectedClass]++;
+                    workspaceIssues[thread / 16]++;
                     issuedThisCycle++;
+                    workspaceIssues[thread / 16]++;
                     if (cycle >= warmup) {
                         measuredIssued++;
                     }
@@ -263,8 +277,23 @@ public final class ContextSweep {
             outstandingAtEnd += outstandingByThread[thread];
         }
 
+        long totalWorkspaceIssues = 0;
+        long minWorkspaceIssues = Long.MAX_VALUE;
+        long maxWorkspaceIssues = 0;
+        double sumWorkspaceSquares = 0.0;
+        for (long count : workspaceIssues) {
+            totalWorkspaceIssues += count;
+            minWorkspaceIssues = Math.min(minWorkspaceIssues, count);
+            maxWorkspaceIssues = Math.max(maxWorkspaceIssues, count);
+            sumWorkspaceSquares += (double) count * count;
+        }
+        double workspaceJainFairness = totalWorkspaceIssues == 0 ? 1.0
+                : (double) totalWorkspaceIssues * totalWorkspaceIssues
+                        / (workspaceIssues.length * sumWorkspaceSquares);
+
         System.out.printf(
-                "contexts=%d issueWidth=%d memoryFraction=%.3f "
+                "scheduler=%s clusters=%d schedulerSteals=%d schedulerSelections=%d "
+                        + "contexts=%d workspaces=%d issueWidth=%d memoryFraction=%.3f "
                         + "dependencyFraction=%.3f dependencyLatency=%d "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
                         + "memoryCompletionRate=%d cycles=%d warmup=%d measuredIPC=%.4f "
@@ -276,8 +305,12 @@ public final class ContextSweep {
                         + "waitingAtThreadLimitAtEnd=%d "
                         + "waitingAtQueueLimitAtEnd=%d outstandingAtEnd=%d "
                         + "dependencyIssues=%d completedDependencies=%d "
-                        + "dependenciesInFlightAtEnd=%d seed=%d%n",
-                contexts, issueWidth, memoryFraction, dependencyFraction,
+                        + "dependenciesInFlightAtEnd=%d "
+                        + "workspaceIssuesMin=%d workspaceIssuesMax=%d "
+                        + "workspaceJainFairness=%.6f seed=%d%n",
+                ready.name(), ready.clusterCount(), ready.steals(),
+                ready.selectionProbes(), contexts, workspaceCount, issueWidth,
+                memoryFraction, dependencyFraction,
                 dependencyLatency, maxOutstanding,
                 memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
@@ -285,7 +318,7 @@ public final class ContextSweep {
                 dependencyWaiterCycles, serviceBacklogCycles, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
                 dependencyIssues, completedDependencies, dependencyWakeups.size(),
-                seed);
+                minWorkspaceIssues, maxWorkspaceIssues, workspaceJainFairness, seed);
 
         for (int i = 0; i < memoryClasses.length; i++) {
             System.out.printf("memoryClass=%s latency=%d issues=%d completions=%d%n",

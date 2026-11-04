@@ -157,6 +157,7 @@ public final class ContextSweep {
         long[] workspaceIssues = new long[workspaceCount];
         long[] workspaceMeasuredIssues = new long[workspaceCount];
         long[] workspaceRunnableThreadCycles = new long[workspaceCount];
+        long[] workspaceRunnableWorkspaceCycles = new long[workspaceCount];
         long[] classIssues = new long[memoryClasses.length];
         long[] classCompletions = new long[memoryClasses.length];
         final int warmup = Math.min(10_000, cycles / 10);
@@ -214,7 +215,8 @@ public final class ContextSweep {
             }
 
             if (cycle >= warmup) {
-                ready.accumulateRunnableThreadCycles(workspaceRunnableThreadCycles);
+                ready.accumulateRunnableCycles(
+                        workspaceRunnableThreadCycles, workspaceRunnableWorkspaceCycles);
             }
 
             int candidates = ready.size();
@@ -330,32 +332,58 @@ public final class ContextSweep {
                 : (double) totalWorkspaceIssues * totalWorkspaceIssues
                         / (workspaceIssues.length * sumWorkspaceSquares);
         long totalRunnableThreadCycles = 0;
-        double serviceRateSum = 0.0;
-        double serviceRateSquares = 0.0;
-        double minWorkspaceServiceRate = Double.POSITIVE_INFINITY;
-        double maxWorkspaceServiceRate = 0.0;
+        double threadOpportunityRateSum = 0.0;
+        double threadOpportunityRateSquares = 0.0;
+        double minThreadOpportunityRate = Double.POSITIVE_INFINITY;
+        double maxThreadOpportunityRate = 0.0;
+        double workspaceOpportunityRateSum = 0.0;
+        double workspaceOpportunityRateSquares = 0.0;
+        double minWorkspaceOpportunityRate = Double.POSITIVE_INFINITY;
+        double maxWorkspaceOpportunityRate = 0.0;
         int workspacesWithRunnableOpportunity = 0;
+        int workspacesWithRunnableWorkspaceCycles = 0;
+        long totalRunnableWorkspaceCycles = 0;
         for (int workspace = 0; workspace < workspaceCount; workspace++) {
-            long runnableCycles = workspaceRunnableThreadCycles[workspace];
-            totalRunnableThreadCycles += runnableCycles;
-            if (runnableCycles > 0) {
-                double serviceRate = (double) workspaceMeasuredIssues[workspace]
-                        / runnableCycles;
-                serviceRateSum += serviceRate;
-                serviceRateSquares += serviceRate * serviceRate;
-                minWorkspaceServiceRate = Math.min(
-                        minWorkspaceServiceRate, serviceRate);
-                maxWorkspaceServiceRate = Math.max(
-                        maxWorkspaceServiceRate, serviceRate);
+            long runnableThreadCycles = workspaceRunnableThreadCycles[workspace];
+            long runnableWorkspaceCycles = workspaceRunnableWorkspaceCycles[workspace];
+            totalRunnableThreadCycles += runnableThreadCycles;
+            totalRunnableWorkspaceCycles += runnableWorkspaceCycles;
+            if (runnableThreadCycles > 0) {
+                double rate = (double) workspaceMeasuredIssues[workspace]
+                        / runnableThreadCycles;
+                threadOpportunityRateSum += rate;
+                threadOpportunityRateSquares += rate * rate;
+                minThreadOpportunityRate = Math.min(minThreadOpportunityRate, rate);
+                maxThreadOpportunityRate = Math.max(maxThreadOpportunityRate, rate);
                 workspacesWithRunnableOpportunity++;
             }
+            if (runnableWorkspaceCycles > 0) {
+                double rate = (double) workspaceMeasuredIssues[workspace]
+                        / runnableWorkspaceCycles;
+                workspaceOpportunityRateSum += rate;
+                workspaceOpportunityRateSquares += rate * rate;
+                minWorkspaceOpportunityRate = Math.min(
+                        minWorkspaceOpportunityRate, rate);
+                maxWorkspaceOpportunityRate = Math.max(
+                        maxWorkspaceOpportunityRate, rate);
+                workspacesWithRunnableWorkspaceCycles++;
+            }
         }
-        double workspaceServiceRateJainFairness =
+        double workspaceIssuePerRunnableThreadCycleJainFairness =
                 workspacesWithRunnableOpportunity == 0 ? 1.0
-                : serviceRateSum * serviceRateSum
-                        / (workspacesWithRunnableOpportunity * serviceRateSquares);
+                : threadOpportunityRateSum * threadOpportunityRateSum
+                        / (workspacesWithRunnableOpportunity
+                                * threadOpportunityRateSquares);
+        double workspaceIssuePerRunnableWorkspaceCycleJainFairness =
+                workspacesWithRunnableWorkspaceCycles == 0 ? 1.0
+                : workspaceOpportunityRateSum * workspaceOpportunityRateSum
+                        / (workspacesWithRunnableWorkspaceCycles
+                                * workspaceOpportunityRateSquares);
         if (workspacesWithRunnableOpportunity == 0) {
-            minWorkspaceServiceRate = 0.0;
+            minThreadOpportunityRate = 0.0;
+        }
+        if (workspacesWithRunnableWorkspaceCycles == 0) {
+            minWorkspaceOpportunityRate = 0.0;
         }
 
         System.out.printf(
@@ -379,10 +407,15 @@ public final class ContextSweep {
                         + "workspaceIssuesMin=%d workspaceIssuesMax=%d "
                         + "workspaceIssueJainFairness=%.6f "
                         + "workspaceRunnableThreadCycles=%d "
+                        + "workspaceRunnableWorkspaceCycles=%d "
                         + "workspacesWithRunnableOpportunity=%d "
-                        + "workspaceServiceRateMin=%.8f "
-                        + "workspaceServiceRateMax=%.8f "
-                        + "workspaceServiceRateJainFairness=%.6f seed=%d%n",
+                        + "workspaceIssuePerRunnableThreadCycleMin=%.8f "
+                        + "workspaceIssuePerRunnableThreadCycleMax=%.8f "
+                        + "workspaceIssuePerRunnableThreadCycleJainFairness=%.6f "
+                        + "workspacesWithRunnableWorkspaceCycles=%d "
+                        + "workspaceIssuePerRunnableWorkspaceCycleMin=%.8f "
+                        + "workspaceIssuePerRunnableWorkspaceCycleMax=%.8f "
+                        + "workspaceIssuePerRunnableWorkspaceCycleJainFairness=%.6f seed=%d%n",
                 ready.name(), ready.clusterCount(), ready.steals(),
                 ready.selectionProbes(), contexts, workspaceCount,
                 hotWorkspaceCount, hotWorkspaceRatio, hotMemoryFraction,
@@ -396,9 +429,13 @@ public final class ContextSweep {
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
                 dependencyIssues, completedDependencies, dependencyWakeups.size(),
                 minWorkspaceIssues, maxWorkspaceIssues, workspaceIssueJainFairness,
-                totalRunnableThreadCycles, workspacesWithRunnableOpportunity,
-                minWorkspaceServiceRate, maxWorkspaceServiceRate,
-                workspaceServiceRateJainFairness, seed);
+                totalRunnableThreadCycles, totalRunnableWorkspaceCycles,
+                workspacesWithRunnableOpportunity,
+                minThreadOpportunityRate, maxThreadOpportunityRate,
+                workspaceIssuePerRunnableThreadCycleJainFairness,
+                workspacesWithRunnableWorkspaceCycles,
+                minWorkspaceOpportunityRate, maxWorkspaceOpportunityRate,
+                workspaceIssuePerRunnableWorkspaceCycleJainFairness, seed);
 
         for (int i = 0; i < memoryClasses.length; i++) {
             System.out.printf("memoryClass=%s latency=%d issues=%d completions=%d%n",
@@ -416,7 +453,8 @@ public final class ContextSweep {
         int clusterCount();
         long steals();
         long selectionProbes();
-        void accumulateRunnableThreadCycles(long[] totals);
+        void accumulateRunnableCycles(
+                long[] runnableThreadTotals, long[] runnableWorkspaceTotals);
     }
 
     private static ReadyScheduler createReadyScheduler(
@@ -489,9 +527,14 @@ public final class ContextSweep {
         }
 
         @Override
-        public void accumulateRunnableThreadCycles(long[] totals) {
+        public void accumulateRunnableCycles(
+                long[] runnableThreadTotals, long[] runnableWorkspaceTotals) {
             for (int workspace = 0; workspace < workspaceReadyCounts.length; workspace++) {
-                totals[workspace] += workspaceReadyCounts[workspace];
+                int readyCount = workspaceReadyCounts[workspace];
+                runnableThreadTotals[workspace] += readyCount;
+                if (readyCount > 0) {
+                    runnableWorkspaceTotals[workspace]++;
+                }
             }
         }
     }
@@ -574,9 +617,14 @@ public final class ContextSweep {
         }
 
         @Override
-        public void accumulateRunnableThreadCycles(long[] totals) {
+        public void accumulateRunnableCycles(
+                long[] runnableThreadTotals, long[] runnableWorkspaceTotals) {
             for (int workspace = 0; workspace < workspaceQueues.size(); workspace++) {
-                totals[workspace] += workspaceQueues.get(workspace).size();
+                int readyCount = workspaceQueues.get(workspace).size();
+                runnableThreadTotals[workspace] += readyCount;
+                if (readyCount > 0) {
+                    runnableWorkspaceTotals[workspace]++;
+                }
             }
         }
     }
@@ -675,9 +723,14 @@ public final class ContextSweep {
         }
 
         @Override
-        public void accumulateRunnableThreadCycles(long[] totals) {
+        public void accumulateRunnableCycles(
+                long[] runnableThreadTotals, long[] runnableWorkspaceTotals) {
             for (int workspace = 0; workspace < workspaceReadyCounts.length; workspace++) {
-                totals[workspace] += workspaceReadyCounts[workspace];
+                int readyCount = workspaceReadyCounts[workspace];
+                runnableThreadTotals[workspace] += readyCount;
+                if (readyCount > 0) {
+                    runnableWorkspaceTotals[workspace]++;
+                }
             }
         }
     }

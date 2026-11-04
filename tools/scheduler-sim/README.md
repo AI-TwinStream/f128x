@@ -99,7 +99,7 @@ The warmup interval is excluded from measured IPC. Other counters are whole-run 
 This revision still does not model:
 
 - Instruction dependencies or dependency chains.
-- Cache hit/miss generation from addresses or working sets.
+- Cache hit/miss generation from addresses or working sets.\n- Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
 - Memory bandwidth, banks, channels, row buffers, arbitration, or service-rate limits.
 - Different request sizes, read/write behavior, coherence, translation, or TLBs.
 - Shared-register conflicts or synchronization.
@@ -107,12 +107,12 @@ This revision still does not model:
 - Interrupts, exceptions, priorities, or OS behavior.
 - Physical register-file banking, ports, timing, area, or power.
 
-The shared queue is a finite count of simultaneously outstanding requests. It is not a bandwidth model. Fixed latency classes do not increase with queue occupancy. The independent memory-operation probability and class distribution are input assumptions, not measured workload properties.
+The shared queue is a finite count of simultaneously outstanding requests. It is not a bandwidth model. Fixed latency classes do not increase with queue occupancy. Dependency stalls are independent of memory requests and apply only to non-memory instructions. The independent memory-operation probability and class distribution are input assumptions, not measured workload properties.
 
 ## Interpretation
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add dependency stalls and explicit service-rate or bandwidth limits, then compare scheduler topologies and calibrate inputs from representative workload traces.
+The next model revision should add explicit memory service-rate or bandwidth limits, richer dependency graphs, and scheduler-topology alternatives, then calibrate inputs from representative workload traces.
 
 No architectural decision about 65,536 contexts follows from this model alone.

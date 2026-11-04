@@ -23,7 +23,15 @@ At each simulated cycle:
 9. A non-memory instruction may optionally incur a serialized dependency stall, controlled by `dependency-fraction` and `dependency-latency`. This is a coarse stall model, not a dependency graph.
 10. A thread may continue issuing while it has fewer than `max-outstanding` accepted memory requests in flight.
 
-The scheduler uses one FIFO ready queue and one FIFO queue-credit wait list. A deterministic seed makes runs repeatable. Each thread can issue at most one instruction per cycle.
+The scheduler strategy is selected with the JVM property `-Df128x.scheduler=`:
+
+- `fifo`: one flat FIFO ready queue.
+- `hierarchical`: per-workspace FIFO queues selected round-robin; each workspace owns 16 thread slots.
+- `distributed`: per-cluster queues, with workspaces initially assigned by workspace ID modulo cluster count. The scheduler scans clusters round-robin and steals from another cluster when its target queue is empty. Set the cluster count with `-Df128x.clusters=8`; the default is up to eight clusters.
+
+The distributed strategy is a logical work-stealing experiment using a global issue-width budget. It does not yet model independent per-cluster issue pipelines, physical arbitration, migration cost, or locality penalties. The hierarchical strategy similarly models workspace fairness, not a concrete hardware arbiter.
+
+The default is `fifo`. A deterministic seed makes runs repeatable. Each thread can issue at most one instruction per cycle.
 
 ### Memory latency classes
 
@@ -104,7 +112,7 @@ The program reports:
 - Maximum shared request-queue occupancy.
 - Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, service-backlog cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
-- Per-class issue and completion counts.
+- Per-class issue and completion counts.\n- Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's workspace fairness index.
 
 The warmup interval is excluded from measured IPC. Other counters are whole-run diagnostics.
 
@@ -127,6 +135,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and scheduler-topology alternatives, then calibrate inputs from representative workload traces.
+The next model revision should add byte-oriented bandwidth and bank/channel contention, richer dependency graphs, independent per-cluster issue budgets, migration/locality costs, and calibrate inputs from representative workload traces.
 
 No architectural decision about 65,536 contexts follows from this model alone.

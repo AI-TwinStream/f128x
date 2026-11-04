@@ -30,7 +30,7 @@ public final class MemoryAddressingTest {
         require(sequential != strided, "sequential and strided patterns differ");
         long wrapped = MemoryAddressing.address(
                 MemoryAddressing.Pattern.SEQUENTIAL, 1, 17, 99, 64, 1024);
-        require(wrapped == 4096 + 64, "sequential accesses wrap within their region");
+        require(wrapped == 1024 + 64, "sequential accesses wrap within their region");
     }
 
     private static void mappingsExposeExpectedInterleaving() {

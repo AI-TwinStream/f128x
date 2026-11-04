@@ -151,6 +151,14 @@ jobs:
             echo "Expected invalid completion rate to fail" >&2
             exit 1
           fi
+          if java -Df128x.hotMemoryFraction=NaN -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected non-finite workspace memory fraction to fail" >&2
+            exit 1
+          fi
+          if java -Df128x.scheduler=distributed -Df128x.clusters=0 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected invalid cluster count to fail" >&2
+            exit 1
+          fi
           if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 0; then
             echo "Expected max-outstanding=0 to fail" >&2
             exit 1

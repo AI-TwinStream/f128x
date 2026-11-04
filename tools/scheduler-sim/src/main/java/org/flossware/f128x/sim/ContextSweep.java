@@ -84,7 +84,12 @@ public final class ContextSweep {
                 || memoryQueueCapacity < 1 || memoryFraction < 0.0
                 || memoryFraction > 1.0 || dependencyFraction < 0.0
                 || dependencyFraction > 1.0 || dependencyLatency < 1
-                || memoryCompletionRate < 1) {
+                || memoryCompletionRate < 1 || hotWorkspaceRatio < 0.0
+                || hotWorkspaceRatio > 1.0 || hotMemoryFraction < 0.0
+                || hotMemoryFraction > 1.0 || coldMemoryFraction < 0.0
+                || coldMemoryFraction > 1.0 || hotDependencyFraction < 0.0
+                || hotDependencyFraction > 1.0 || coldDependencyFraction < 0.0
+                || coldDependencyFraction > 1.0) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
         for (MemoryClass memoryClass : memoryClasses) {
@@ -98,6 +103,17 @@ public final class ContextSweep {
         int workspaceCount = (contexts + 15) / 16;
         int defaultClusters = Math.max(1, Math.min(8, workspaceCount));
         int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
+        double hotWorkspaceRatio = Double.parseDouble(
+                System.getProperty("f128x.hotWorkspaceRatio", "0.25"));
+        double hotMemoryFraction = Double.parseDouble(System.getProperty(
+                "f128x.hotMemoryFraction", Double.toString(memoryFraction)));
+        double coldMemoryFraction = Double.parseDouble(System.getProperty(
+                "f128x.coldMemoryFraction", Double.toString(memoryFraction)));
+        double hotDependencyFraction = Double.parseDouble(System.getProperty(
+                "f128x.hotDependencyFraction", Double.toString(dependencyFraction)));
+        double coldDependencyFraction = Double.parseDouble(System.getProperty(
+                "f128x.coldDependencyFraction", Double.toString(dependencyFraction)));
+        int hotWorkspaceCount = (int) Math.ceil(workspaceCount * hotWorkspaceRatio);
         ReadyScheduler ready = createReadyScheduler(
                 schedulerStrategy, contexts, clusterCount);
         var queueWaiters = new ArrayDeque<Integer>();
@@ -196,10 +212,15 @@ public final class ContextSweep {
                 if (thread < 0) {
                     break;
                 }
+                int workspace = thread / 16;
+                double threadMemoryFraction = workspace < hotWorkspaceCount
+                        ? hotMemoryFraction : coldMemoryFraction;
+                double threadDependencyFraction = workspace < hotWorkspaceCount
+                        ? hotDependencyFraction : coldDependencyFraction;
                 int selectedClass = pendingClass[thread];
 
                 if (selectedClass < 0
-                        && random.nextDouble() < memoryFraction) {
+                        && random.nextDouble() < threadMemoryFraction) {
                     selectedClass = selectMemoryClass(memoryClasses, random);
                     pendingClass[thread] = selectedClass;
                 }
@@ -243,7 +264,7 @@ public final class ContextSweep {
                     if (cycle >= warmup) {
                         measuredIssued++;
                     }
-                    if (random.nextDouble() < dependencyFraction) {
+                    if (random.nextDouble() < threadDependencyFraction) {
                         dependencyIssues++;
                         dependencyWakeups.add(new DependencyWakeup(
                                 (long) cycle + dependencyLatency, thread));
@@ -309,8 +330,10 @@ public final class ContextSweep {
                         + "workspaceIssuesMin=%d workspaceIssuesMax=%d "
                         + "workspaceJainFairness=%.6f seed=%d%n",
                 ready.name(), ready.clusterCount(), ready.steals(),
-                ready.selectionProbes(), contexts, workspaceCount, issueWidth,
-                memoryFraction, dependencyFraction,
+                ready.selectionProbes(), contexts, workspaceCount,
+                hotWorkspaceCount, hotWorkspaceRatio, hotMemoryFraction,
+                coldMemoryFraction, hotDependencyFraction, coldDependencyFraction,
+                issueWidth, memoryFraction, dependencyFraction,
                 dependencyLatency, maxOutstanding,
                 memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,

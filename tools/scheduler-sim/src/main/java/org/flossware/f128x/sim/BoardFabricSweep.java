@@ -60,7 +60,8 @@ public final class BoardFabricSweep {
                 || contexts > workspaces * threadsPerWorkspace || cycles < 2
                 || warmup < 0 || warmup >= cycles || localMemoryLatency < 1
                 || remoteMemoryLatency < 1 || fabricLatency < 0
-                 || fabricBytesPerCycle < 1 || localMemoryBytesPerCycle < 1 || fabricHopLatency < 0\n                || requestBytes < 1 || queueCapacity < 1
+                 || fabricBytesPerCycle < 1 || localMemoryBytesPerCycle < 1 || fabricHopLatency < 0
+                || requestBytes < 1 || queueCapacity < 1
                 || !fraction(memoryFraction) || !fraction(dependencyFraction)
                 || dependencyLatency < 1) {
             throw new IllegalArgumentException("Invalid board/fabric simulation parameter");
@@ -83,7 +84,8 @@ public final class BoardFabricSweep {
                         cycles, warmup, seed, topology[0], topology[1], topology[2],
                         remoteFraction, memoryFraction, dependencyFraction,
                         dependencyLatency, localMemoryLatency, remoteMemoryLatency,
-                        fabricLatency, fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency,\n                        requestBytes, queueCapacity);
+                        fabricLatency, fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency,
+                        requestBytes, queueCapacity);
                 System.out.printf("boards=%d clustersPerBoard=%d issueWidthPerCluster=%d "
                         + "aggregateIssueWidth=%d ipc=%.4f utilization=%.4f "
                         + "memoryRequests=%d remoteRequests=%d fabricBytes=%d "

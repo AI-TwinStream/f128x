@@ -93,7 +93,8 @@ From the repository root:
 mkdir -p build/scheduler-sim
 javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/CacheSweep.java
 javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim -d build/scheduler-sim \
   tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/MemoryAddressingTest.java
 java -cp build/scheduler-sim org.flossware.f128x.sim.MemoryAddressingTest
@@ -173,7 +174,7 @@ The warmup interval is excluded from measured IPC. Other counters are whole-run 
 This revision still does not model:
 
 - Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
-- Cache hit/miss generation from working sets or real address traces; channel/bank assignment now supports random, sequential, strided, and shared-region synthetic addresses with low-order or XOR mapping, but no working-set reuse yet.
+- Cache hit/miss generation inside `ContextSweep`; the separate `CacheSweep` now models synthetic private-L1/shared-L2 working-set reuse, but it is not yet coupled to scheduler IPC. Neither simulator consumes real workload traces.
 - DRAM row buffers, row hits, refresh, burst transfers, read/write turnarounds, or controller scheduling policy.
 - Variable request sizes, read/write behavior, coherence, translation, or TLBs. The current byte model uses a uniform request-size range and an equal per-bank share of channel bandwidth; it does not model workload-specific size distributions.
 - Shared-register conflicts or synchronization.
@@ -191,6 +192,30 @@ The next model revision should add working-set reuse and cache hit/miss behavior
 
 No architectural decision about 65,536 contexts follows from this model alone.
 
+
+
+## Synthetic cache hierarchy experiment
+
+`CacheSweep` is a separate locality experiment. It models one private set-associative L1 per hardware thread and one shared set-associative L2. An L1 miss probes L2; an L2 miss is charged to DRAM. The generated trace can be random, sequential, strided, or shared-region, with a bounded working-set size. The generated caches use LRU replacement within each set.
+
+Run it after compiling the sources:
+
+```sh
+javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/CacheSweep.java \
+  tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/CacheSweepTest.java
+java -cp build/scheduler-sim org.flossware.f128x.sim.CacheSweepTest
+java -cp build/scheduler-sim org.flossware.f128x.sim.CacheSweep 64 1000000 65536 42
+```
+
+Arguments are contexts, total accesses, working-set bytes, and seed. Configure geometry and timing with:
+- `-Df128x.cache.lineBytes=64`, `-Df128x.cache.l1Bytes=32768`, `-Df128x.cache.l1Ways=8`.
+- `-Df128x.cache.l2Bytes=1048576`, `-Df128x.cache.l2Ways=16`.
+- `-Df128x.cache.l1Latency=4`, `-Df128x.cache.l2Latency=20`, `-Df128x.cache.dramLatency=200`.
+- `-Df128x.cache.warmupPercent=10`; address generation also uses `f128x.addressPattern` and `f128x.addressStride`.
+
+The model reports raw and post-warmup L1 hits, L2 hits, DRAM misses, and average modeled access latency. L1 is private per thread; L2 is shared. The current model is non-inclusive, has no coherence or invalidation traffic, no prefetching, no write policy, no MSHRs, no bank conflicts, and no overlap between outstanding misses. It is intentionally separate from `ContextSweep`: its latency results are not yet fed into scheduler IPC. This separation lets us validate locality and replacement behavior before coupling the models and making their assumptions harder to isolate.
 
 ## Modular board and backplane experiment
 

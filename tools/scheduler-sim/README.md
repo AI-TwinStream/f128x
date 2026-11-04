@@ -1,4 +1,4 @@
-# Scheduler Simulation 0.7
+# Scheduler Simulation 0.8
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.
 
@@ -40,6 +40,13 @@ Workspace workload skew can be introduced with JVM properties:
 - `-Df128x.hotDependencyFraction=0.20` and `-Df128x.coldDependencyFraction=0.02`: serialized dependency-stall fractions for non-memory instructions.
 
 When omitted, hot and cold fractions both inherit the command-line workload fractions, so the default remains uniform. These controls let the scheduler policies be compared under skewed readiness rather than only identical workspaces.
+
+Distributed scheduling can model migration and remote access penalties:
+
+- `-Df128x.migrationLatency=3`: cycles a stolen thread waits before it becomes eligible on its new owner cluster; default 0.
+- `-Df128x.remoteMemoryLatencyPenalty=7`: extra cycles added to memory-request latency while a thread is remote from its workspace's home cluster; default 0.
+
+A workspace's home cluster is its workspace ID modulo cluster count. A thread becomes remote when work stealing moves it away from that home cluster and becomes local again if it migrates back. The simulator counts migrations, remote wakeups, remote thread-cycles, remote memory issues, added remote-memory latency, and migration-waiter cycles. The remote-memory penalty is applied to every memory operation while remote; this is a deliberately coarse proxy for workspace-local state access, not a cache-coherence or NUMA model.
 
 The default is `fifo`. A deterministic seed makes runs repeatable. Each thread can issue at most one instruction per cycle.
 
@@ -125,6 +132,7 @@ The program reports:
 - Per-class issue and completion counts.
 - Scheduler selection count, work-steal count, minimum/maximum workspace issue service, and Jain's raw workspace issue-count fairness index.
 - Configured per-cluster issue width, effective aggregate issue capacity, utilization against that capacity, and per-cluster issued-instruction totals.
+- Scheduler migrations, remote wakeups, remote thread-cycles, remote memory issues and added latency, migration-waiter cycles, and completed migrations.
 - Measured runnable-thread cycles and runnable-workspace cycles per workspace. Both are sampled after wakeups and before issue selection. A runnable-thread cycle counts each ready thread as one service opportunity; a runnable-workspace cycle counts one opportunity when at least one thread in that workspace is ready.
 - Instructions issued per runnable-thread-cycle measures service relative to the total ready-thread opportunity. Instructions issued per runnable-workspace-cycle measures aggregate service relative to the time a workspace had any runnable work. Each has its own Jain fairness index. Workspaces with no measured opportunity at the corresponding level are excluded; a workspace with opportunities but no service remains included with a zero rate.
 - These metrics answer different questions. Equal service per runnable workspace can still mean unequal service per runnable thread when workspace ready populations differ. The raw issue-count index remains a workload outcome, not a scheduler fairness metric under heterogeneous readiness. All are model-level measures and omit priorities, differing instruction costs, and physical arbitration costs.
@@ -140,7 +148,7 @@ This revision still does not model:
 - Byte-level bandwidth, banks, channels, row buffers, or request-size-dependent service rates.
 - Different request sizes, read/write behavior, coherence, translation, or TLBs.
 - Shared-register conflicts or synchronization.
-- Physically independent per-cluster issue pipelines, distributed physical arbitration, migration costs, fairness bounds, or locality penalties.
+- Physically independent per-cluster issue pipelines, distributed physical arbitration, network/clock/power costs, detailed cache-coherence or NUMA behavior, and fairness bounds. Migration delay and remote-memory latency are configurable aggregate penalties only.
 - Interrupts, exceptions, priorities, or OS behavior.
 - Physical register-file banking, ports, timing, area, or power.
 
@@ -150,6 +158,6 @@ The shared queue is a finite count of simultaneously outstanding requests. Queue
 
 Use the model to compare controlled scenarios and identify where context count, per-thread MLP, and shared request capacity stop improving issue utilization. Do not generalize one run into an architectural requirement. In particular, a larger queue can improve admission capacity in this model without representing the bandwidth or power cost of sustaining that concurrency.
 
-The next model revision should add migration/locality costs, byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md) for the fairness comparison and [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md) for per-cluster budget experiments.
+The next model revision should add request sizes, byte-oriented bandwidth and bank/channel contention, richer dependency graphs, and calibration from representative workload traces. Keep both runnable-thread-cycle and runnable-workspace-cycle fairness measures when evaluating policy changes. See [Scheduler Simulation 0.6 Results](../../docs/research/scheduler-simulation-0.6-results.md), [Scheduler Simulation 0.7 Results](../../docs/research/scheduler-simulation-0.7-results.md), and [Scheduler Simulation 0.8 Results](../../docs/research/scheduler-simulation-0.8-results.md).
 
 No architectural decision about 65,536 contexts follows from this model alone.

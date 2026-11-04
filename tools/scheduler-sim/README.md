@@ -76,6 +76,7 @@ Arguments:
 [max-outstanding [memory-queue-capacity
 [l1-fraction l1-latency l2-fraction l2-latency dram-latency
 [dependency-fraction dependency-latency [max-memory-completions-per-cycle]]]]
+OR append only [max-memory-completions-per-cycle] immediately after the memory-class arguments.
 ```
 
 The original six-argument invocation remains valid. `max-outstanding` defaults to 1. The shared memory queue defaults to effectively unbounded capacity unless explicitly configured. Supply all five latency-class arguments together.

@@ -301,34 +301,33 @@ The corrected normalized matrix completed successfully in [GitHub Actions run 41
 
 | Traffic | Topology | Links | Cut edges | Per-link B/cycle | Aggregate cut B/cycle | Mean latency | p95 latency | Operations/cycle |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| uniform | shared | 1 | 1 | 192 | 3543.47 | 6618.00 | 2.96436 |
-| uniform | shared | 2 | 1 | 192 | 837.18 | 1456.67 | 5.83095 |
-| uniform | shared | 4 | 1 | 192 | 138.97 | 154.33 | 7.74352 |
-| uniform | ring | 1 | 2 | 96 | 7258.95 | 13575.00 | 1.78142 |
-| uniform | ring | 2 | 2 | 96 | 1673.13 | 2986.00 | 4.51931 |
-| uniform | ring | 4 | 2 | 96 | 154.56 | 177.67 | 7.67580 |
-| uniform | mesh | 1 | 4 | 48 | 408.05 | 655.67 | 6.82809 |
-| uniform | mesh | 2 | 4 | 48 | 145.70 | 164.00 | 7.70287 |
-| uniform | mesh | 4 | 4 | 48 | 142.58 | 158.67 | 7.70347 |
-| hotspot | shared | 1 | 1 | 192 | 13438.02 | 25419.00 | 1.06234 |
-| hotspot | shared | 2 | 1 | 192 | 13437.63 | 25418.67 | 1.06236 |
-| hotspot | shared | 4 | 1 | 192 | 13437.50 | 25418.67 | 1.06236 |
-| hotspot | ring | 1 | 2 | 96 | 12621.09 | 25346.33 | 1.06145 |
-| hotspot | ring | 2 | 2 | 96 | 12621.09 | 25346.33 | 1.06145 |
-| hotspot | ring | 4 | 2 | 96 | 12621.09 | 25346.33 | 1.06145 |
-| hotspot | mesh | 1 | 4 | 48 | 14858.81 | 29867.67 | 0.91918 |
-| hotspot | mesh | 2 | 4 | 48 | 12618.45 | 25343.67 | 1.06150 |
-| hotspot | mesh | 4 | 4 | 48 | 12618.45 | 25343.67 | 1.06150 |
-| paired | shared | 1 | 1 | 192 | 3539.83 | 6612.00 | 2.96597 |
-| paired | shared | 2 | 1 | 192 | 809.17 | 1423.67 | 5.86539 |
-| paired | shared | 4 | 1 | 192 | 126.17 | 126.67 | 7.76370 |
-| paired | ring | 1 | 2 | 96 | 126.33 | 126.33 | 7.76432 |
-| paired | ring | 2 | 2 | 96 | 126.33 | 126.33 | 7.76432 |
-| paired | ring | 4 | 2 | 96 | 126.33 | 126.33 | 7.76432 |
-| paired | mesh | 1 | 4 | 48 | 127.67 | 127.67 | 7.76186 |
-| paired | mesh | 2 | 4 | 48 | 127.67 | 127.67 | 7.76186 |
-| paired | mesh | 4 | 4 | 48 | 127.67 | 127.67 | 7.76186 |
-
+| uniform | shared | 1 | 1 | 192 | 192 | 3543.47 | 6618.00 | 2.96436 |
+| uniform | shared | 2 | 1 | 192 | 384 | 837.18 | 1456.67 | 5.83095 |
+| uniform | shared | 4 | 1 | 192 | 768 | 138.97 | 154.33 | 7.74352 |
+| uniform | ring | 1 | 2 | 96 | 192 | 7258.95 | 13575.00 | 1.78142 |
+| uniform | ring | 2 | 2 | 96 | 384 | 1673.13 | 2986.00 | 4.51931 |
+| uniform | ring | 4 | 2 | 96 | 768 | 154.56 | 177.67 | 7.67580 |
+| uniform | mesh | 1 | 4 | 48 | 192 | 408.05 | 655.67 | 6.82809 |
+| uniform | mesh | 2 | 4 | 48 | 384 | 145.70 | 164.00 | 7.70287 |
+| uniform | mesh | 4 | 4 | 48 | 768 | 142.58 | 158.67 | 7.70347 |
+| hotspot | shared | 1 | 1 | 192 | 192 | 13438.02 | 25419.00 | 1.06234 |
+| hotspot | shared | 2 | 1 | 192 | 384 | 13437.63 | 25418.67 | 1.06236 |
+| hotspot | shared | 4 | 1 | 192 | 768 | 13437.50 | 25418.67 | 1.06236 |
+| hotspot | ring | 1 | 2 | 96 | 192 | 12621.09 | 25346.33 | 1.06145 |
+| hotspot | ring | 2 | 2 | 96 | 384 | 12621.09 | 25346.33 | 1.06145 |
+| hotspot | ring | 4 | 2 | 96 | 768 | 12621.09 | 25346.33 | 1.06145 |
+| hotspot | mesh | 1 | 4 | 48 | 192 | 14858.81 | 29867.67 | 0.91918 |
+| hotspot | mesh | 2 | 4 | 48 | 384 | 12618.45 | 25343.67 | 1.06150 |
+| hotspot | mesh | 4 | 4 | 48 | 768 | 12618.45 | 25343.67 | 1.06150 |
+| paired | shared | 1 | 1 | 192 | 192 | 3539.83 | 6612.00 | 2.96597 |
+| paired | shared | 2 | 1 | 192 | 384 | 809.17 | 1423.67 | 5.86539 |
+| paired | shared | 4 | 1 | 192 | 768 | 126.17 | 126.67 | 7.76370 |
+| paired | ring | 1 | 2 | 96 | 192 | 126.33 | 126.33 | 7.76432 |
+| paired | ring | 2 | 2 | 96 | 384 | 126.33 | 126.33 | 7.76432 |
+| paired | ring | 4 | 2 | 96 | 768 | 126.33 | 126.33 | 7.76432 |
+| paired | mesh | 1 | 4 | 48 | 192 | 127.67 | 127.67 | 7.76186 |
+| paired | mesh | 2 | 4 | 48 | 384 | 127.67 | 127.67 | 7.76186 |
+| paired | mesh | 4 | 4 | 48 | 768 | 127.67 | 127.67 | 7.76186 |
 ### Full 81-case results
 
 Latency and completion values are in model cycles. Bandwidth values are bytes/cycle. The `cut` is the minimum balanced bisection edge count for the topology.

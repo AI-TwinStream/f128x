@@ -105,7 +105,9 @@ public final class ContextSweep {
         long memoryIssues = 0;
         long completedRequests = 0;
         long idleCycles = 0;
-        long queueFullStalls = 0;
+        long queueFullAttempts = 0;
+        long queueWaiterCycles = 0;
+        long dependencyWaiterCycles = 0;
         long dependencyIssues = 0;
         long completedDependencies = 0;
         long maxQueueOccupancy = 0;
@@ -115,6 +117,9 @@ public final class ContextSweep {
         final int warmup = Math.min(10_000, cycles / 10);
 
         for (int cycle = 0; cycle < cycles; cycle++) {
+            queueWaiterCycles += queueWaiters.size();
+            dependencyWaiterCycles += dependencyWakeups.size();
+
             while (!dependencyWakeups.isEmpty()
                     && dependencyWakeups.peek().cycle() <= cycle) {
                 DependencyWakeup wakeup = dependencyWakeups.remove();
@@ -165,7 +170,7 @@ public final class ContextSweep {
 
                 if (selectedClass >= 0) {
                     if (completions.size() >= memoryQueueCapacity) {
-                        queueFullStalls++;
+                        queueFullAttempts++;
                         waitingForQueueSlot[thread] = true;
                         queueWaiters.addLast(thread);
                         continue;
@@ -241,7 +246,8 @@ public final class ContextSweep {
                         + "cycles=%d warmup=%d measuredIPC=%.4f "
                         + "issueUtilization=%.4f memoryIssues=%d "
                         + "completedRequests=%d maxThreadOutstanding=%d "
-                        + "maxQueueOccupancy=%d queueFullStalls=%d "
+                        + "maxQueueOccupancy=%d queueFullAttempts=%d queueWaiterCycles=%d "
+                        + "dependencyWaiterCycles=%d "
                         + "idleCycles=%d readyAtEnd=%d "
                         + "waitingAtThreadLimitAtEnd=%d "
                         + "waitingAtQueueLimitAtEnd=%d outstandingAtEnd=%d "
@@ -251,7 +257,8 @@ public final class ContextSweep {
                 dependencyLatency, maxOutstanding,
                 memoryQueueCapacity, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
-                maxQueueOccupancy, queueFullStalls, idleCycles, ready.size(),
+                maxQueueOccupancy, queueFullAttempts, queueWaiterCycles,
+                dependencyWaiterCycles, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
                 dependencyIssues, completedDependencies, dependencyWakeups.size(),
                 seed);

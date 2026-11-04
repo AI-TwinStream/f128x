@@ -95,7 +95,7 @@ The CI sweep is reproducible in `.github/workflows/scheduler-simulator.yml`. It 
 
 The model must be extended to account for:
 
-1. **Per-thread memory-level parallelism:** a thread may have multiple independent outstanding misses and continue executing.
+1. **Request dependencies and realistic memory-level parallelism:** the current outstanding-request limit assumes independent operations; it does not determine whether the instruction stream can actually generate independent misses.
 2. **Dependency chains:** a thread may be blocked by data dependencies even when memory is responsive.
 3. **Runnable-work availability:** the OS or application may not provide enough independent ready threads.
 4. **Issue restrictions:** a thread may issue less frequently than once per cycle due to dependencies, instruction mix, or execution-unit constraints.

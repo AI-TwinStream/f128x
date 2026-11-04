@@ -314,7 +314,10 @@ public final class ContextSweep {
 
         System.out.printf(
                 "scheduler=%s clusters=%d schedulerSteals=%d schedulerSelections=%d "
-                        + "contexts=%d workspaces=%d issueWidth=%d memoryFraction=%.3f "
+                        + "contexts=%d workspaces=%d hotWorkspaceCount=%d "
+                        + "hotWorkspaceRatio=%.3f hotMemoryFraction=%.3f "
+                        + "coldMemoryFraction=%.3f hotDependencyFraction=%.3f "
+                        + "coldDependencyFraction=%.3f issueWidth=%d memoryFraction=%.3f "
                         + "dependencyFraction=%.3f dependencyLatency=%d "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
                         + "memoryCompletionRate=%d cycles=%d warmup=%d measuredIPC=%.4f "

@@ -47,6 +47,9 @@ public final class BoardFabricSweep {
         int fabricBytesPerCycle = Integer.getInteger("f128x.fabricBytesPerCycle", 128);
         int localMemoryBytesPerCycle = Integer.getInteger(
                 "f128x.localMemoryBytesPerCycle", 64);
+        int localMemoryLanesPerBoard = Integer.getInteger(
+                "f128x.localMemoryLanesPerBoard", 1);
+        String remotePattern = System.getProperty("f128x.remotePattern", "uniform");
         int fabricHopLatency = Integer.getInteger("f128x.fabricHopLatency", 2);
         int requestBytes = Integer.getInteger("f128x.requestBytes", 64);
         int queueCapacity = Integer.getInteger("f128x.queueCapacity", 4096);
@@ -61,6 +64,9 @@ public final class BoardFabricSweep {
                 || warmup < 0 || warmup >= cycles || localMemoryLatency < 1
                 || remoteMemoryLatency < 1 || fabricLatency < 0
                 || fabricBytesPerCycle < 1 || localMemoryBytesPerCycle < 1
+                || localMemoryLanesPerBoard < 1
+                || !(remotePattern.equals("uniform") || remotePattern.equals("hotspot")
+                        || remotePattern.equals("paired"))
                 || fabricHopLatency < 0 || requestBytes < 1 || queueCapacity < 1
                 || !fraction(memoryFraction) || !fraction(dependencyFraction)
                 || dependencyLatency < 1) {
@@ -70,11 +76,13 @@ public final class BoardFabricSweep {
         System.out.printf("board-fabric-sim=0.1 contexts=%d workspaces=%d cycles=%d warmup=%d "
                 + "memoryFraction=%.3f dependencyFraction=%.3f localMemoryLatency=%d "
                 + "remoteMemoryLatency=%d fabricLatency=%d fabricBytesPerCycle=%d "
-                + "localMemoryBytesPerCycle=%d fabricHopLatency=%d requestBytes=%d "
+                + "localMemoryBytesPerCycle=%d localMemoryLanesPerBoard=%d "
+                + "remotePattern=%s fabricHopLatency=%d requestBytes=%d "
                 + "queueCapacity=%d seed=%d%n",
                 contexts, workspaces, cycles, warmup, memoryFraction, dependencyFraction,
                 localMemoryLatency, remoteMemoryLatency, fabricLatency,
-                fabricBytesPerCycle, localMemoryBytesPerCycle, fabricHopLatency,
+                fabricBytesPerCycle, localMemoryBytesPerCycle,
+                localMemoryLanesPerBoard, remotePattern, fabricHopLatency,
                 requestBytes, queueCapacity, seed);
 
         int[][] topologies = {{1, 8, 1}, {2, 4, 1}, {4, 2, 1}, {8, 1, 1}, {4, 4, 1}};
@@ -87,7 +95,8 @@ public final class BoardFabricSweep {
                         remoteFraction, memoryFraction, dependencyFraction,
                         dependencyLatency, localMemoryLatency, remoteMemoryLatency,
                         fabricLatency, fabricBytesPerCycle, localMemoryBytesPerCycle,
-                        fabricHopLatency, requestBytes, queueCapacity);
+                        localMemoryLanesPerBoard, remotePattern, fabricHopLatency,
+                        requestBytes, queueCapacity);
                 System.out.printf("boards=%d clustersPerBoard=%d issueWidthPerCluster=%d "
                         + "aggregateIssueWidth=%d ipc=%.4f utilization=%.4f "
                         + "memoryRequests=%d remoteRequests=%d fabricBytes=%d "
@@ -115,7 +124,8 @@ public final class BoardFabricSweep {
             int issueWidthPerCluster, double remoteFraction, double memoryFraction,
             double dependencyFraction, int dependencyLatency, int localMemoryLatency,
             int remoteMemoryLatency, int fabricLatency, int fabricBytesPerCycle,
-            int localMemoryBytesPerCycle, int fabricHopLatency,
+            int localMemoryBytesPerCycle, int localMemoryLanesPerBoard,
+            String remotePattern, int fabricHopLatency,
             int requestBytes, int queueCapacity) {
         int clusterCount = boards * clustersPerBoard;
         List<ArrayDeque<Integer>> ready = new ArrayList<>(clusterCount);
@@ -144,7 +154,8 @@ public final class BoardFabricSweep {
         long outstandingCount = 0;
         long requestFabricAvailableCycle = 0;
         long responseFabricAvailableCycle = 0;
-        long[] boardMemoryAvailableCycle = new long[boards];
+        long[][] boardMemoryAvailableCycle =
+                new long[boards][localMemoryLanesPerBoard];
         long[] boardIssues = new long[boards];
         int measuredCycles = cycles - warmup;
 
@@ -174,10 +185,8 @@ public final class BoardFabricSweep {
                                 && random.nextDouble() < remoteFraction;
                         long completionCycle;
                         if (remote) {
-                            int targetBoard = random.nextInt(boards - 1);
-                            if (targetBoard >= board) {
-                                targetBoard++;
-                            }
+                            int targetBoard = selectRemoteBoard(
+                                    board, boards, remotePattern, random);
                             long requestCycles = Math.max(1,
                                     (requestBytes + fabricBytesPerCycle - 1L)
                                             / fabricBytesPerCycle);
@@ -186,10 +195,12 @@ public final class BoardFabricSweep {
                             long memoryCycles = Math.max(1,
                                     (requestBytes + localMemoryBytesPerCycle - 1L)
                                             / localMemoryBytesPerCycle);
-                            long memoryStart = Math.max(requestEnd,
+                            int memoryLane = selectEarliestLane(
                                     boardMemoryAvailableCycle[targetBoard]);
+                            long memoryStart = Math.max(requestEnd,
+                                    boardMemoryAvailableCycle[targetBoard][memoryLane]);
                             long memoryEnd = memoryStart + memoryCycles;
-                            boardMemoryAvailableCycle[targetBoard] = memoryEnd;
+                            boardMemoryAvailableCycle[targetBoard][memoryLane] = memoryEnd;
                             long responseStart = Math.max(
                                     memoryEnd + remoteMemoryLatency, responseFabricAvailableCycle);
                             long responseEnd = responseStart + requestCycles;
@@ -205,10 +216,13 @@ public final class BoardFabricSweep {
                             long memoryCycles = Math.max(1,
                                     (requestBytes + localMemoryBytesPerCycle - 1L)
                                             / localMemoryBytesPerCycle);
-                            long memoryStart = Math.max(cycle,
+                            int memoryLane = selectEarliestLane(
                                     boardMemoryAvailableCycle[board]);
+                            long memoryStart = Math.max(cycle,
+                                    boardMemoryAvailableCycle[board][memoryLane]);
                             completionCycle = memoryStart + memoryCycles + localMemoryLatency;
-                            boardMemoryAvailableCycle[board] = memoryStart + memoryCycles;
+                            boardMemoryAvailableCycle[board][memoryLane] =
+                                    memoryStart + memoryCycles;
                         }
                         memoryRequests++;
                         outstandingCount++;
@@ -235,6 +249,33 @@ public final class BoardFabricSweep {
                 instructions, memoryRequests, remoteRequests, fabricBytes,
                 queueFullAttempts, idleClusterCycles, measuredCycles,
                 maxOutstanding, boardIssues);
+    }
+
+    private static int selectEarliestLane(long[] availableCycles) {
+        int selected = 0;
+        for (int lane = 1; lane < availableCycles.length; lane++) {
+            if (availableCycles[lane] < availableCycles[selected]) {
+                selected = lane;
+            }
+        }
+        return selected;
+    }
+
+    private static int selectRemoteBoard(int sourceBoard, int boards,
+            String pattern, SplittableRandom random) {
+        return switch (pattern) {
+            case "uniform" -> {
+                int target = random.nextInt(boards - 1);
+                yield target >= sourceBoard ? target + 1 : target;
+            }
+            case "hotspot" -> sourceBoard == 0 ? 1 : 0;
+            case "paired" -> {
+                int paired = sourceBoard ^ 1;
+                yield paired < boards ? paired : (sourceBoard + 1) % boards;
+            }
+            default -> throw new IllegalArgumentException(
+                    "Unknown remote access pattern: " + pattern);
+        };
     }
 
     private static boolean fraction(double value) {

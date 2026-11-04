@@ -36,7 +36,8 @@ jobs:
             -d build/scheduler-sim \
             tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
             tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
-            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
+            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java \
+            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/CacheSweep.java
 
       - name: Test deterministic address generation and mapping
         shell: bash
@@ -64,6 +65,25 @@ jobs:
             exit 1
           fi
 
+      - name: Test synthetic cache hierarchy
+        shell: bash
+        run: |
+          set -euo pipefail
+          javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim \
+            -d build/scheduler-sim \
+            tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/CacheSweepTest.java
+          java -cp build/scheduler-sim org.flossware.f128x.sim.CacheSweepTest
+          class=org.flossware.f128x.sim.CacheSweep
+          sequential="$(java -Df128x.addressPattern=sequential -cp build/scheduler-sim "$class" 4 20000 4096 42)"
+          random="$(java -Df128x.addressPattern=random -cp build/scheduler-sim "$class" 4 20000 4096 42)"
+          shared="$(java -Df128x.addressPattern=shared_region -cp build/scheduler-sim "$class" 4 20000 4096 42)"
+          grep -q 'cacheModel=private-l1-shared-l2' <<< "$sequential"
+          grep -Eq 'measuredL1Hits=[1-9][0-9]*' <<< "$sequential"
+          grep -Eq 'measuredL2Hits=[1-9][0-9]*' <<< "$shared"
+          grep -Eq 'measuredDramMisses=[1-9][0-9]*' <<< "$random"
+          printf '%s\n' "$sequential"
+          printf '%s\n' "$random"
+          printf '%s\n' "$shared"
       - name: Exercise modular board and backplane model
         shell: bash
         run: |

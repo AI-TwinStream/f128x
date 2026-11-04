@@ -24,6 +24,8 @@ public final class ContextSweep {
 
     private record DependencyWakeup(long cycle, int thread) {}
 
+    private record MigrationWakeup(long cycle, int thread) {}
+
     private record MemoryClass(String name, double cumulativeFraction,
             int latency) {}
 
@@ -115,9 +117,15 @@ public final class ContextSweep {
         int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
         int clusterIssueWidth = Integer.getInteger(
                 "f128x.clusterIssueWidth", issueWidth);
-        if (clusterCount < 1 || clusterIssueWidth < 1) {
+        int migrationLatency = Integer.getInteger(
+                "f128x.migrationLatency", 0);
+        int remoteMemoryLatencyPenalty = Integer.getInteger(
+                "f128x.remoteMemoryLatencyPenalty", 0);
+        if (clusterCount < 1 || clusterIssueWidth < 1
+                || migrationLatency < 0 || remoteMemoryLatencyPenalty < 0) {
             throw new IllegalArgumentException(
-                    "Cluster count and cluster issue width must be positive");
+                    "Cluster count and cluster issue width must be positive; "
+                            + "migration and remote-memory penalties cannot be negative");
         }
         ReadyScheduler ready = createReadyScheduler(
                 schedulerStrategy, contexts, clusterCount);
@@ -136,6 +144,8 @@ public final class ContextSweep {
                 Comparator.comparingLong(Completion::cycle));
         var dependencyWakeups = new PriorityQueue<>(
                 Comparator.comparingLong(DependencyWakeup::cycle));
+        var migrationWakeups = new PriorityQueue<>(
+                Comparator.comparingLong(MigrationWakeup::cycle));
         int[] outstandingByThread = new int[contexts];
         boolean[] waitingForThreadSlot = new boolean[contexts];
         boolean[] waitingForQueueSlot = new boolean[contexts];
@@ -157,12 +167,18 @@ public final class ContextSweep {
         long serviceBacklogCycles = 0;
         long dependencyIssues = 0;
         long completedDependencies = 0;
+        long remoteWakeups = 0;
+        long remoteMemoryIssues = 0;
+        long remoteMemoryLatencyCycles = 0;
+        long migrationWaiterCycles = 0;
+        long migrationCompletions = 0;
         long maxQueueOccupancy = 0;
         int maxThreadOutstandingObserved = 0;
         long[] workspaceIssues = new long[workspaceCount];
         long[] workspaceMeasuredIssues = new long[workspaceCount];
         long[] workspaceRunnableThreadCycles = new long[workspaceCount];
         long[] workspaceRunnableWorkspaceCycles = new long[workspaceCount];
+        long[] workspaceRemoteThreadCycles = new long[workspaceCount];
         long[] classIssues = new long[memoryClasses.length];
         long[] classCompletions = new long[memoryClasses.length];
         long[] clusterIssues = new long[ready.clusterCount()];
@@ -173,10 +189,24 @@ public final class ContextSweep {
         for (int cycle = 0; cycle < cycles; cycle++) {
             queueWaiterCycles += queueWaiters.size();
             dependencyWaiterCycles += dependencyWakeups.size();
+            migrationWaiterCycles += migrationWakeups.size();
+            if (cycle >= warmup) {
+                ready.accumulateRemoteThreadCycles(workspaceRemoteThreadCycles);
+            }
+
+            while (!migrationWakeups.isEmpty()
+                    && migrationWakeups.peek().cycle() <= cycle) {
+                MigrationWakeup wakeup = migrationWakeups.remove();
+                ready.addLast(wakeup.thread());
+                migrationCompletions++;
+            }
 
             while (!dependencyWakeups.isEmpty()
                     && dependencyWakeups.peek().cycle() <= cycle) {
                 DependencyWakeup wakeup = dependencyWakeups.remove();
+                if (ready.isRemote(wakeup.thread())) {
+                    remoteWakeups++;
+                }
                 ready.addLast(wakeup.thread());
                 completedDependencies++;
             }
@@ -197,6 +227,9 @@ public final class ContextSweep {
                         && outstandingByThread[thread] < maxOutstanding) {
                     waitingForThreadSlot[thread] = false;
                     if (!waitingForQueueSlot[thread]) {
+                        if (ready.isRemote(thread)) {
+                            remoteWakeups++;
+                        }
                         ready.addLast(thread);
                     }
                 }
@@ -219,6 +252,9 @@ public final class ContextSweep {
             }
             // Give returned-credit waiters first access to the credits.
             for (int i = wakeCount - 1; i >= 0; i--) {
+                if (ready.isRemote(awakened[i])) {
+                    remoteWakeups++;
+                }
                 ready.addFirst(awakened[i]);
             }
 
@@ -251,6 +287,11 @@ public final class ContextSweep {
                 }
                 candidates--;
                 unavailableClusters = 0;
+                if (ready.lastPollMigrated() && migrationLatency > 0) {
+                    migrationWakeups.add(new MigrationWakeup(
+                            (long) cycle + migrationLatency, thread));
+                    continue;
+                }
                 int workspace = thread / 16;
                 double threadMemoryFraction = workspace < hotWorkspaceCount
                         ? hotMemoryFraction : coldMemoryFraction;
@@ -273,9 +314,15 @@ public final class ContextSweep {
                     }
 
                     MemoryClass memoryClass = memoryClasses[selectedClass];
+                    boolean remote = ready.isRemote(thread);
+                    int localityPenalty = remote ? remoteMemoryLatencyPenalty : 0;
                     completions.add(new Completion(
-                            (long) cycle + memoryClass.latency(),
+                            (long) cycle + memoryClass.latency() + localityPenalty,
                             thread, selectedClass));
+                    if (remote) {
+                        remoteMemoryIssues++;
+                        remoteMemoryLatencyCycles += localityPenalty;
+                    }
                     pendingClass[thread] = -1;
                     memoryIssues++;
                     classIssues[selectedClass]++;
@@ -331,6 +378,10 @@ public final class ContextSweep {
         double ipc = (double) measuredIssued / measuredCycles;
         double utilization = ipc / issueWidth;
         double clusterBudgetUtilization = ipc / effectiveIssueCapacity;
+        long totalRemoteThreadCycles = 0;
+        for (long count : workspaceRemoteThreadCycles) {
+            totalRemoteThreadCycles += count;
+        }
         int waitingAtThreadLimit = 0;
         int waitingAtQueueLimit = 0;
         long outstandingAtEnd = 0;
@@ -421,6 +472,11 @@ public final class ContextSweep {
                         + "dependencyFraction=%.3f dependencyLatency=%d "
                         + "clusterIssueWidth=%d effectiveIssueCapacity=%d "
                         + "clusterBudgetUtilization=%.4f "
+                        + "migrationLatency=%d remoteMemoryLatencyPenalty=%d "
+                        + "schedulerMigrations=%d remoteWakeups=%d "
+                        + "remoteThreadCycles=%d remoteMemoryIssues=%d "
+                        + "remoteMemoryLatencyCycles=%d migrationWaiterCycles=%d "
+                        + "migrationCompletions=%d "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
                         + "memoryCompletionRate=%d cycles=%d warmup=%d measuredIPC=%.4f "
                         + "issueUtilization=%.4f memoryIssues=%d "
@@ -450,7 +506,11 @@ public final class ContextSweep {
                 coldMemoryFraction, hotDependencyFraction, coldDependencyFraction,
                 issueWidth, memoryFraction, dependencyFraction,
                 dependencyLatency, clusterIssueWidth, effectiveIssueCapacity,
-                clusterBudgetUtilization, maxOutstanding,
+                clusterBudgetUtilization, migrationLatency,
+                remoteMemoryLatencyPenalty, ready.migrations(), remoteWakeups,
+                totalRemoteThreadCycles, remoteMemoryIssues,
+                remoteMemoryLatencyCycles, migrationWaiterCycles,
+                migrationCompletions, maxOutstanding,
                 memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
                 maxQueueOccupancy, queueFullAttempts, queueWaiterCycles,
@@ -486,6 +546,10 @@ public final class ContextSweep {
         int clusterCount();
         long steals();
         long selectionProbes();
+        long migrations();
+        boolean isRemote(int thread);
+        boolean lastPollMigrated();
+        void accumulateRemoteThreadCycles(long[] totals);
         void accumulateRunnableCycles(
                 long[] runnableThreadTotals, long[] runnableWorkspaceTotals);
     }
@@ -560,6 +624,26 @@ public final class ContextSweep {
         @Override
         public long selectionProbes() {
             return selectionProbes;
+        }
+
+        @Override
+        public long migrations() {
+            return 0;
+        }
+
+        @Override
+        public boolean isRemote(int thread) {
+            return false;
+        }
+
+        @Override
+        public boolean lastPollMigrated() {
+            return false;
+        }
+
+        @Override
+        public void accumulateRemoteThreadCycles(long[] totals) {
+            // The flat FIFO policy has no remote cluster state.
         }
 
         @Override
@@ -653,6 +737,26 @@ public final class ContextSweep {
         }
 
         @Override
+        public long migrations() {
+            return 0;
+        }
+
+        @Override
+        public boolean isRemote(int thread) {
+            return false;
+        }
+
+        @Override
+        public boolean lastPollMigrated() {
+            return false;
+        }
+
+        @Override
+        public void accumulateRemoteThreadCycles(long[] totals) {
+            // The hierarchical policy uses one logical cluster.
+        }
+
+        @Override
         public void accumulateRunnableCycles(
                 long[] runnableThreadTotals, long[] runnableWorkspaceTotals) {
             for (int workspace = 0; workspace < workspaceQueues.size(); workspace++) {
@@ -668,10 +772,14 @@ public final class ContextSweep {
     private static final class DistributedReadyScheduler
             implements ReadyScheduler {
         private final List<ArrayDeque<Integer>> clusterQueues;
+        private final int[] homeCluster;
         private final int[] ownerCluster;
         private final int[] workspaceReadyCounts;
+        private final int[] remoteThreadsByWorkspace;
         private int size;
         private long steals;
+        private long migrations;
+        private boolean lastPollMigrated;
         private long selectionProbes;
 
         private DistributedReadyScheduler(int contexts, int clusters) {
@@ -682,10 +790,13 @@ public final class ContextSweep {
             for (int i = 0; i < clusters; i++) {
                 clusterQueues.add(new ArrayDeque<>());
             }
+            homeCluster = new int[contexts];
             ownerCluster = new int[contexts];
             workspaceReadyCounts = new int[(contexts + 15) / 16];
+            remoteThreadsByWorkspace = new int[workspaceReadyCounts.length];
             for (int thread = 0; thread < contexts; thread++) {
-                ownerCluster[thread] = (thread / 16) % clusters;
+                homeCluster[thread] = (thread / 16) % clusters;
+                ownerCluster[thread] = homeCluster[thread];
             }
         }
 
@@ -705,6 +816,7 @@ public final class ContextSweep {
 
         @Override
         public int poll(int targetCluster) {
+            lastPollMigrated = false;
             if (size == 0) {
                 return -1;
             }
@@ -728,7 +840,15 @@ public final class ContextSweep {
             workspaceReadyCounts[thread / 16]--;
             if (source != targetCluster) {
                 steals++;
+                migrations++;
+                int workspace = thread / 16;
+                if (ownerCluster[thread] == homeCluster[thread]) {
+                    remoteThreadsByWorkspace[workspace]++;
+                } else if (targetCluster == homeCluster[thread]) {
+                    remoteThreadsByWorkspace[workspace]--;
+                }
                 ownerCluster[thread] = targetCluster;
+                lastPollMigrated = true;
             }
             size--;
             return thread;
@@ -757,6 +877,28 @@ public final class ContextSweep {
         @Override
         public long selectionProbes() {
             return selectionProbes;
+        }
+
+        @Override
+        public long migrations() {
+            return migrations;
+        }
+
+        @Override
+        public boolean isRemote(int thread) {
+            return ownerCluster[thread] != homeCluster[thread];
+        }
+
+        @Override
+        public boolean lastPollMigrated() {
+            return lastPollMigrated;
+        }
+
+        @Override
+        public void accumulateRemoteThreadCycles(long[] totals) {
+            for (int workspace = 0; workspace < remoteThreadsByWorkspace.length; workspace++) {
+                totals[workspace] += remoteThreadsByWorkspace[workspace];
+            }
         }
 
         @Override

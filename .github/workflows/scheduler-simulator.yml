@@ -72,6 +72,17 @@ jobs:
         run: |
           java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1024 4 300 0.25 100000 42 4 128 0.70 4 0.20 20 200
 
+      - name: Verify finite queue backpressure and latency classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.50 50000 19 4 8 0.70 4 0.20 20 200)"
+          grep -q 'memoryQueueCapacity=8' <<< "$output"
+          grep -q 'memoryClass=L1' <<< "$output"
+          grep -q 'memoryClass=L2' <<< "$output"
+          grep -q 'memoryClass=DRAM' <<< "$output"
+          awk '{ for (i=1; i<=NF; i++) { split($i, pair, "="); if (pair[1] == "maxQueueOccupancy" && pair[2] > 8) exit 1; if (pair[1] == "queueFullStalls" && pair[2] < 1) exit 1; } }' <<< "$output"
+
       - name: Verify invalid arguments fail
         run: |
           if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep; then

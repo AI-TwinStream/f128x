@@ -33,6 +33,7 @@ A 128-bit register does not imply 128-bit addresses, instructions, memory buses,
 - [Scheduler simulation](tools/scheduler-sim/README.md)
 
 ### Architecture diagrams
+- [Reference implementation block diagram 0.1](docs/architecture/reference-implementation-block-diagram-0.1.md)
 - [Physical system block diagram 0.1](docs/architecture/physical-system-block-diagram-0.1.md)
 - [Logical data paths 0.1](docs/architecture/data-paths-0.1.md)
 

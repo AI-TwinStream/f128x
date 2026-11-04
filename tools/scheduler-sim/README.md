@@ -209,6 +209,7 @@ Compile both simulators and run the board experiment:
 ```sh
 javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
+  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
 java -cp build/scheduler-sim org.flossware.f128x.sim.BoardFabricSweep
 ```

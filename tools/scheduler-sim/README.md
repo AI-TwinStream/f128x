@@ -29,7 +29,7 @@ From the repository root:
 ```sh
 mkdir -p build/scheduler-sim
 javac --release 25 -Xlint:all -Werror -d build/scheduler-sim tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java
-java --enable-preview -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42
+java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42
 ```
 
 Arguments:

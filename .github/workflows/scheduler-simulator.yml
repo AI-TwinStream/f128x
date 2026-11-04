@@ -70,8 +70,7 @@ jobs:
 
       - name: Exercise multi-class finite-queue model
         run: |
-          java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep \\
-            1024 4 300 0.25 100000 42 4 128 0.70 4 0.20 20 200
+          java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1024 4 300 0.25 100000 42 4 128 0.70 4 0.20 20 200
 
       - name: Verify invalid arguments fail
         run: |

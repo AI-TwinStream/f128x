@@ -87,7 +87,8 @@ jobs:
           output="$(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.50 50000 19 4 8 0.70 4 0.20 20 200)"
           grep -q 'memoryQueueCapacity=8' <<< "$output"
           grep -Eq 'queueFullStalls=[1-9][0-9]*' <<< "$output"
-          awk '{ for (i=1; i<=NF; i++) { split($i, pair, "="); if (pair[1] == "maxQueueOccupancy" && pair[2] > 8) exit 1; } }' <<< "$output"\n          printf '%s\\n' "$output"
+          awk '{ for (i=1; i<=NF; i++) { split($i, pair, "="); if (pair[1] == "maxQueueOccupancy" && pair[2] > 8) exit 1; } }' <<< "$output"
+          printf '%s\n' "$output"
 
       - name: Verify invalid arguments fail
         shell: bash

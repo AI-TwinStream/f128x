@@ -229,7 +229,7 @@ A separate Java 25 entry point, `BoardFabricSweep`, compares modular CPU-board t
 - 8 boards × 1 cluster × 1 issue slot.
 - 4 boards × 4 clusters × 1 issue slot (a 16-wide scale-up case).
 
-The first four hold aggregate issue capacity at eight instructions per cycle. The experiment sweeps 10%, 50%, and 90% remote-memory traffic through a shared bandwidth-limited fabric. Each board has a serialized local-memory service lane with configurable bandwidth; remote requests consume the full-duplex request/response fabric and the destination board's memory service. Workspaces are homed to boards, and threads remain on their home board. The model reports IPC, utilization, per-board issue counts, remote requests, fabric bytes, queue pressure, and idle issue slots.
+The first four hold aggregate issue capacity at eight instructions per cycle. The experiment sweeps 10%, 50%, and 90% remote-memory traffic through a shared bandwidth-limited fabric. Each board has a configurable number of independent local-memory service lanes (`f128x.localMemoryLanesPerBoard`, default 1), each with configurable bandwidth. Remote targets can be uniform, concentrated on a hot board, or paired with the source board (`f128x.remotePattern=uniform|hotspot|paired`). Remote requests consume the full-duplex request/response fabric and the destination board's memory service. Workspaces are homed to boards, and threads remain on their home board. The model reports IPC, utilization, per-board issue counts, remote requests, fabric bytes, queue pressure, and idle issue slots.
 
 Compile both simulators and run the board experiment:
 
@@ -241,4 +241,4 @@ javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
 java -cp build/scheduler-sim org.flossware.f128x.sim.BoardFabricSweep
 ```
 
-The board model is intentionally separate from `ContextSweep`. Its first revision does not model local-memory channels/banks, parallel fabric links, cache coherence, migration, or physical board costs. See [Board and Backplane Simulation 0.1](../../docs/research/board-backplane-simulation-0.1.md) for assumptions and limitations.
+The board model is intentionally separate from `ContextSweep`. The lane count is a service-parallelism abstraction, not a detailed channel/bank controller. The model still does not include parallel fabric links, cache coherence, migration, or physical board costs. See [Board and Backplane Simulation 0.1](../../docs/research/board-backplane-simulation-0.1.md) for assumptions and limitations.

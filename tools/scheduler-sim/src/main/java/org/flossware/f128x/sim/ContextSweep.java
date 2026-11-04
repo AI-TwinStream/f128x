@@ -155,6 +155,8 @@ public final class ContextSweep {
         long maxQueueOccupancy = 0;
         int maxThreadOutstandingObserved = 0;
         long[] workspaceIssues = new long[workspaceCount];
+        long[] workspaceMeasuredIssues = new long[workspaceCount];
+        long[] workspaceRunnableThreadCycles = new long[workspaceCount];
         long[] classIssues = new long[memoryClasses.length];
         long[] classCompletions = new long[memoryClasses.length];
         final int warmup = Math.min(10_000, cycles / 10);
@@ -211,6 +213,10 @@ public final class ContextSweep {
                 ready.addFirst(awakened[i]);
             }
 
+            if (cycle >= warmup) {
+                ready.accumulateRunnableThreadCycles(workspaceRunnableThreadCycles);
+            }
+
             int candidates = ready.size();
             int issuedThisCycle = 0;
             int[] requeue = new int[candidates];
@@ -251,10 +257,11 @@ public final class ContextSweep {
                     memoryIssues++;
                     classIssues[selectedClass]++;
                     workspaceIssues[thread / 16]++;
-                    issuedThisCycle++;
                     if (cycle >= warmup) {
                         measuredIssued++;
+                        workspaceMeasuredIssues[thread / 16]++;
                     }
+                    issuedThisCycle++;
 
                     outstandingByThread[thread]++;
                     maxThreadOutstandingObserved = Math.max(
@@ -273,6 +280,7 @@ public final class ContextSweep {
                     workspaceIssues[thread / 16]++;
                     if (cycle >= warmup) {
                         measuredIssued++;
+                        workspaceMeasuredIssues[thread / 16]++;
                     }
                     if (random.nextDouble() < threadDependencyFraction) {
                         dependencyIssues++;
@@ -321,6 +329,34 @@ public final class ContextSweep {
         double workspaceIssueJainFairness = totalWorkspaceIssues == 0 ? 1.0
                 : (double) totalWorkspaceIssues * totalWorkspaceIssues
                         / (workspaceIssues.length * sumWorkspaceSquares);
+        long totalRunnableThreadCycles = 0;
+        double serviceRateSum = 0.0;
+        double serviceRateSquares = 0.0;
+        double minWorkspaceServiceRate = Double.POSITIVE_INFINITY;
+        double maxWorkspaceServiceRate = 0.0;
+        int workspacesWithRunnableOpportunity = 0;
+        for (int workspace = 0; workspace < workspaceCount; workspace++) {
+            long runnableCycles = workspaceRunnableThreadCycles[workspace];
+            totalRunnableThreadCycles += runnableCycles;
+            if (runnableCycles > 0) {
+                double serviceRate = (double) workspaceMeasuredIssues[workspace]
+                        / runnableCycles;
+                serviceRateSum += serviceRate;
+                serviceRateSquares += serviceRate * serviceRate;
+                minWorkspaceServiceRate = Math.min(
+                        minWorkspaceServiceRate, serviceRate);
+                maxWorkspaceServiceRate = Math.max(
+                        maxWorkspaceServiceRate, serviceRate);
+                workspacesWithRunnableOpportunity++;
+            }
+        }
+        double workspaceServiceRateJainFairness =
+                workspacesWithRunnableOpportunity == 0 ? 1.0
+                : serviceRateSum * serviceRateSum
+                        / (workspacesWithRunnableOpportunity * serviceRateSquares);
+        if (workspacesWithRunnableOpportunity == 0) {
+            minWorkspaceServiceRate = 0.0;
+        }
 
         System.out.printf(
                 "scheduler=%s clusters=%d schedulerSteals=%d schedulerSelections=%d "
@@ -341,7 +377,12 @@ public final class ContextSweep {
                         + "dependencyIssues=%d completedDependencies=%d "
                         + "dependenciesInFlightAtEnd=%d "
                         + "workspaceIssuesMin=%d workspaceIssuesMax=%d "
-                        + "workspaceIssueJainFairness=%.6f seed=%d%n",
+                        + "workspaceIssueJainFairness=%.6f "
+                        + "workspaceRunnableThreadCycles=%d "
+                        + "workspacesWithRunnableOpportunity=%d "
+                        + "workspaceServiceRateMin=%.8f "
+                        + "workspaceServiceRateMax=%.8f "
+                        + "workspaceServiceRateJainFairness=%.6f seed=%d%n",
                 ready.name(), ready.clusterCount(), ready.steals(),
                 ready.selectionProbes(), contexts, workspaceCount,
                 hotWorkspaceCount, hotWorkspaceRatio, hotMemoryFraction,
@@ -354,7 +395,10 @@ public final class ContextSweep {
                 dependencyWaiterCycles, serviceBacklogCycles, idleCycles, ready.size(),
                 waitingAtThreadLimit, waitingAtQueueLimit, outstandingAtEnd,
                 dependencyIssues, completedDependencies, dependencyWakeups.size(),
-                minWorkspaceIssues, maxWorkspaceIssues, workspaceIssueJainFairness, seed);
+                minWorkspaceIssues, maxWorkspaceIssues, workspaceIssueJainFairness,
+                totalRunnableThreadCycles, workspacesWithRunnableOpportunity,
+                minWorkspaceServiceRate, maxWorkspaceServiceRate,
+                workspaceServiceRateJainFairness, seed);
 
         for (int i = 0; i < memoryClasses.length; i++) {
             System.out.printf("memoryClass=%s latency=%d issues=%d completions=%d%n",
@@ -372,6 +416,7 @@ public final class ContextSweep {
         int clusterCount();
         long steals();
         long selectionProbes();
+        void accumulateRunnableThreadCycles(long[] totals);
     }
 
     private static ReadyScheduler createReadyScheduler(
@@ -387,26 +432,35 @@ public final class ContextSweep {
 
     private static final class FifoReadyScheduler implements ReadyScheduler {
         private final ArrayDeque<Integer> queue;
+        private final int[] workspaceReadyCounts;
         private long selectionProbes;
 
         private FifoReadyScheduler(int capacity) {
             queue = new ArrayDeque<>(capacity);
+            workspaceReadyCounts = new int[(capacity + 15) / 16];
         }
 
         @Override
         public void addFirst(int thread) {
             queue.addFirst(thread);
+            workspaceReadyCounts[thread / 16]++;
         }
 
         @Override
         public void addLast(int thread) {
             queue.addLast(thread);
+            workspaceReadyCounts[thread / 16]++;
         }
 
         @Override
         public int poll() {
             selectionProbes++;
-            return queue.isEmpty() ? -1 : queue.removeFirst();
+            if (queue.isEmpty()) {
+                return -1;
+            }
+            int thread = queue.removeFirst();
+            workspaceReadyCounts[thread / 16]--;
+            return thread;
         }
 
         @Override
@@ -432,6 +486,13 @@ public final class ContextSweep {
         @Override
         public long selectionProbes() {
             return selectionProbes;
+        }
+
+        @Override
+        public void accumulateRunnableThreadCycles(long[] totals) {
+            for (int workspace = 0; workspace < workspaceReadyCounts.length; workspace++) {
+                totals[workspace] += workspaceReadyCounts[workspace];
+            }
         }
     }
 
@@ -511,12 +572,20 @@ public final class ContextSweep {
         public long selectionProbes() {
             return selectionProbes;
         }
+
+        @Override
+        public void accumulateRunnableThreadCycles(long[] totals) {
+            for (int workspace = 0; workspace < workspaceQueues.size(); workspace++) {
+                totals[workspace] += workspaceQueues.get(workspace).size();
+            }
+        }
     }
 
     private static final class DistributedReadyScheduler
             implements ReadyScheduler {
         private final List<ArrayDeque<Integer>> clusterQueues;
         private final int[] ownerCluster;
+        private final int[] workspaceReadyCounts;
         private int cursor;
         private int size;
         private long steals;
@@ -531,6 +600,7 @@ public final class ContextSweep {
                 clusterQueues.add(new ArrayDeque<>());
             }
             ownerCluster = new int[contexts];
+            workspaceReadyCounts = new int[(contexts + 15) / 16];
             for (int thread = 0; thread < contexts; thread++) {
                 ownerCluster[thread] = (thread / 16) % clusters;
             }
@@ -539,12 +609,14 @@ public final class ContextSweep {
         @Override
         public void addFirst(int thread) {
             clusterQueues.get(ownerCluster[thread]).addFirst(thread);
+            workspaceReadyCounts[thread / 16]++;
             size++;
         }
 
         @Override
         public void addLast(int thread) {
             clusterQueues.get(ownerCluster[thread]).addLast(thread);
+            workspaceReadyCounts[thread / 16]++;
             size++;
         }
 
@@ -567,6 +639,7 @@ public final class ContextSweep {
             }
 
             int thread = clusterQueues.get(source).removeFirst();
+            workspaceReadyCounts[thread / 16]--;
             if (source != cursor) {
                 steals++;
                 ownerCluster[thread] = cursor;
@@ -599,6 +672,13 @@ public final class ContextSweep {
         @Override
         public long selectionProbes() {
             return selectionProbes;
+        }
+
+        @Override
+        public void accumulateRunnableThreadCycles(long[] totals) {
+            for (int workspace = 0; workspace < workspaceReadyCounts.length; workspace++) {
+                totals[workspace] += workspaceReadyCounts[workspace];
+            }
         }
     }
 

@@ -288,3 +288,6 @@ The revised CI matrix asserts that all 81 cases execute and that the aggregate b
 
 
 Normalization implementation correction: the initial 128-byte/cycle target was not divisible by the three-edge bisection in the eight-board mesh, and the first ring cut calculation counted only one direction. Both were corrected before accepting normalized measurements. The ring bisection counts both directed neighbor links crossing a partition. The common one-link target is now 192 bytes/cycle, divisible by cut sizes 1, 2, 3, and 4; the two- and four-link budgets are 384 and 768 bytes/cycle. CI asserts the expected cut sizes for all board counts and topologies, in addition to the aggregate bandwidth values.
+
+
+The normalized fabric service model uses fractional cycle availability for links and memory service. This is deliberate: integer-cycle ceiling for a 64-byte packet would make several nominal link bandwidths collapse to the same one-cycle service time, defeating the normalization. Reported latency and completion cycle values may therefore be fractional. The model remains deterministic and is not claiming sub-cycle hardware timing accuracy; fractional cycles are a capacity-accounting device for the comparative experiment.

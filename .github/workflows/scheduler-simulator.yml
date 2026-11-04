@@ -56,7 +56,7 @@ jobs:
           grep -q 'remoteFraction=0.10' <<< "$first"
           grep -q 'remoteFraction=0.50' <<< "$first"
           grep -q 'remoteFraction=0.90' <<< "$first"
-          printf '%s\\n' "$first"
+          printf '%s\n' "$first"
 
       - name: Run deterministic smoke test
         shell: bash

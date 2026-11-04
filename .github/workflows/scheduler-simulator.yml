@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "25"
@@ -48,9 +48,22 @@ jobs:
           grep -q 'seed=42' <<< "$first"
           printf '%s\n' "$first"
 
+      - name: Verify single-outstanding compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.f128x.sim.ContextSweep
+          legacy="$(java -cp build/scheduler-sim "$class" 128 2 100 0.25 5000 7)"
+          explicit="$(java -cp build/scheduler-sim "$class" 128 2 100 0.25 5000 7 1)"
+          test "$legacy" = "$explicit"
+
       - name: Verify invalid arguments fail
         run: |
           if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep; then
             echo "Expected invalid invocation to fail" >&2
+            exit 1
+          fi
+          if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 128 2 100 0.25 5000 7 0; then
+            echo "Expected max-outstanding=0 to fail" >&2
             exit 1
           fi

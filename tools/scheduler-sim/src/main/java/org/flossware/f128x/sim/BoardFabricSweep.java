@@ -371,7 +371,7 @@ final class FabricTopologySweep {
             throw new IllegalArgumentException("Invalid fabric topology parameter");
         }
         final int requestBytes = 64;
-        final int targetBisectionBytesPerCycle = 128;
+        final int targetBisectionBytesPerCycle = 192;
         final int bisectionEdges = bisectionEdges(boards, topology);
         if (targetBisectionBytesPerCycle % bisectionEdges != 0) {
             throw new IllegalStateException("Target bisection bandwidth is not divisible by cut size");
@@ -448,6 +448,7 @@ final class FabricTopologySweep {
         if (topology.equals("ring")) {
             for (int board = 0; board < boards; board++) {
                 edge[board][(board + 1) % boards] = true;
+                edge[board][(board + boards - 1) % boards] = true;
             }
         } else if (topology.equals("mesh")) {
             int columns = (int) Math.ceil(Math.sqrt(boards));

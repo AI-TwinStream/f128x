@@ -274,3 +274,14 @@ All values are model cycles and aggregate operations per cycle. Mean is average 
 - Hotspot traffic was dominated by the single destination-board memory lane. Increasing link count did not materially change the ring/mesh hotspot results, which is useful evidence that this workload is memory-service limited rather than fabric-link limited in this model.
 - The shared-fabric proxy is extremely sensitive to the number of global parallel lanes. Its results should not be interpreted as a comparison against a properly switched, nonblocking crossbar unless the shared-fabric resource assumptions are made equivalent.
 - These outputs are deterministic single-seed results. The next step is to sweep seeds and injection rates, validate fairness/arbitration assumptions, and compare topologies at explicitly equal bisection bandwidth and endpoint capacity before drawing architectural conclusions.
+
+
+## Equal-bisection-bandwidth comparison revision
+
+The 2026-11-04 matrix above is the original fixed-per-link-bandwidth experiment. It is retained as historical output, but it is **not** an equal-bisection-bandwidth comparison: with the same per-link bandwidth, different topologies expose different aggregate cut capacity. Do not use that table alone to rank the topologies.
+
+The revised `FabricTopologySweep` computes the minimum balanced bisection edge cut for each board count and topology. The one-link case is normalized to an aggregate bisection budget of 128 bytes/cycle by setting per-link service bandwidth to `128 / bisectionEdges`. Two and four parallel links multiply that common aggregate budget to 256 and 512 bytes/cycle respectively, identically for every topology at a given board count. The result line now reports `bisectionEdges`, `perLinkBytesPerCycle`, and `bisectionBandwidthBytesPerCycle`, making the normalization auditable. The full 81-case matrix remains 3 board counts × 3 traffic patterns × 3 topologies × 3 link counts.
+
+This is a first-order capacity normalization, not a complete physical equivalence proof. It equalizes minimum balanced cut bandwidth, but does not equalize hop count, endpoint degree, link count/area, bisection placement, routing fairness, wire length, or switching energy. The shared topology remains an abstract globally shared resource and should be read as a reference architecture, not a literal crossbar implementation. The model's deterministic transaction reservation order also remains a simplification.
+
+The revised CI matrix asserts that all 81 cases execute and that the aggregate bisection budgets 128/256/512 bytes per cycle are present. New normalized measurements will be recorded below after the workflow passes.

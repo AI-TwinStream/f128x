@@ -426,7 +426,7 @@ final class FabricTopologySweep {
         for (double latency : latencies) {
             total += latency;
         }
-        double average = (double) total / latencies.length;
+        double average = total / latencies.length;
         double p95 = latencies[Math.min(latencies.length - 1,
                 (int) Math.ceil(latencies.length * 0.95) - 1)];
         return new Result(topology, boards, pattern, links, bisectionEdges,

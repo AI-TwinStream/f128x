@@ -115,6 +115,22 @@ jobs:
           grep -q 'remoteFraction=0.90' <<< "$first"
           printf '%s\n' "$first"
 
+      - name: Exercise local-memory lanes and remote-access patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.f128x.sim.BoardFabricSweep
+          options=(-Df128x.contexts=256 -Df128x.workspaces=16 -Df128x.cycles=4000 -Df128x.warmup=400 -Df128x.seed=42)
+          for pattern in uniform hotspot paired; do
+            first="$(java "${options[@]}" -Df128x.localMemoryLanesPerBoard=4 -Df128x.remotePattern="$pattern" -cp build/scheduler-sim "$class")"
+            second="$(java "${options[@]}" -Df128x.localMemoryLanesPerBoard=4 -Df128x.remotePattern="$pattern" -cp build/scheduler-sim "$class")"
+            test "$first" = "$second"
+            grep -q 'localMemoryLanesPerBoard=4' <<< "$first"
+            grep -q "remotePattern=$pattern" <<< "$first"
+            grep -Eq 'remoteRequests=[1-9][0-9]*' <<< "$first"
+            printf '%s\\n' "$first"
+          done
+
       - name: Run deterministic smoke test
         shell: bash
         run: |

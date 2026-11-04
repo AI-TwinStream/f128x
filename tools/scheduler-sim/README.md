@@ -98,7 +98,7 @@ The program reports:
 - Accepted memory requests and completions.
 - Maximum per-thread outstanding requests.
 - Maximum shared request-queue occupancy.
-- Queue-credit stalls and idle cycles.
+- Queue-full admission attempts, accumulated queue-waiter cycles, dependency-waiter cycles, and idle cycles.
 - Ready threads, threads waiting at per-thread limits, threads waiting for queue capacity, and outstanding requests at the end.
 - Per-class issue and completion counts.
 
@@ -117,7 +117,7 @@ This revision still does not model:
 - Interrupts, exceptions, priorities, or OS behavior.
 - Physical register-file banking, ports, timing, area, or power.
 
-The shared queue is a finite count of simultaneously outstanding requests. It is not a bandwidth model. Fixed latency classes do not increase with queue occupancy. Dependency stalls are independent of memory requests and apply only to non-memory instructions. The independent memory-operation probability and class distribution are input assumptions, not measured workload properties.
+The shared queue is a finite count of simultaneously outstanding requests. Queue-full attempts count each failed admission attempt; queue-waiter cycles accumulate the number of threads waiting for a queue slot per cycle. These are distinct measurements. It is not a bandwidth model. Fixed latency classes do not increase with queue occupancy. Dependency stalls are independent of memory requests and apply only to non-memory instructions. The independent memory-operation probability and class distribution are input assumptions, not measured workload properties.
 
 ## Interpretation
 

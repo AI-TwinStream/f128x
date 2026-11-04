@@ -300,26 +300,26 @@ jobs:
           grep -Eq 'maxBankOutstanding=[1-9][0-9]*' <<< "$bounded"
           grep -Eq 'memoryBytesIssued=[1-9][0-9]* memoryBytesCompleted=[0-9]+' <<< "$bounded"
           grep -Eq 'memoryBankRequests=[1-9][0-9]*' <<< "$bounded"
-          field() {
-            local key="$1" line="$2" token
-            for token in $line; do
-              if [[ "$token" == "$key="* ]]; then
-                printf '%s' "${token#*=}"
-                return 0
-              fi
-            done
-            return 1
-          }
-          issues="$(field memoryIssues "$bounded")"
-          completed="$(field completedRequests "$bounded")"
-          issued="$(field memoryBytesIssued "$bounded")"
-          done="$(field memoryBytesCompleted "$bounded")"
-          baseline_ipc="$(field measuredIPC "$baseline")"
-          bounded_ipc="$(field measuredIPC "$bounded")"
-          test "$issued" -eq "$((issues * 64))"
-          test "$done" -eq "$((completed * 64))"
-          test "$done" -le "$issued"
-          awk -v base="$baseline_ipc" -v current="$bounded_ipc" 'BEGIN { if (base <= 0 || current <= 0 || current >= base) exit 1; }'
+          read -r baseline_line <<< "$baseline"
+          read -r bounded_line <<< "$bounded"
+          awk -v baseline="$baseline_line" -v bounded="$bounded_line" '
+            function fields(line, values, parts, count, i) {
+              count = split(line, parts, " ")
+              for (i = 1; i <= count; i++) {
+                split(parts[i], pair, "=")
+                values[pair[1]] = pair[2]
+              }
+            }
+            BEGIN {
+              fields(baseline, base)
+              fields(bounded, current)
+              if (current["memoryBytesIssued"] != current["memoryIssues"] * 64) exit 1
+              if (current["memoryBytesCompleted"] != current["completedRequests"] * 64) exit 1
+              if (current["memoryBytesCompleted"] > current["memoryBytesIssued"]) exit 1
+              if (base["measuredIPC"] <= 0 || current["measuredIPC"] <= 0
+                  || current["measuredIPC"] >= base["measuredIPC"]) exit 1
+            }
+          '
 
       - name: Verify independent dependency chains
         shell: bash

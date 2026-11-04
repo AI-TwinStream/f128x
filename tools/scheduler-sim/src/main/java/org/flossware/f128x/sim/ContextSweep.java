@@ -145,11 +145,19 @@ public final class ContextSweep {
                 }
             }
 
-            // A completion may have returned one or more shared queue credits.
-            while (!queueWaiters.isEmpty()) {
+            // Wake only as many FIFO queue waiters as there are returned credits.
+            int credits = Math.max(0,
+                    memoryQueueCapacity - completions.size());
+            int wakeCount = Math.min(credits, queueWaiters.size());
+            int[] awakened = new int[wakeCount];
+            for (int i = 0; i < wakeCount; i++) {
                 int thread = queueWaiters.removeFirst();
                 waitingForQueueSlot[thread] = false;
-                ready.addLast(thread);
+                awakened[i] = thread;
+            }
+            // Give returned-credit waiters first access to the credits.
+            for (int i = wakeCount - 1; i >= 0; i--) {
+                ready.addFirst(awakened[i]);
             }
 
             int candidates = ready.size();

@@ -124,6 +124,10 @@ public final class ContextSweep {
                 "f128x.remoteMemoryLatencyPenalty", 0);
         int memoryRequestBytes = Integer.getInteger(
                 "f128x.memoryRequestBytes", 64);
+        int memoryRequestMinBytes = Integer.getInteger(
+                "f128x.memoryRequestMinBytes", memoryRequestBytes);
+        int memoryRequestMaxBytes = Integer.getInteger(
+                "f128x.memoryRequestMaxBytes", memoryRequestBytes);
         int memoryChannels = Integer.getInteger("f128x.memoryChannels", 1);
         int memoryBanksPerChannel = Integer.getInteger(
                 "f128x.memoryBanksPerChannel", 1);
@@ -138,8 +142,10 @@ public final class ContextSweep {
                 (long) memoryBandwidthBytesPerCycle * memoryChannels;
         if (clusterCount < 1 || clusterIssueWidth < 1
                 || migrationLatency < 0 || remoteMemoryLatencyPenalty < 0
-                || memoryRequestBytes < 1 || memoryChannels < 1
-                || memoryBanksPerChannel < 1 || memoryBandwidthBytesPerCycle < 0
+                || memoryRequestBytes < 1 || memoryRequestMinBytes < 1
+                || memoryRequestMaxBytes < memoryRequestMinBytes
+                || memoryChannels < 1 || memoryBanksPerChannel < 1
+                || memoryBandwidthBytesPerCycle < 0
                 || bankConflictPenalty < 0) {
             throw new IllegalArgumentException(
                     "Cluster count and cluster issue width must be positive; "
@@ -198,6 +204,8 @@ public final class ContextSweep {
         long bankConflictRequests = 0;
         long bankConflictWaitCycles = 0;
         int maxBankOutstanding = 0;
+        int minObservedRequestBytes = Integer.MAX_VALUE;
+        int maxObservedRequestBytes = 0;
         long maxQueueOccupancy = 0;
         int maxThreadOutstandingObserved = 0;
         long[] workspaceIssues = new long[workspaceCount];
@@ -348,6 +356,15 @@ public final class ContextSweep {
                     MemoryClass memoryClass = memoryClasses[selectedClass];
                     boolean remote = ready.isRemote(thread);
                     int localityPenalty = remote ? remoteMemoryLatencyPenalty : 0;
+                    int requestBytes = memoryRequestMinBytes
+                            == memoryRequestMaxBytes ? memoryRequestMinBytes
+                            : (int) random.nextLong(
+                                    memoryRequestMinBytes,
+                                    (long) memoryRequestMaxBytes + 1);
+                    minObservedRequestBytes = Math.min(
+                            minObservedRequestBytes, requestBytes);
+                    maxObservedRequestBytes = Math.max(
+                            maxObservedRequestBytes, requestBytes);
                     long nominalReadyCycle = (long) cycle
                             + memoryClass.latency() + localityPenalty;
                     int channel = 0;
@@ -369,7 +386,7 @@ public final class ContextSweep {
                         }
                         long transferCycles = memoryBandwidthBytesPerCycle > 0
                                 ? Math.max(1L,
-                                        ((long) memoryRequestBytes
+                                        ((long) requestBytes
                                                 * memoryBanksPerChannel
                                                 + memoryBandwidthBytesPerCycle - 1)
                                                 / memoryBandwidthBytesPerCycle)
@@ -386,8 +403,8 @@ public final class ContextSweep {
                     }
                     completions.add(new Completion(
                             completionCycle, thread, selectedClass,
-                            channel, bank, memoryRequestBytes));
-                    memoryBytesIssued += memoryRequestBytes;
+                            channel, bank, requestBytes));
+                    memoryBytesIssued += requestBytes;
                     if (remote) {
                         remoteMemoryIssues++;
                         remoteMemoryLatencyCycles += localityPenalty;
@@ -447,6 +464,9 @@ public final class ContextSweep {
         double ipc = (double) measuredIssued / measuredCycles;
         double utilization = ipc / issueWidth;
         double clusterBudgetUtilization = ipc / effectiveIssueCapacity;
+        if (minObservedRequestBytes == Integer.MAX_VALUE) {
+            minObservedRequestBytes = 0;
+        }
         long totalRemoteThreadCycles = 0;
         for (long count : workspaceRemoteThreadCycles) {
             totalRemoteThreadCycles += count;
@@ -547,6 +567,9 @@ public final class ContextSweep {
                         + "remoteMemoryLatencyCycles=%d migrationWaiterCycles=%d "
                         + "migrationCompletions=%d "
                         + "memorySystemEnabled=%s memoryRequestBytes=%d "
+                        + "memoryRequestBytesMin=%d memoryRequestBytesMax=%d "
+                        + "memoryRequestBytesObservedMin=%d "
+                        + "memoryRequestBytesObservedMax=%d "
                         + "memoryChannels=%d memoryBanksPerChannel=%d "
                         + "memoryBandwidthBytesPerCycle=%d "
                         + "aggregateMemoryBandwidthBytesPerCycle=%d "
@@ -588,7 +611,9 @@ public final class ContextSweep {
                 totalRemoteThreadCycles, remoteMemoryIssues,
                 remoteMemoryLatencyCycles, migrationWaiterCycles,
                 migrationCompletions, memorySystemEnabled,
-                memoryRequestBytes, memoryChannels, memoryBanksPerChannel,
+                memoryRequestBytes, memoryRequestMinBytes,
+                memoryRequestMaxBytes, minObservedRequestBytes,
+                maxObservedRequestBytes, memoryChannels, memoryBanksPerChannel,
                 memoryBandwidthBytesPerCycle,
                 aggregateMemoryBandwidthBytesPerCycle, bankConflictPenalty,
                 memoryBytesIssued, memoryBytesCompleted, memoryServiceCycles,

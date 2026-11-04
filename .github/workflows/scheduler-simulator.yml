@@ -104,6 +104,18 @@ jobs:
           grep -Eq 'schedulerSteals=[1-9][0-9]*' <<< "$sparse"
           printf '%s\n' "$sparse"
 
+      - name: Compare schedulers under workspace workload skew
+        shell: bash
+        run: |
+          set -euo pipefail
+          for scheduler in fifo hierarchical distributed; do
+            output="$(java -Df128x.scheduler="$scheduler" -Df128x.clusters=2 -Df128x.hotWorkspaceRatio=0.25 -Df128x.hotMemoryFraction=0.90 -Df128x.coldMemoryFraction=0.05 -Df128x.hotDependencyFraction=0.20 -Df128x.coldDependencyFraction=0.02 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 300 0.25 50000 42 2)"
+            grep -q "scheduler=$scheduler" <<< "$output"
+            grep -q 'hotWorkspaceCount=1' <<< "$output"
+            grep -Eq 'workspaceJainFairness=[01]\.[0-9]+' <<< "$output"
+            printf '%s\n' "$output"
+          done
+
       - name: Verify memory completion-rate backpressure
         shell: bash
         run: |

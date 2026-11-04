@@ -304,6 +304,7 @@ public final class BoardFabricSweep {
 final class FabricTopologySweep {
     private record Transaction(long injectionCycle, int source, int target) {}
     private record Result(String topology, int boards, String pattern, int links,
+            int bisectionEdges, int perLinkBytesPerCycle, int bisectionBytesPerCycle,
             int operations, double averageLatency, long p95Latency,
             long completionCycle, double operationsPerCycle) {}
 
@@ -345,10 +346,13 @@ final class FabricTopologySweep {
                         Result result = simulate(boards, pattern, topology,
                                 links, operationsPerBoard, seed);
                         System.out.printf("topology=%s boards=%d pattern=%s linksPerNeighbor=%d "
-                                        + "remoteOperations=%d averageLatency=%.2f "
-                                        + "p95Latency=%d completionCycle=%d operationsPerCycle=%.5f%n",
+                                        + "bisectionEdges=%d perLinkBytesPerCycle=%d "
+                                        + "bisectionBandwidthBytesPerCycle=%d remoteOperations=%d "
+                                        + "averageLatency=%.2f p95Latency=%d completionCycle=%d "
+                                        + "operationsPerCycle=%.5f%n",
                                 result.topology(), result.boards(), result.pattern(),
-                                result.links(), result.operations(), result.averageLatency(),
+                                result.links(), result.bisectionEdges(), result.perLinkBytesPerCycle(),
+                                result.bisectionBytesPerCycle(), result.operations(), result.averageLatency(),
                                 result.p95Latency(), result.completionCycle(),
                                 result.operationsPerCycle());
                     }
@@ -367,7 +371,12 @@ final class FabricTopologySweep {
             throw new IllegalArgumentException("Invalid fabric topology parameter");
         }
         final int requestBytes = 64;
-        final int fabricBytesPerCycle = 128;
+        final int targetBisectionBytesPerCycle = 128;
+        final int bisectionEdges = bisectionEdges(boards, topology);
+        if (targetBisectionBytesPerCycle % bisectionEdges != 0) {
+            throw new IllegalStateException("Target bisection bandwidth is not divisible by cut size");
+        }
+        final int fabricBytesPerCycle = targetBisectionBytesPerCycle / bisectionEdges;
         final int memoryBytesPerCycle = 64;
         final int memoryLatency = 80;
         final int fabricBaseLatency = 20;
@@ -425,8 +434,61 @@ final class FabricTopologySweep {
         double average = (double) total / latencies.length;
         long p95 = latencies[Math.min(latencies.length - 1,
                 (int) Math.ceil(latencies.length * 0.95) - 1)];
-        return new Result(topology, boards, pattern, links, latencies.length,
-                average, p95, lastCompletion, (double) latencies.length / lastCompletion);
+        return new Result(topology, boards, pattern, links, bisectionEdges,
+                fabricBytesPerCycle, fabricBytesPerCycle * bisectionEdges * links,
+                latencies.length, average, p95, lastCompletion,
+                (double) latencies.length / lastCompletion);
+    }
+
+    private static int bisectionEdges(int boards, String topology) {
+        if (topology.equals("shared")) {
+            return 1;
+        }
+        boolean[][] edge = new boolean[boards][boards];
+        if (topology.equals("ring")) {
+            for (int board = 0; board < boards; board++) {
+                edge[board][(board + 1) % boards] = true;
+            }
+        } else if (topology.equals("mesh")) {
+            int columns = (int) Math.ceil(Math.sqrt(boards));
+            for (int board = 0; board < boards; board++) {
+                int row = board / columns;
+                int column = board % columns;
+                addMeshEdge(edge, board, row, column - 1, columns, boards);
+                addMeshEdge(edge, board, row, column + 1, columns, boards);
+                addMeshEdge(edge, board, row - 1, column, columns, boards);
+                addMeshEdge(edge, board, row + 1, column, columns, boards);
+            }
+        } else {
+            throw new IllegalArgumentException("Unknown topology: " + topology);
+        }
+        int selectedSize = boards / 2;
+        int minimum = Integer.MAX_VALUE;
+        long limit = 1L << boards;
+        for (long mask = 1; mask < limit; mask++) {
+            if ((mask & 1L) == 0 || Long.bitCount(mask) != selectedSize) {
+                continue;
+            }
+            int crossing = 0;
+            for (int left = 0; left < boards; left++) {
+                if ((mask & (1L << left)) == 0) continue;
+                for (int right = 0; right < boards; right++) {
+                    if ((mask & (1L << right)) == 0 && edge[left][right]) crossing++;
+                }
+            }
+            minimum = Math.min(minimum, crossing);
+        }
+        if (minimum == Integer.MAX_VALUE || minimum < 1) {
+            throw new IllegalStateException("Could not determine topology bisection");
+        }
+        return minimum;
+    }
+
+    private static void addMeshEdge(boolean[][] edge, int source, int row,
+            int column, int columns, int boards) {
+        if (row < 0 || column < 0) return;
+        int target = row * columns + column;
+        if (target < boards) edge[source][target] = true;
     }
 
     private static int earliestLane(long[] available) {

@@ -1,0 +1,55 @@
+name: Scheduler simulator
+
+on:
+  push:
+    paths:
+      - "tools/scheduler-sim/**"
+      - ".github/workflows/scheduler-simulator.yml"
+  pull_request:
+    paths:
+      - "tools/scheduler-sim/**"
+      - ".github/workflows/scheduler-simulator.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  java-25:
+    name: Compile and smoke-test (JDK 25)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Compile with Java 25
+        run: |
+          mkdir -p build/scheduler-sim
+          javac --release 25 -Xlint:all -Werror \
+            -d build/scheduler-sim \
+            tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java
+
+      - name: Run deterministic smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.25 20000 42)
+          first="$( "${command[@]}" )"
+          second="$( "${command[@]}" )"
+          test "$first" = "$second"
+          grep -q 'contexts=512' <<< "$first"
+          grep -q 'issueWidth=4' <<< "$first"
+          grep -q 'seed=42' <<< "$first"
+          printf '%s\n' "$first"
+
+      - name: Verify invalid arguments fail
+        run: |
+          if java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep; then
+            echo "Expected invalid invocation to fail" >&2
+            exit 1
+          fi

@@ -278,6 +278,28 @@ jobs:
           fi
           echo "PASS: fixed and congestion-aware routing matrices"
 
+      - name: Sweep destination memory-bank conflicts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for banks in 1 4 16; do
+            output="$(java -Df128x.fabric.operationsPerBoard=256 -Df128x.fabric.seed=42 -Df128x.fabric.memoryLanesPerBoard=4 -Df128x.fabric.memoryBanksPerBoard="$banks" -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "memoryBanksPerBoard=$banks" <<< "$output"
+            grep -Eq 'bankConflictWaitCycles=[0-9]+\.[0-9]+' <<< "$output"
+            if [[ "$banks" == 1 ]]; then
+              awk '/^topology=.*pattern=hotspot / { for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="bankConflictWaitCycles" && p[2]>0) found=1; } } END { exit !found; }' <<< "$output"
+            fi
+            echo "fabric-memory-banks=$banks"
+            echo "$output"
+          done
+          if java -Df128x.fabric.memoryBanksPerBoard=0 -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep; then
+            echo "Expected non-positive memory bank count to fail" >&2
+            exit 1
+          fi
+          echo "PASS: destination memory-bank conflict matrices"
+
       - name: Run deterministic smoke test
         shell: bash
         run: |

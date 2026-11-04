@@ -38,12 +38,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          command=(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.25 20000 42)
+          command=(java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 512 4 300 0.25 20000 42 2)
           first="$( "${command[@]}" )"
           second="$( "${command[@]}" )"
           test "$first" = "$second"
           grep -q 'contexts=512' <<< "$first"
           grep -q 'issueWidth=4' <<< "$first"
+          grep -q 'maxOutstanding=2' <<< "$first"
           grep -q 'seed=42' <<< "$first"
           printf '%s\n' "$first"
 

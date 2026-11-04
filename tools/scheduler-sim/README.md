@@ -19,7 +19,8 @@ At each simulated cycle:
 5. Each selected instruction is a memory operation with probability `memory-fraction`.
 6. Memory operations are assigned to one of the configured latency classes.
 7. An operation is issued only when the shared outstanding-request capacity has a free slot. Otherwise, that selected memory instruction waits for queue credit and does not consume an issue slot.
-8. A non-memory instruction may optionally incur a serialized dependency stall, controlled by `dependency-fraction` and `dependency-latency`. This is a coarse stall model, not a dependency graph.\n9. A thread may continue issuing while it has fewer than `max-outstanding` accepted memory requests in flight.
+8. A non-memory instruction may optionally incur a serialized dependency stall, controlled by `dependency-fraction` and `dependency-latency`. This is a coarse stall model, not a dependency graph.
+9. A thread may continue issuing while it has fewer than `max-outstanding` accepted memory requests in flight.
 
 The scheduler uses one FIFO ready queue and one FIFO queue-credit wait list. A deterministic seed makes runs repeatable. Each thread can issue at most one instruction per cycle.
 
@@ -62,7 +63,8 @@ Arguments:
 <contexts> <issue-width> <default-latency>
 <memory-fraction> <cycles> <seed>
 [max-outstanding [memory-queue-capacity
-[l1-fraction l1-latency l2-fraction l2-latency dram-latency\n[dependency-fraction dependency-latency]]]]
+[l1-fraction l1-latency l2-fraction l2-latency dram-latency
+[dependency-fraction dependency-latency]]]]
 ```
 
 The original six-argument invocation remains valid. `max-outstanding` defaults to 1. The shared memory queue defaults to effectively unbounded capacity unless explicitly configured. Supply all five latency-class arguments together.
@@ -98,8 +100,9 @@ The warmup interval is excluded from measured IPC. Other counters are whole-run 
 
 This revision still does not model:
 
-- Instruction dependencies or dependency chains.
-- Cache hit/miss generation from addresses or working sets.\n- Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
+- Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
+- Cache hit/miss generation from addresses or working sets.
+- Operand-level dependency graphs, producer/consumer relationships, forwarding, or multiple independent dependency chains.
 - Memory bandwidth, banks, channels, row buffers, arbitration, or service-rate limits.
 - Different request sizes, read/write behavior, coherence, translation, or TLBs.
 - Shared-register conflicts or synchronization.

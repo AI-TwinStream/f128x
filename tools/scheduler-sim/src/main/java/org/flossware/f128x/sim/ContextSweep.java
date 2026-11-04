@@ -113,11 +113,16 @@ public final class ContextSweep {
         String schedulerStrategy = System.getProperty("f128x.scheduler", "fifo");
         int defaultClusters = Math.max(1, Math.min(8, workspaceCount));
         int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
-        if (clusterCount < 1) {
-            throw new IllegalArgumentException("Cluster count must be positive");
+        int clusterIssueWidth = Integer.getInteger(
+                "f128x.clusterIssueWidth", issueWidth);
+        if (clusterCount < 1 || clusterIssueWidth < 1) {
+            throw new IllegalArgumentException(
+                    "Cluster count and cluster issue width must be positive");
         }
         ReadyScheduler ready = createReadyScheduler(
                 schedulerStrategy, contexts, clusterCount);
+        int effectiveIssueCapacity = (int) Math.min(
+                issueWidth, (long) ready.clusterCount() * clusterIssueWidth);
 
         for (MemoryClass memoryClass : memoryClasses) {
             if (memoryClass.latency() < 1) {
@@ -160,6 +165,9 @@ public final class ContextSweep {
         long[] workspaceRunnableWorkspaceCycles = new long[workspaceCount];
         long[] classIssues = new long[memoryClasses.length];
         long[] classCompletions = new long[memoryClasses.length];
+        long[] clusterIssues = new long[ready.clusterCount()];
+        int[] clusterIssuedThisCycle = new int[ready.clusterCount()];
+        int nextCluster = 0;
         final int warmup = Math.min(10_000, cycles / 10);
 
         for (int cycle = 0; cycle < cycles; cycle++) {
@@ -223,13 +231,26 @@ public final class ContextSweep {
             int issuedThisCycle = 0;
             int[] requeue = new int[candidates];
             int requeueCount = 0;
+            java.util.Arrays.fill(clusterIssuedThisCycle, 0);
+            int unavailableClusters = 0;
 
-            // Visit each thread that was ready at cycle start at most once.
-            while (candidates-- > 0 && issuedThisCycle < issueWidth) {
-                int thread = ready.poll();
-                if (thread < 0) {
-                    break;
+            // Visit each ready thread at most once, respecting both the global
+            // issue budget and each cluster's independent local budget.
+            while (candidates > 0 && issuedThisCycle < issueWidth
+                    && unavailableClusters < ready.clusterCount()) {
+                int cluster = nextCluster;
+                nextCluster = (nextCluster + 1) % ready.clusterCount();
+                if (clusterIssuedThisCycle[cluster] >= clusterIssueWidth) {
+                    unavailableClusters++;
+                    continue;
                 }
+                int thread = ready.poll(cluster);
+                if (thread < 0) {
+                    unavailableClusters++;
+                    continue;
+                }
+                candidates--;
+                unavailableClusters = 0;
                 int workspace = thread / 16;
                 double threadMemoryFraction = workspace < hotWorkspaceCount
                         ? hotMemoryFraction : coldMemoryFraction;
@@ -264,6 +285,8 @@ public final class ContextSweep {
                         workspaceMeasuredIssues[thread / 16]++;
                     }
                     issuedThisCycle++;
+                    clusterIssuedThisCycle[cluster]++;
+                    clusterIssues[cluster]++;
 
                     outstandingByThread[thread]++;
                     maxThreadOutstandingObserved = Math.max(
@@ -279,6 +302,8 @@ public final class ContextSweep {
                     }
                 } else {
                     issuedThisCycle++;
+                    clusterIssuedThisCycle[cluster]++;
+                    clusterIssues[cluster]++;
                     workspaceIssues[thread / 16]++;
                     if (cycle >= warmup) {
                         measuredIssued++;
@@ -305,6 +330,7 @@ public final class ContextSweep {
         int measuredCycles = Math.max(1, cycles - warmup);
         double ipc = (double) measuredIssued / measuredCycles;
         double utilization = ipc / issueWidth;
+        double clusterBudgetUtilization = ipc / effectiveIssueCapacity;
         int waitingAtThreadLimit = 0;
         int waitingAtQueueLimit = 0;
         long outstandingAtEnd = 0;
@@ -393,6 +419,8 @@ public final class ContextSweep {
                         + "coldMemoryFraction=%.3f hotDependencyFraction=%.3f "
                         + "coldDependencyFraction=%.3f issueWidth=%d memoryFraction=%.3f "
                         + "dependencyFraction=%.3f dependencyLatency=%d "
+                        + "clusterIssueWidth=%d effectiveIssueCapacity=%d "
+                        + "clusterBudgetUtilization=%.4f "
                         + "maxOutstanding=%d memoryQueueCapacity=%d "
                         + "memoryCompletionRate=%d cycles=%d warmup=%d measuredIPC=%.4f "
                         + "issueUtilization=%.4f memoryIssues=%d "
@@ -421,7 +449,8 @@ public final class ContextSweep {
                 hotWorkspaceCount, hotWorkspaceRatio, hotMemoryFraction,
                 coldMemoryFraction, hotDependencyFraction, coldDependencyFraction,
                 issueWidth, memoryFraction, dependencyFraction,
-                dependencyLatency, maxOutstanding,
+                dependencyLatency, clusterIssueWidth, effectiveIssueCapacity,
+                clusterBudgetUtilization, maxOutstanding,
                 memoryQueueCapacity, memoryCompletionRate, cycles, warmup, ipc, utilization,
                 memoryIssues, completedRequests, maxThreadOutstandingObserved,
                 maxQueueOccupancy, queueFullAttempts, queueWaiterCycles,
@@ -442,12 +471,16 @@ public final class ContextSweep {
                     memoryClasses[i].name(), memoryClasses[i].latency(),
                     classIssues[i], classCompletions[i]);
         }
+        for (int cluster = 0; cluster < clusterIssues.length; cluster++) {
+            System.out.printf("clusterIssueCount=%d issues=%d%n",
+                    cluster, clusterIssues[cluster]);
+        }
     }
 
     private interface ReadyScheduler {
         void addFirst(int thread);
         void addLast(int thread);
-        int poll();
+        int poll(int cluster);
         int size();
         String name();
         int clusterCount();
@@ -491,7 +524,10 @@ public final class ContextSweep {
         }
 
         @Override
-        public int poll() {
+        public int poll(int cluster) {
+            if (cluster != 0) {
+                return -1;
+            }
             selectionProbes++;
             if (queue.isEmpty()) {
                 return -1;
@@ -573,8 +609,8 @@ public final class ContextSweep {
         }
 
         @Override
-        public int poll() {
-            if (size == 0) {
+        public int poll(int cluster) {
+            if (cluster != 0 || size == 0) {
                 return -1;
             }
             selectionProbes++;
@@ -634,7 +670,6 @@ public final class ContextSweep {
         private final List<ArrayDeque<Integer>> clusterQueues;
         private final int[] ownerCluster;
         private final int[] workspaceReadyCounts;
-        private int cursor;
         private int size;
         private long steals;
         private long selectionProbes;
@@ -669,17 +704,20 @@ public final class ContextSweep {
         }
 
         @Override
-        public int poll() {
+        public int poll(int targetCluster) {
             if (size == 0) {
                 return -1;
             }
             selectionProbes++;
-            int source = -1;
-            for (int offset = 0; offset < clusterQueues.size(); offset++) {
-                int candidate = (cursor + offset) % clusterQueues.size();
-                if (!clusterQueues.get(candidate).isEmpty()) {
-                    source = candidate;
-                    break;
+            int source = targetCluster;
+            if (clusterQueues.get(source).isEmpty()) {
+                source = -1;
+                for (int offset = 1; offset < clusterQueues.size(); offset++) {
+                    int candidate = (targetCluster + offset) % clusterQueues.size();
+                    if (!clusterQueues.get(candidate).isEmpty()) {
+                        source = candidate;
+                        break;
+                    }
                 }
             }
             if (source < 0) {
@@ -688,12 +726,11 @@ public final class ContextSweep {
 
             int thread = clusterQueues.get(source).removeFirst();
             workspaceReadyCounts[thread / 16]--;
-            if (source != cursor) {
+            if (source != targetCluster) {
                 steals++;
-                ownerCluster[thread] = cursor;
+                ownerCluster[thread] = targetCluster;
             }
             size--;
-            cursor = (cursor + 1) % clusterQueues.size();
             return thread;
         }
 

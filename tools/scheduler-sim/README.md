@@ -6,7 +6,7 @@
 
 `ContextSweep` explores how context count, issue width, memory-operation frequency, per-thread outstanding-request limits, memory latency classes, finite shared request capacity, per-cluster issue budgets, and optional byte-oriented bank service affect issue utilization.
 
-The model is intended to expose sensitivities and falsify simplistic assumptions. Its current workload and context defaults remain a member-specific 128-bit research profile research profile. It is an fNx-family software experiment using an 128-bit research profile-oriented context profile; it does not predict physical hardware performance.
+The model is intended to expose sensitivities and falsify simplistic assumptions. Its current workload and context defaults remain a member-specific 128-bit research profile. It is an fNx-family software experiment using a 128-bit context profile; it does not predict physical hardware performance.
 
 ## Model
 

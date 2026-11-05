@@ -1,135 +1,122 @@
-# ISA, ABI, and Toolchain Plan 0.2
+# fNx ISA, ABI, and Toolchain Plan 0.3
 
-**Date:** 2026-11-04  
-**Status:** Early design workstream; encoding and ABI not frozen
+**Date:** 2026-11-05  
+**Status:** Early design workstream; ISA encoding, ABI, and P-Code are not frozen
 
-## 1. Why this work starts early
+## 1. Scope and architecture family
 
-The instruction encoding, address model, register organization, compiler backend, ABI, and debugger constrain one another. Toolchain work cannot be postponed until after an OS port is underway.
+fNx is one architecture family whose member name encodes its native architectural width N in bits. The family is intended to share one ISA, instruction semantics, opcode registry, and platform contract.
 
-The 128-bit GPR width does not imply 128-bit pointers, virtual addresses, physical addresses, instruction words, or memory buses.
+For an fNx member, general-purpose registers, native arithmetic, native data width, pointers, and virtual addresses are N bits. Physical address width and physical memory capacity may be smaller and are handled through translation and protection.
 
-## 2. Address-width decision
+The minimum N is still open, with 16 bits currently favored provisionally. The current opcode-field direction is N bits, using one finite global opcode registry across all members. Existing opcode assignments and meanings must never change. New instructions receive new unique opcode values.
 
-Evaluate virtual and physical address widths independently.
+**Opcode width is not instruction length.** Instruction formats, operand fields, register selectors, immediates, extension words, and fetch alignment remain unresolved. Do not assume every operand field must be N bits.
 
-Candidate virtual-address starting points include 48-bit and 64-bit designs. These are comparison points, not selected values.
+See [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md).
 
-Decision criteria:
-- Required virtual address space.
-- Page-table depth and translation cost.
-- Canonical-address rules, if any.
-- Physical memory scalability.
-- TLB size and reach.
-- Capability/protection model.
-- ABI pointer representation.
-- Compatibility with compiler and linker ecosystems.
-- Long-term extension path.
+## 2. ISA evolution and older-member compatibility
 
-Also specify byte addressing, endianness, alignment, supported load/store widths, and unaligned-access behavior.
+The ISA may grow by adding new opcodes and explicitly versioned capabilities. Unknown opcodes must not silently execute as another operation. Native execution of an unsupported opcode raises a defined illegal-instruction/unsupported-operation exception.
 
-## 3. Instruction encoding
+Where possible, every new instruction should include a reference expansion into existing instructions. The expansion must reproduce exact semantics, including overflow, flags, exceptions, privilege, memory ordering, atomicity, and side effects.
 
-Encoding feasibility is a prerequisite to freezing the ISA. The register namespace is large: 128 private and 128 shared registers. Three explicit register operands can consume substantial encoding space before opcode, addressing mode, immediate, predicate, and extension fields are considered.
+Compatibility classes:
+- **Expandable:** exact behavior can be generated using an older baseline ISA.
+- **Conditionally expandable:** requires specified OS, runtime, privilege, or hardware capabilities.
+- **Non-expandable:** cannot be faithfully reproduced on the older target.
 
-Investigate:
-- Fixed-width versus variable-length or mixed-width encoding.
-- Register-class selection and operand namespace.
-- Compact common forms and extended forms.
-- Immediate widths and literal construction.
-- Load/store addressing modes.
-- Branch range and PC-relative forms.
-- Atomic and synchronization encodings.
-- Privileged/system instruction space.
-- Reserved encoding space and future extension rules.
-- Decoder complexity and instruction-fetch alignment.
+The preferred application compatibility path is compiler/installer lowering from P-Code to the target's supported native instructions. The FCP reports capabilities and provides platform management; it is not a serial instruction translator.
 
-Do not assume a 32-bit fixed-width format is viable without a concrete encoding study.
+## 3. Portable application code
 
-## 4. Compiler and assembler strategy
+The proposed normal application distribution format is fNx P-Code in a proposed `.fnx` package. P-Code is a separate, versioned portable instruction contract, not serialized native ISA and not assumed to be LLVM IR.
 
-**Reuse and port established toolchains before considering a new compiler.** The goal is to make f128x a supported target in existing compiler ecosystems, not to recreate mature language frontends, optimizers, runtimes, and standard libraries.
+The installer verifies package integrity and requirements, discovers the target fNx member and capabilities, and performs ahead-of-time compilation to native code. A JIT may further optimize hot paths. Generated native code is target-specific derived cache; P-Code remains the portable source of truth and allows regeneration after hardware, ABI, compiler, or runtime changes.
 
-Keep two meanings of "port" distinct:
-- A **hosted cross-toolchain** runs on an existing x86-64 or ARM64 development machine and emits f128x code.
-- A **native toolchain** runs on an f128x system and may eventually compile f128x programs locally.
+Native binaries remain valid for kernels, bootloaders, drivers, hard real-time paths, direct hardware access, and justified high-performance cases.
 
-The first practical deliverable is a hosted cross-toolchain. Native self-hosting is a later milestone and is not required to execute compiled programs on f128x.
+See [fNx P-Code and application compatibility](fnx-pcode-and-compatibility-0.1.md).
 
-### Existing compiler and runtime candidates
+## 4. Address model
 
-| Language family | Existing implementation to reuse | f128x work still required |
+Pointers and virtual addresses are N bits for an fNx member. Physical address width may be smaller and must be discoverable. Translation maps N-bit virtual addresses to available physical memory and device regions.
+
+Specify:
+- Virtual-address arithmetic and interpretation.
+- Physical-address width and platform limits.
+- Page sizes, translation, permissions, and faults.
+- Address-space identifiers and invalidation.
+- Byte addressing and endianness.
+- Load/store widths, alignment, and unaligned access.
+- Memory-mapped I/O and device attributes.
+
+Do not reintroduce a fixed 48-, 64-, or 128-bit pointer cap without an explicit architecture decision.
+
+## 5. Compiler and assembler strategy
+
+Reuse and port established toolchains before considering a new compiler. The goal is to make fNx a supported target, not to recreate mature language frontends, optimizers, runtimes, and standard libraries.
+
+Keep hosted and native toolchains distinct:
+- A hosted cross-toolchain runs on an existing development host and emits fNx P-Code or native fNx objects.
+- A target installer/AOT compiler translates portable P-Code to the installed member's native ISA.
+- A native toolchain may eventually run on an fNx system; self-hosting is a later milestone.
+
+Candidate ecosystems:
+
+| Language | Existing implementation | fNx work |
 |---|---|---|
-| C / C++ | GCC first candidate; LLVM/Clang also evaluated | Target backend, assembler, linker, ABI, C library/sysroot |
-| Rust | `rustc` with its LLVM code-generation path | LLVM f128x target, target specification, runtime/standard-library support |
-| Go | Evaluate `gccgo` and the official Go compiler separately | Backend/architecture support, runtime, assembler/linker and ABI integration |
-| Java | OpenJDK `javac` and JVM bytecode ecosystem | Port or implement a JVM runtime, garbage collector, native interfaces and platform libraries |
+| C/C++ | GCC; LLVM/Clang | ISA backend, assembler, linker, ABI, sysroot |
+| Rust | rustc with LLVM code generation | LLVM target, ABI, runtime/standard library support |
+| Go | gccgo and official Go compiler | Evaluate backend/runtime paths separately |
+| Java | OpenJDK javac/JVM bytecode | JVM runtime, GC, native interfaces, platform libraries |
 
-GCC is a strong initial candidate for C and C++ because it already separates language frontends from architecture-specific code generation and has an established target-backend model. Its Go frontend, `gccgo`, is a distinct implementation from the official Go toolchain; compatibility and runtime behavior must be evaluated rather than assumed.
+GCC is a strong initial C/C++ candidate. LLVM is complementary and important for the mainstream Rust code-generation path. gccgo and the official Go toolchain are separate candidates and must be evaluated separately. Java bytecode already provides a portable language representation, but running Java still requires a suitable JVM and its runtime services.
 
-LLVM is a complementary target, not a replacement for the GCC decision. It is especially important for Rust because the mainstream `rustc` code-generation path uses LLVM. Supporting both GCC and LLVM means maintaining two f128x backends, so the work should be staged and justified by language coverage.
+Prefer small, reviewable, upstreamable target ports. Keep fNx-specific changes isolated and track upstream releases.
 
-Java requires a different approach. Java source can be compiled to portable JVM bytecode without a native f128x code generator, but executing it on f128x still requires a suitable JVM implementation and its runtime, garbage collector, native interfaces, and platform libraries. A bytecode interpreter can be an initial execution path; JIT compilation is a separate later optimization.
+## 6. Foundational native ISA deliverables
 
-Prefer small, reviewable target ports and upstreamable changes over long-lived FlossWare forks. Track upstream releases and keep f128x-specific patches isolated. Do not copy an entire compiler repository into FlossWare merely to claim a port.
-
-### Foundational deliverables
-
-The initial target-enablement work should include:
-- Machine-readable ISA description and stable instruction semantics.
-- Assembler and disassembler, including encoding/decoding tests.
-- Architectural reference interpreter and executable test harness.
-- GCC f128x target prototype for a minimal C program.
-- Linker target support, relocation definitions, object-file format and initial sysroot.
-- ABI document covering calling convention, stack, register use, data layout and atomics.
+- Machine-readable ISA and opcode registry.
+- Formal instruction semantics and versioning rules.
+- Encoding feasibility study for representative instruction families.
+- Assembler and disassembler with encoding/decoding tests.
+- Architectural reference interpreter and golden-vector harness.
+- Native object format, relocations, linker, and initial sysroot.
+- ABI: calling convention, stack, register use, data layout, atomics, exceptions, and system interface.
 - Debug information and debugger target.
-- Conformance tests and golden vectors.
+- Conformance tests shared by interpreter, simulator, and RTL.
 
-A minimal assembler and interpreter may precede a production compiler backend, but the ISA must be designed with compiler lowering, instruction selection and register allocation in mind. The simulator must eventually load and execute linked f128x binaries or provide a rigorously defined execution interface for them.
+The first compiler deliverable should be a hosted cross-compiler for a minimal C program, followed by Rust and Go feasibility work. Java execution should be evaluated through the JVM path.
 
-Do not start by implementing new Rust-like, Java-like or Go-like Floss languages. First establish which existing toolchains can target the ISA and identify genuine gaps that cannot reasonably be filled by porting.
-
-## 5. ABI topics
+## 7. ABI topics
 
 The ABI must define:
-- Pointer and integer types.
-- 128-bit scalar representation and operations.
-- Calling convention and argument passing.
-- Return values.
+- N-bit pointer representation and supported integer types.
+- N-bit scalar and smaller sub-width data layout.
+- Calling convention, argument passing, and return values.
 - Stack layout and alignment.
-- Callee/caller-saved register policy.
-- Thread-local and workspace-shared data.
+- Caller/callee-saved register policy.
+- Thread-private and workspace-shared state.
 - Exception and unwind conventions.
 - System-call boundary.
-- Atomic and synchronization library interface.
+- Atomic and synchronization interfaces.
 - Process/workspace/thread mapping.
-- Object-file and relocation formats.
+- Object format and relocation definitions.
+- Interoperability between native code and P-Code runtime modules.
 
-The ABI must not assume that all 128 private registers are equally cheap or physically resident.
+The ABI must not assume all architectural registers are equally cheap or physically resident.
 
-## 6. OS implications
+## 8. Milestones
 
-A full OS port depends on stable:
-- ISA and ABI.
-- Privilege levels.
-- Address translation.
-- Interrupt and exception entry.
-- Atomic operations and memory ordering.
-- Context lifecycle and debug inspection.
-- Timer and platform interfaces.
+1. Ratify minimum N and the global opcode registry/field direction.
+2. Complete representative instruction encoding and instruction-length feasibility studies.
+3. Specify N-bit pointer/virtual-address semantics and physical-address translation contract.
+4. Specify P-Code execution model, package manifest, validation, and ABI.
+5. Build ISA registry, reference interpreter, assembler, disassembler, and conformance tests.
+6. Prototype P-Code-to-native AOT compilation and target-specific cache.
+7. Prototype native compiler backends and linker/debugger support.
+8. Evaluate runtime/JIT, Java VM, and native interoperability.
+9. Integrate with OS and platform services after privilege, memory, interrupt, and ABI contracts stabilize.
 
-The OS should manage software processes and threads over hardware workspaces/contexts; it should not expose every hardware context as an OS CPU by default.
-
-## 7. Milestones
-
-1. Encoding feasibility study with representative instruction families and compiler-lowering constraints.
-2. Address-width and load/store model decision, including object-format and ABI implications.
-3. Minimal assembler/disassembler, architectural interpreter and executable golden-vector tests.
-4. Hosted GCC cross-compiler prototype: compile and link a minimal C program for f128x, then execute it in the simulator.
-5. LLVM f128x backend feasibility and prototype; use it to establish the Rust target path before committing to full Rust support.
-6. Evaluate gccgo versus the official Go toolchain, and define the OpenJDK/JVM runtime port path.
-7. Complete ABI, linker/sysroot, debugger and conformance integration.
-8. OS port feasibility after platform contracts stabilize.
-9. Native/self-hosted toolchain feasibility after a usable f128x execution platform exists.
-
-No instruction width, pointer width, compiler backend, or ABI is selected by this document.
+No complete instruction encoding, P-Code format, ABI, or compiler backend is selected by this plan.

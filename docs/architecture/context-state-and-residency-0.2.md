@@ -7,7 +7,7 @@
 
 This document applies to the fNx family. For an fNx member, N is the native architectural width in bits. Architectural GPRs are N bits. The number of registers, contexts, workspaces, and physical residency capacity are separate design parameters.
 
-The current 128-workspace × 128-thread × 128-private-register/128-shared-register configuration is an f128x research profile, not a family-wide invariant. At f128x width it accounts for 32 MiB of private register state plus 256 KiB shared state. Do not extrapolate this storage total unchanged to other N values.
+The current 128-workspace × 128-thread × 128-private-register/128-shared-register configuration is an 128-bit research profile research profile, not a family-wide invariant. At 128-bit research profile width it accounts for 32 MiB of private register state plus 256 KiB shared state. Do not extrapolate this storage total unchanged to other N values.
 
 ## 2. Architectural state versus physical residency
 
@@ -63,7 +63,7 @@ A register namespace of 128 entries does not imply that every thread can access 
 
 ## 6. Experimental profiles
 
-Existing scheduler simulations include small context profiles and an f128x-oriented 128/256-bit register-width parameter sweep. Those are experimental configurations, not frozen architecture members. Any future f16x/f32x/f64x/f256x study must explicitly account for the selected N, state size, execution width, and physical implementation assumptions.
+Existing scheduler simulations include small context profiles and an 128-bit research profile-oriented 128/256-bit register-width parameter sweep. Those are experimental configurations, not frozen architecture members. Any future f16x/f32x/f64x/f256x study must explicitly account for the selected N, state size, execution width, and physical implementation assumptions.
 
 ## 7. Required experiments
 

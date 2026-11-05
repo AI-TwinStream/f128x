@@ -1,7 +1,5 @@
 > **Historical candidate-study notice (2026-11-05):** This document explores earlier 128-bit research profile workspace/thread/register-capacity candidates. Its 4,096-workspace and 256-thread assumptions are superseded candidate parameters, not current fNx family-wide requirements. Retain it as historical experimental input; use the [fNx family contract](fnx-family-and-architectural-contract-0.1.md) and [context residency study](context-state-and-residency-0.2.md) for current direction.
 
-> **Historical candidate-study notice (2026-11-05):** This document explores earlier 128-bit research profile workspace/thread/register-capacity candidates. Its 4,096-workspace and 256-thread assumptions are not the current 128-bit research profile research profile and are not fNx family-wide requirements. Retain it as historical experimental input; use the [fNx family contract](fnx-family-and-architectural-contract-0.1.md) and [context residency study](context-state-and-residency-0.2.md) for current direction.
-
 # Register and context scaling proposal 0.1
 
 ## Purpose

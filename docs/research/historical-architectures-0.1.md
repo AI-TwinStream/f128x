@@ -1,5 +1,7 @@
 > **Scope note (2026-11-05):** This historical research is now maintained for the fNx family. References to f128x and its former capacity assumptions describe the original research context, not universal fNx requirements. Historical mechanisms are research inputs, not normative architecture decisions.
 
+> **Scope note (2026-11-05):** This historical research is now maintained for the fNx family. References to f128x and its former capacity assumptions describe the original research context, not universal fNx requirements. Historical mechanisms are research inputs, not normative architecture decisions.
+
 # f128x Historical Architecture Research 0.1
 
 **Date:** 2026-11-04  

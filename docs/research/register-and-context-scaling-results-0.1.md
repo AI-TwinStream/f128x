@@ -48,13 +48,13 @@ A separate CI smoke test instantiated the expanded architectural capacity:
 | Threads per workspace | 256 |
 | Architectural contexts | 1,048,576 |
 | Private GPRs per thread | 256 |
-| Shared GPRs per workspace | 128 |
-| GPR width | 128 bits |
-| Aggregate private state | 4 GiB |
-| Aggregate shared state | 8 MiB |
-| Total architectural register state | 4 GiB + 8 MiB |
+| Shared GPRs per workspace | 256 |
+| GPR width | 256 bits |
+| Aggregate private state | 8 GiB |
+| Aggregate shared state | 32 MiB |
+| Total architectural register state | 8 GiB + 32 MiB |
 
-The test successfully initialized and ran the hierarchical scheduler against all 1,048,576 contexts. A separate distributed-scheduler smoke exercised 256-thread workspace grouping across four clusters. This validates simulator capacity accounting and grouping logic; it does not validate physical register-file feasibility.
+The test successfully initialized and ran the hierarchical scheduler against all 1,048,576 contexts with the full candidate register counts and width. A separate distributed-scheduler smoke exercised 256-thread workspace grouping across four clusters. This validates simulator capacity accounting and grouping logic; it does not validate physical register-file feasibility.
 
 ## Interpretation and limits
 
@@ -62,12 +62,12 @@ The experiment deliberately isolates one active workspace. With many active work
 
 The model uses a fixed memory latency and a simplified per-thread outstanding-request limit. It does not model real cache misses, MSHRs, memory-controller scheduling, register dependencies, instruction-level parallelism, shared-register contention, or physical execution-unit timing.
 
-The experiment says nothing about the performance benefit of increasing private GPR count from 128 to 256. The simulator reports architectural storage capacity for that dimension, but does not model compiler register allocation or physical register-file ports, banking, timing, area, or power.
+The experiment says nothing about the performance benefit or physical feasibility of 256 private and 256 shared 256-bit GPRs. The scheduler simulator reports architectural storage capacity, but does not model compiler register allocation, operand encoding, register-file ports, banking, timing, area, or power.
 
 ## CI evidence
 
 The full Java 25 scheduler workflow passed in [run 338](https://github.com/AI-TwinStream/f128x/actions/runs/41947595227). The workflow includes:
-- Full-capacity 1,048,576-context and 4 GiB private-state accounting.
+- Full-capacity 1,048,576-context, 8 GiB private-state, and 32 MiB shared-state accounting.
 - Hierarchical and distributed scheduler grouping with 256 thread slots per workspace.
 - Three-seed 16-versus-256 thread latency-hiding comparison.
 - Existing cache, memory, scheduler, board/backplane, topology, arbitration, routing, and bank-conflict regression tests.

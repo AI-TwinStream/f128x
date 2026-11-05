@@ -1,6 +1,6 @@
-> **Historical experiment notice (2026-11-05):** These results belong to the earlier f128x scheduler model and its synthetic workload. They are not evidence for all fNx widths, nor do they establish physical feasibility or performance. The family-level architectural contract is maintained separately.
+> **Historical experiment notice (2026-11-05):** These results belong to the earlier 128-bit research profile scheduler model and its synthetic workload. They are not evidence for all fNx widths, nor do they establish physical feasibility or performance. The family-level architectural contract is maintained separately.
 
-> **Historical experiment notice (2026-11-05):** These results belong to the earlier f128x scheduler model and its synthetic workload. They are not evidence for all fNx widths, nor do they establish physical feasibility or performance. The family-level architectural contract is maintained separately.
+> **Historical experiment notice (2026-11-05):** These results belong to the earlier 128-bit research profile scheduler model and its synthetic workload. They are not evidence for all fNx widths, nor do they establish physical feasibility or performance. The family-level architectural contract is maintained separately.
 
 # Register and context scaling results 0.1
 
@@ -70,7 +70,7 @@ The experiment says nothing about the performance benefit or physical feasibilit
 
 ## CI evidence
 
-The full Java 25 scheduler workflow passed in [run 338](https://github.com/AI-TwinStream/f128x/actions/runs/41947595227). The workflow includes:
+The full Java 25 scheduler workflow passed in [run 338](https://github.com/AI-TwinStream/fNx/actions/runs/41947595227). The workflow includes:
 - Full-capacity 1,048,576-context, 8 GiB private-state, and 32 MiB shared-state accounting.
 - Hierarchical and distributed scheduler grouping with 256 thread slots per workspace.
 - Three-seed 16-versus-256 thread latency-hiding comparison.

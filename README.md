@@ -6,18 +6,13 @@ The project is not a TMS9900 ISA clone and does not promise TMS9900 binary compa
 
 ## Current architectural direction
 
-| Property | Provisional target |
-|---|---:|
-| Workspaces | 4,096 |
-| Threads per workspace | 16 |
-| Total architectural thread contexts | 65,536 |
-| Private registers per thread | 128 × 128-bit |
-| Shared registers per workspace | 128 × 128-bit |
-| Aggregate architectural register storage | 136 MiB |
+The existing baseline is 4,096 workspaces × 16 threads, with 128 private 128-bit registers per thread and 128 shared 128-bit registers per workspace. Its aggregate architectural register capacity is 136 MiB.
+
+An expanded candidate is now under evaluation: retain 4,096 workspaces and 128-bit register width, increase to 256 threads per workspace, and increase to 256 private registers per thread. Keeping the shared namespace at 128 registers for this comparison yields 1,048,576 architectural thread contexts and 4 GiB + 8 MiB of aggregate architectural register state. This is a candidate profile, not a frozen architecture. The separate option of increasing workspace-shared registers to 256 remains open.
 
 These are architectural capacity targets, not a requirement that every implementation physically instantiate all contexts or provide arbitrary simultaneous access to every register. Context residency, backing, register banking, and access semantics remain under investigation.
 
-A first-order latency-hiding model treats 65,536 contexts as a hypothesis to test, not a proven requirement. The executable [scheduler simulation](tools/scheduler-sim/README.md) provides an initial cycle-level experiment. See also [Context capacity and latency model 0.2](docs/architecture/context-capacity-and-latency-model-0.2.md).
+See [Register and context scaling proposal 0.1](docs/architecture/register-and-context-scaling-0.1.md) for the capacity arithmetic, instruction-encoding implications, implementation questions, and proposed experiment sequence. The executable [scheduler simulation](tools/scheduler-sim/README.md) remains the starting point for latency-hiding experiments.
 
 A 128-bit register does not imply 128-bit addresses, instructions, memory buses, or execution units. Those are independent design decisions.
 
@@ -30,6 +25,7 @@ A 128-bit register does not imply 128-bit addresses, instructions, memory buses,
 ### Current architecture and review work
 - [Review synthesis 0.2](docs/reviews/review-synthesis-0.2.md)
 - [Context state and residency 0.2](docs/architecture/context-state-and-residency-0.2.md)
+- [Register and context scaling proposal 0.1](docs/architecture/register-and-context-scaling-0.1.md)
 - [Context capacity and latency model 0.2](docs/architecture/context-capacity-and-latency-model-0.2.md)
 - [Workspace protection and shared state 0.2](docs/architecture/workspace-protection-and-shared-state-0.2.md)
 - [Scheduling progress and interrupts 0.2](docs/architecture/scheduling-progress-and-interrupts-0.2.md)

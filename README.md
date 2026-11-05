@@ -71,4 +71,4 @@ The scheduler and board/fabric experiments currently use 128-bit member-oriented
 
 ## Status
 
-Architectural research and specification development. fNx is the family; 128-bit member is one member. The N-bit register/arithmetic/pointer/virtual-address direction, common ISA, N-bit opcode-field direction, P-Code distribution model, FCP management concept, and hierarchical width-neutral fabric are working design directions with explicit unresolved details. No complete ISA encoding, P-Code format, ABI, memory model, management protocol, RTL, or physical system is frozen.
+Architectural research and specification development. fNx is the family; the 128-bit member is one width within it. The N-bit register/arithmetic/pointer/virtual-address direction, common ISA, N-bit opcode-field direction, P-Code distribution model, FCP management concept, and hierarchical width-neutral fabric are working design directions with explicit unresolved details. No complete ISA encoding, P-Code format, ABI, memory model, management protocol, RTL, or physical system is frozen.

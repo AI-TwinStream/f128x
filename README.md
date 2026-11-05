@@ -1,6 +1,6 @@
 # fNx
 
-**fNx** is an open processor-architecture family and standards research project. The value of N in a member name is its native architectural width in bits. Examples include f16x, f32x, f64x, f128x, f256x, f512x, and f1024x. The minimum supported width remains under consideration; 16 bits is the current leading candidate, not yet a ratified decision.
+**fNx** is an open processor-architecture family and standards research project. The value of N in a member name is its native architectural width in bits. Examples include f16x, f32x, f64x, f256x, f512x, and f1024x; a 128-bit member is also part of the family. The minimum supported width remains under consideration; 16 bits is the current leading candidate, not yet a ratified decision.
 
 The family is intended to use one common ISA, one global opcode registry, and common architectural and platform contracts across native widths. A CPU architectural unit has one native width. Different fNx members may coexist in a system through a common width-neutral, hierarchical backplane/fabric.
 
@@ -22,9 +22,9 @@ The proposed application model distributes portable **fNx P-Code** in an `.fnx` 
 
 The proposed **fNx Control Processor (FCP)** provides platform discovery, capability reporting, power/reset/thermal management, fault handling, and hierarchical backplane coordination. It uses the fNx ISA family as a separate processor unit. It is not a serial hop for every main-CPU instruction and is not the application compiler.
 
-## f128x research profile
+## 128-bit research profile
 
-The current f128x workspace/thread/register targets are member-specific research assumptions, not family-wide invariants:
+The current 128-bit member workspace/thread/register targets are member-specific research assumptions, not family-wide invariants:
 
 - 128 workspaces maximum.
 - 128 architectural thread contexts per workspace, for 16,384 total architectural thread contexts.
@@ -33,7 +33,7 @@ The current f128x workspace/thread/register targets are member-specific research
 
 At those values, private register-state capacity is 32 MiB and workspace-shared register-state capacity is 256 KiB, for 32.25 MiB total. These are architectural capacity calculations, not claims about physical residency, ports, area, or timing.
 
-The scheduler and board/fabric experiments currently use f128x-oriented models and naming. Their measured results are sensitivity studies for those model assumptions, not performance predictions for every fNx width.
+The scheduler and board/fabric experiments currently use 128-bit member-oriented models and naming. Their measured results are sensitivity studies for those model assumptions, not performance predictions for every fNx width.
 
 ## Normative working specifications
 
@@ -71,4 +71,4 @@ The scheduler and board/fabric experiments currently use f128x-oriented models a
 
 ## Status
 
-Architectural research and specification development. fNx is the family; f128x is one member. The N-bit register/arithmetic/pointer/virtual-address direction, common ISA, N-bit opcode-field direction, P-Code distribution model, FCP management concept, and hierarchical width-neutral fabric are working design directions with explicit unresolved details. No complete ISA encoding, P-Code format, ABI, memory model, management protocol, RTL, or physical system is frozen.
+Architectural research and specification development. fNx is the family; 128-bit member is one member. The N-bit register/arithmetic/pointer/virtual-address direction, common ISA, N-bit opcode-field direction, P-Code distribution model, FCP management concept, and hierarchical width-neutral fabric are working design directions with explicit unresolved details. No complete ISA encoding, P-Code format, ABI, memory model, management protocol, RTL, or physical system is frozen.

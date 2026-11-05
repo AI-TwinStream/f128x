@@ -1,4 +1,4 @@
-package org.flossware.f128x.sim;
+package org.flossware.fnx.sim;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -11,7 +11,7 @@ import java.util.PriorityQueue;
 import java.util.SplittableRandom;
 
 /**
- * Board/fabric experiment for modular f128x multiprocessor systems.
+ * Board/fabric experiment for modular fNx-family systems.
  *
  * Each board owns independent execution clusters and local memory service.
  * Workspaces are homed to boards; threads stay on their home board in this
@@ -40,29 +40,29 @@ public final class BoardFabricSweep {
 
     public static void main(String[] args) {
         FabricTopologySweep.verifyDeterministicSmoke();
-        int contexts = Integer.getInteger("f128x.contexts", 1024);
-        int workspaces = Integer.getInteger("f128x.workspaces", 64);
-        int threadsPerWorkspace = Integer.getInteger("f128x.threadsPerWorkspace", 16);
-        int cycles = Integer.getInteger("f128x.cycles", 30_000);
-        int warmup = Integer.getInteger("f128x.warmup", 3_000);
-        long seed = Long.getLong("f128x.seed", 42L);
-        int localMemoryLatency = Integer.getInteger("f128x.localMemoryLatency", 80);
-        int remoteMemoryLatency = Integer.getInteger("f128x.remoteMemoryLatency", 80);
-        int fabricLatency = Integer.getInteger("f128x.fabricLatency", 20);
-        int fabricBytesPerCycle = Integer.getInteger("f128x.fabricBytesPerCycle", 128);
+        int contexts = Integer.getInteger("fnx.contexts", 1024);
+        int workspaces = Integer.getInteger("fnx.workspaces", 64);
+        int threadsPerWorkspace = Integer.getInteger("fnx.threadsPerWorkspace", 16);
+        int cycles = Integer.getInteger("fnx.cycles", 30_000);
+        int warmup = Integer.getInteger("fnx.warmup", 3_000);
+        long seed = Long.getLong("fnx.seed", 42L);
+        int localMemoryLatency = Integer.getInteger("fnx.localMemoryLatency", 80);
+        int remoteMemoryLatency = Integer.getInteger("fnx.remoteMemoryLatency", 80);
+        int fabricLatency = Integer.getInteger("fnx.fabricLatency", 20);
+        int fabricBytesPerCycle = Integer.getInteger("fnx.fabricBytesPerCycle", 128);
         int localMemoryBytesPerCycle = Integer.getInteger(
-                "f128x.localMemoryBytesPerCycle", 64);
+                "fnx.localMemoryBytesPerCycle", 64);
         int localMemoryLanesPerBoard = Integer.getInteger(
-                "f128x.localMemoryLanesPerBoard", 1);
-        String remotePattern = System.getProperty("f128x.remotePattern", "uniform");
-        int fabricHopLatency = Integer.getInteger("f128x.fabricHopLatency", 2);
-        int requestBytes = Integer.getInteger("f128x.requestBytes", 64);
-        int queueCapacity = Integer.getInteger("f128x.queueCapacity", 4096);
+                "fnx.localMemoryLanesPerBoard", 1);
+        String remotePattern = System.getProperty("fnx.remotePattern", "uniform");
+        int fabricHopLatency = Integer.getInteger("fnx.fabricHopLatency", 2);
+        int requestBytes = Integer.getInteger("fnx.requestBytes", 64);
+        int queueCapacity = Integer.getInteger("fnx.queueCapacity", 4096);
         double memoryFraction = Double.parseDouble(
-                System.getProperty("f128x.memoryFraction", "0.30"));
+                System.getProperty("fnx.memoryFraction", "0.30"));
         double dependencyFraction = Double.parseDouble(
-                System.getProperty("f128x.dependencyFraction", "0.15"));
-        int dependencyLatency = Integer.getInteger("f128x.dependencyLatency", 12);
+                System.getProperty("fnx.dependencyFraction", "0.15"));
+        int dependencyLatency = Integer.getInteger("fnx.dependencyLatency", 12);
 
         if (contexts < 1 || workspaces < 1 || threadsPerWorkspace < 1
                 || contexts > workspaces * threadsPerWorkspace || cycles < 2
@@ -347,25 +347,25 @@ final class FabricTopologySweep {
     }
 
     public static void main(String[] args) {
-        int operationsPerBoard = Integer.getInteger("f128x.fabric.operationsPerBoard", 2048);
-        long seed = Long.getLong("f128x.fabric.seed", 42L);
+        int operationsPerBoard = Integer.getInteger("fnx.fabric.operationsPerBoard", 2048);
+        long seed = Long.getLong("fnx.fabric.seed", 42L);
         if (operationsPerBoard < 1) {
             throw new IllegalArgumentException("operationsPerBoard must be positive");
         }
-        int injectionInterval = Integer.getInteger("f128x.fabric.injectionInterval", 2);
-        int memoryLanes = Integer.getInteger("f128x.fabric.memoryLanesPerBoard", 1);
+        int injectionInterval = Integer.getInteger("fnx.fabric.injectionInterval", 2);
+        int memoryLanes = Integer.getInteger("fnx.fabric.memoryLanesPerBoard", 1);
         if (memoryLanes < 1) {
             throw new IllegalArgumentException("memoryLanesPerBoard must be positive");
         }
-        int memoryBanks = Integer.getInteger("f128x.fabric.memoryBanksPerBoard", 8);
+        int memoryBanks = Integer.getInteger("fnx.fabric.memoryBanksPerBoard", 8);
         if (memoryBanks < 1) {
             throw new IllegalArgumentException("memoryBanksPerBoard must be positive");
         }
-        String arbitration = System.getProperty("f128x.fabric.arbitration", "fixed");
+        String arbitration = System.getProperty("fnx.fabric.arbitration", "fixed");
         if (!(arbitration.equals("fixed") || arbitration.equals("round_robin"))) {
             throw new IllegalArgumentException("arbitration must be fixed or round_robin");
         }
-        String routing = System.getProperty("f128x.fabric.routing", "fixed");
+        String routing = System.getProperty("fnx.fabric.routing", "fixed");
         if (!(routing.equals("fixed") || routing.equals("adaptive"))) {
             throw new IllegalArgumentException("routing must be fixed or adaptive");
         }

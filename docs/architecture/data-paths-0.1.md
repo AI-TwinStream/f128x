@@ -42,7 +42,7 @@ flowchart TB
 
 Private registers belong to one thread. Workspace-shared registers belong to its owning workspace and are visible to its threads under synchronization, atomicity, and protection rules that remain to be specified.
 
-Register counts are independent of N. The current 128-private/128-shared register counts and 128-workspace/128-thread targets are f128x research assumptions, not yet family-wide invariants.
+Register counts are independent of N. The current 128-private/128-shared register counts and 128-workspace/128-thread targets are 128-bit member research assumptions, not yet family-wide invariants.
 
 ## 3. Memory and communication paths
 
@@ -94,7 +94,7 @@ The architecture must define:
 
 ## 6. Simulation scope
 
-The current scheduler and fabric simulations use f128x-oriented assumptions and Java package/property names. They do not establish family-wide performance, N-bit translation behavior, cache coherence, protection, or a final ISA memory model.
+The current scheduler and fabric simulations use 128-bit member-oriented assumptions and Java package/property names. They do not establish family-wide performance, N-bit translation behavior, cache coherence, protection, or a final ISA memory model.
 
 ## Related material
 

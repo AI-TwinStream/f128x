@@ -1,4 +1,4 @@
-> **Historical simulation note (2026-11-05):** This result set belongs to the f128x scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
+> **Historical simulation note (2026-11-05):** This result set belongs to the 128-bit research profile scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
 
 # Scheduler Simulation 0.10 Results
 
@@ -11,8 +11,8 @@
 
 Simulation 0.10 adds variable synthetic request sizes. The existing fixed-size property remains supported:
 
-- `f128x.memoryRequestBytes`: fixed request size, default 64 bytes.
-- `f128x.memoryRequestMinBytes` and `f128x.memoryRequestMaxBytes`: optional inclusive bounds. When supplied, each memory request samples a uniform integer size within the range. When omitted, both bounds inherit the fixed-size property.
+- `fnx.memoryRequestBytes`: fixed request size, default 64 bytes.
+- `fnx.memoryRequestMinBytes` and `fnx.memoryRequestMaxBytes`: optional inclusive bounds. When supplied, each memory request samples a uniform integer size within the range. When omitted, both bounds inherit the fixed-size property.
 
 The selected request size is carried through the memory-system model. It determines issued/completed byte accounting and the bank transfer duration. For each request, the byte service time is rounded up to a whole cycle using the configured channel bandwidth and bank count.
 

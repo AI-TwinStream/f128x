@@ -6,7 +6,7 @@
 
 `ContextSweep` explores how context count, issue width, memory-operation frequency, per-thread outstanding-request limits, memory latency classes, finite shared request capacity, per-cluster issue budgets, and optional byte-oriented bank service affect issue utilization.
 
-The model is intended to expose sensitivities and falsify simplistic assumptions. Its current workload and context defaults remain a member-specific f128x research profile. It is an fNx-family software experiment using an f128x-oriented context profile; it does not predict physical hardware performance.
+The model is intended to expose sensitivities and falsify simplistic assumptions. Its current workload and context defaults remain a member-specific 128-bit research profile research profile. It is an fNx-family software experiment using an 128-bit research profile-oriented context profile; it does not predict physical hardware performance.
 
 ## Model
 
@@ -92,11 +92,11 @@ From the repository root:
 ```sh
 mkdir -p build/scheduler-sim
 javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/CacheSweep.java
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/ContextSweep.java \
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/MemoryAddressing.java \
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/CacheSweep.java
 javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim -d build/scheduler-sim \
-  tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/MemoryAddressingTest.java
+  tools/scheduler-sim/src/test/java/org/flossware/fnx/sim/MemoryAddressingTest.java
 java -cp build/scheduler-sim org.flossware.fnx.sim.MemoryAddressingTest
 ```
 
@@ -202,9 +202,9 @@ Run it after compiling the sources:
 
 ```sh
 javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/CacheSweep.java \
-  tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/CacheSweepTest.java
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/MemoryAddressing.java \
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/CacheSweep.java \
+  tools/scheduler-sim/src/test/java/org/flossware/fnx/sim/CacheSweepTest.java
 java -cp build/scheduler-sim org.flossware.fnx.sim.CacheSweepTest
 java -cp build/scheduler-sim org.flossware.fnx.sim.CacheSweep 64 1000000 65536 42
 ```
@@ -235,9 +235,9 @@ Compile both simulators and run the board experiment:
 
 ```sh
 javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/ContextSweep.java \
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/MemoryAddressing.java \
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/BoardFabricSweep.java
 java -cp build/scheduler-sim org.flossware.fnx.sim.BoardFabricSweep
 ```
 

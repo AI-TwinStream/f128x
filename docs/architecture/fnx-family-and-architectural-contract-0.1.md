@@ -7,7 +7,7 @@
 
 **fNx** is the architecture family and open-standard project. The value of N in a member name is its native architectural width in bits.
 
-Examples include `f16x`, `f32x`, `f64x`, member with a 128-bit native width, `f256x`, `f512x`, and `f1024x`. These are width-specific members of one family, not independent architectures with unrelated ISAs.
+Examples include `f16x`, `f32x`, `f64x`, a member with a 128-bit native width, `f256x`, `f512x`, and `f1024x`. These are width-specific members of one family, not independent architectures with unrelated ISAs.
 
 The minimum supported N is still under consideration. A 16-bit minimum is the current leading candidate because it provides a useful opcode namespace without introducing a separate fixed-width opcode field. It is a candidate, not yet a ratified minimum. Smaller widths such as f8x remain a question for the family specification.
 

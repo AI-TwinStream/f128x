@@ -314,6 +314,7 @@ final class FabricTopologySweep {
     private FabricTopologySweep() {}
 
     static void verifyDeterministicSmoke() {
+        PerHopArbitrationSmoke.verify();
         int cases = 0;
         for (int boards : new int[] {4, 8, 16}) {
             for (String pattern : new String[] {"uniform", "hotspot", "paired"}) {
@@ -775,4 +776,93 @@ final class FabricTopologySweep {
             return ((long) source << 32) | (target & 0xffffffffL);
         }
     }
+
+/**
+ * Small store-and-forward switch experiment used to validate independent
+ * per-output arbitration. Each output has one grant per cycle and its own
+ * round-robin pointer. Packets advance at most one hop per cycle, so a packet
+ * cannot consume two links in one arbitration epoch.
+ */
+final class PerHopArbitrationSmoke {
+    private record Packet(int input, int remainingHops) {}
+    private static final class OutputPort {
+        private final Map<Integer, ArrayDeque<Packet>> queues = new java.util.TreeMap<>();
+        private int lastGrantedInput = -1;
+
+        void enqueue(Packet packet) {
+            queues.computeIfAbsent(packet.input(), ignored -> new ArrayDeque<>())
+                    .addLast(packet);
+        }
+
+        Packet grant() {
+            if (queues.isEmpty()) return null;
+            List<Integer> inputs = new ArrayList<>(queues.keySet());
+            int selected = inputs.get(0);
+            for (int input : inputs) {
+                if (input > lastGrantedInput) {
+                    selected = input;
+                    break;
+                }
+            }
+            ArrayDeque<Packet> queue = queues.get(selected);
+            Packet packet = queue.removeFirst();
+            if (queue.isEmpty()) queues.remove(selected);
+            lastGrantedInput = selected;
+            return packet;
+        }
+
+        boolean hasQueuedPackets() {
+            return !queues.isEmpty();
+        }
+    }
+
+    private PerHopArbitrationSmoke() {}
+
+    static void verify() {
+        final int contenders = 4;
+        final int packetsPerInput = 8;
+        OutputPort firstHop = new OutputPort();
+        OutputPort secondHop = new OutputPort();
+        long[] firstHopGrants = new long[contenders];
+        int completed = 0;
+        for (int input = 0; input < contenders; input++) {
+            for (int packet = 0; packet < packetsPerInput; packet++) {
+                firstHop.enqueue(new Packet(input, 2));
+            }
+        }
+        int cycles = 0;
+        while (firstHop.hasQueuedPackets() || secondHop.hasQueuedPackets()) {
+            Packet firstGrant = firstHop.grant();
+            if (firstGrant != null) {
+                firstHopGrants[firstGrant.input()]++;
+                secondHop.enqueue(new Packet(firstGrant.input(),
+                        firstGrant.remainingHops() - 1));
+            }
+            Packet secondGrant = secondHop.grant();
+            if (secondGrant != null) {
+                if (secondGrant.remainingHops() != 0) {
+                    throw new IllegalStateException("Packet advanced an invalid hop count");
+                }
+                completed++;
+            }
+            cycles++;
+            if (cycles > contenders * packetsPerInput * 3) {
+                throw new IllegalStateException("Per-hop arbitration did not drain");
+            }
+        }
+        if (completed != contenders * packetsPerInput
+                || cycles != contenders * packetsPerInput + 1) {
+            throw new IllegalStateException("Per-hop arbitration completion mismatch");
+        }
+        for (long grants : firstHopGrants) {
+            if (grants != packetsPerInput) {
+                throw new IllegalStateException("Per-output round-robin arbitration starved an input");
+            }
+        }
+        System.out.printf("perHopArbitrationSmoke=passed outputs=2 contenders=%d "
+                + "packetsPerInput=%d completed=%d cycles=%d%n",
+                contenders, packetsPerInput, completed, cycles);
+    }
+}
+
 }

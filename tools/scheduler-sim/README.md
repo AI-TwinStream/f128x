@@ -26,7 +26,7 @@ At each simulated cycle:
 The scheduler strategy is selected with the JVM property `-Df128x.scheduler=`:
 
 - `fifo`: one flat FIFO ready queue.
-- `hierarchical`: per-workspace FIFO queues selected round-robin; each workspace owns 16 thread slots.
+- `hierarchical`: per-workspace FIFO queues selected round-robin; each workspace owns `f128x.threadsPerWorkspace` thread slots (default 16, maximum 256).
 - `distributed`: per-cluster queues, with workspaces initially assigned by workspace ID modulo cluster count. The scheduler scans clusters round-robin and steals from another cluster when its target queue is empty. Set the cluster count with `-Df128x.clusters=8`; the default is up to eight clusters.
 
 The distributed strategy uses a round-robin cluster selector, prefers each target cluster's local ready queue, and steals from another cluster when the target is empty. The global `issue-width` remains a hard aggregate ceiling. Set the per-cluster issue limit with `-Df128x.clusterIssueWidth=2`; it defaults to the global issue width. The effective configured capacity is `min(issue-width, clusters × clusterIssueWidth)`. For example, four clusters with a local width of two can issue at most four instructions per cycle when the global issue width is four. Two clusters with a local width of one can issue at most two, even when the global width is four.
@@ -325,3 +325,31 @@ is to replace those reservations with the per-output queued event model, then
 re-run the full topology, routing, injection, and memory-bank sensitivity
 matrix. Do not compare prototype cycle counts with the existing topology
 results.
+
+
+## Workspace and architectural register-capacity sweep
+
+The scheduler accepts a configurable architectural workspace shape:
+
+- `-Df128x.threadsPerWorkspace=256`: thread slots per workspace; default 16, supported range 1–256.
+- `-Df128x.privateRegistersPerThread=256`: private GPR count per thread; default 128, supported range 1–256.
+- `-Df128x.sharedRegistersPerWorkspace=128`: shared GPR count per workspace; default 128, supported range 1–256.
+- `-Df128x.registerWidthBits=128`: architectural GPR width; default 128 and must be a positive multiple of 8.
+
+The scheduler uses the configured thread-slot count when grouping thread identifiers into workspaces, when applying hierarchical round-robin selection, and when assigning workspace home clusters in the distributed policy. The output reports workspace count and the calculated private, shared, and total architectural register-state byte capacities.
+
+For the expanded candidate, run:
+
+```sh
+java \
+  -Df128x.threadsPerWorkspace=256 \
+  -Df128x.privateRegistersPerThread=256 \
+  -Df128x.sharedRegistersPerWorkspace=128 \
+  -Df128x.registerWidthBits=128 \
+  -Df128x.scheduler=hierarchical \
+  -cp build/scheduler-sim \
+  org.flossware.f128x.sim.ContextSweep \
+  1048576 8 300 0.25 1000 42 4 128
+```
+
+This represents 4,096 workspaces × 256 thread slots, 256 private 128-bit GPRs per thread, and 128 shared 128-bit GPRs per workspace. The accounting result is 4 GiB of private state plus 8 MiB of shared state. It is architectural storage accounting only: it does not model physical register-file ports, banking, timing, area, power, context-cache residency, or spill/fill bandwidth. Compare smaller context counts and register counts before drawing conclusions about implementability or performance.

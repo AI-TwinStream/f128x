@@ -1,104 +1,59 @@
-# Scheduling Progress and Interrupts 0.2
+# fNx Scheduling Progress and Interrupts 0.3
 
-**Date:** 2026-11-04  
+**Date:** 2026-11-05  
 **Status:** Candidate requirements and research plan; scheduler topology not frozen
 
-## 1. Scheduling hierarchy
+## 1. Scope and family width
 
-The 65,536-context target makes a single centralized ready-selection structure an unattractive default. A candidate hierarchy is:
+This is an fNx family research document. Native width N determines architectural register, arithmetic, pointer, and virtual-address width. Scheduler topology and context capacity are independent of N unless a specific implementation profile states otherwise.
+
+The 128-workspace × 128-thread f128x research target is not a family-wide requirement. Existing simulations use f128x-oriented parameters and should be interpreted accordingly.
+
+## 2. Scheduling hierarchy
+
+A candidate logical hierarchy is:
 1. Workspace-level service and resource policy.
-2. Per-workspace readiness for up to 16 thread slots.
+2. Per-workspace thread readiness.
 3. Implementation-sized scheduler clusters.
 4. Local selection near execution resources.
-5. Candidate transfer or work stealing when local work is unavailable.
+5. Candidate work transfer or work stealing when local work is unavailable.
 
 This is a research direction, not a mandatory physical topology. Workspace policy must not serialize independent thread issue.
 
-## 2. Readiness and issue are distinct
+## 3. Readiness and issue
 
-The model distinguishes:
-- Resident.
-- Runnable/ready.
-- Selected.
-- Issued.
-- Executing or outstanding.
-- Blocked on memory or synchronization.
-- Suspended.
-- Exception/interrupt handling.
-- Terminated.
+Distinguish resident, runnable/ready, selected, issued, executing/outstanding, blocked, suspended, exception/interrupt handling, and terminated states.
 
 A selected thread may still fail issue validation because operands, permissions, dependencies, or execution resources are unavailable.
 
-## 3. Progress and fairness requirements
+## 4. Progress and fairness
 
-The architecture and platform contract must state what progress is guaranteed and under which assumptions.
+The architecture and platform contract must state progress guarantees and assumptions. Questions include starvation, fairness within/across workspaces, priority overrides, priority inversion, locality-induced delay, and deadlock when resources are held by suspended threads.
 
-Questions:
-- Can a continuously ready thread be starved indefinitely?
-- Is fairness guaranteed within a workspace, across workspaces, or both?
-- Can priority override fairness, and what bounds apply?
-- How are priority inversion and owner preemption handled for shared synchronization?
-- Can locality optimizations indefinitely defer remote work?
-- What happens when all runnable threads are blocked on resources held by suspended threads?
+A bounded-service baseline is worth evaluating, but no numeric bound is selected.
 
-A possible baseline to evaluate is bounded service for continuously eligible threads under a nonempty runnable set, with explicit exceptions for privileged priority and resource dependencies. No numeric bound is selected here.
+## 5. Deadlock and progress
 
-## 4. Deadlock and progress
+Distinguish architectural deadlock, software lock deadlock, resource starvation, scheduler starvation, and memory-system forward-progress failure. Atomic instructions do not automatically make an algorithm lock-free if the scheduler or memory system can indefinitely suppress participants.
 
-The specification must distinguish:
-- Architectural deadlock.
-- Software lock deadlock.
-- Resource starvation.
-- Scheduler starvation.
-- Memory-system forward-progress failure.
+## 6. Interrupt and exception routing
 
-Atomic operations and synchronization primitives must state their progress properties. A lock-free instruction does not automatically make an algorithm lock-free if the memory system or scheduler can indefinitely suppress participants.
+Specify target selection (thread/workspace/cluster/global), delivery to nonresident contexts, preemption boundaries, masking, priority/nesting, affinity/migration, precise state capture/return, delivery to blocked contexts, debug/NMI behavior, and latency/fairness guarantees.
 
-## 5. Interrupt and exception routing
+Candidate designs include per-thread delivery, workspace-level delivery with target-thread selection, and privileged service contexts for global/platform events.
 
-The architecture must specify:
-- Interrupt target selection: thread, workspace, execution cluster, or global handler.
-- Whether interrupts can target a nonresident context.
-- Whether an interrupt preempts an executing thread or is deferred to a safe boundary.
-- Per-thread and per-workspace masking.
-- Priority and nesting.
-- Affinity and migration behavior.
-- State capture and precise return.
-- Delivery to a context blocked on memory or synchronization.
-- Debug and non-maskable events.
-- Latency and fairness guarantees.
+## 7. Candidate scheduler evaluations
 
-Candidate designs include per-thread delivery, workspace-level delivery with target-thread selection, and a hybrid with global/platform interrupts routed to privileged service contexts.
+Compare centralized ready selection, hierarchical workspace/thread selection, and distributed scheduler clusters with local ready queues and work stealing.
 
-## 6. Candidate scheduler evaluations
+Measure area, timing, power, fan-in, wakeup latency, fairness, migration cost, shared-state locality, and performance under memory stalls and synchronization-heavy workloads.
 
-Compare:
-- Centralized ready selection.
-- Hierarchical workspace/thread selection.
-- Distributed scheduler clusters with local ready queues and work stealing.
+## 8. Required models
 
-Metrics:
-- Area and timing.
-- Power.
-- Maximum scheduler fan-in.
-- Wakeup propagation latency.
-- Fairness and starvation behavior.
-- Cross-cluster migration cost.
-- Shared-register locality.
-- Performance under memory stalls and synchronization-heavy workloads.
+Vary context count, workspace/thread distribution, issue width, memory latency, outstanding requests, runnable fraction, shared-state contention, priority distribution, and interrupt rate/target distribution.
 
-## 7. Required models
+Use the model to justify context capacity against throughput and effective latency. Simple latency-hiding estimates are only starting points.
 
-Build a discrete-event or cycle-level model that varies:
-- Context count.
-- Workspace/thread distribution.
-- Issue width.
-- Memory latency and outstanding requests.
-- Runnable-thread fraction.
-- Shared-register contention.
-- Priority distribution.
-- Interrupt rate and target distribution.
+## 9. Open decisions
 
-Use the model to justify context capacity against target issue throughput and effective memory latency. The simple latency-hiding estimate (N \geq L \times R) is a starting point only; dependency chains, memory-level parallelism, and workload readiness must also be represented.
-
-No scheduler topology, fairness bound, or interrupt architecture is frozen here.
+No scheduler topology, fairness bound, progress guarantee, or interrupt architecture is frozen here. Family-wide architectural semantics must be distinguished from implementation policy.

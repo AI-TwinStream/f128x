@@ -1,35 +1,590 @@
-name: fNx scheduler simulator
+name: Scheduler simulator
 
 on:
   push:
-    paths: ["tools/scheduler-sim/**", ".github/workflows/scheduler-simulator.yml"]
+    branches: [main, 'experiment/**']
+    paths:
+      - "tools/scheduler-sim/**"
+      - ".github/workflows/scheduler-simulator.yml"
   pull_request:
-    paths: ["tools/scheduler-sim/**", ".github/workflows/scheduler-simulator.yml"]
-  workflow_dispatch:
+    branches: [main]
+    paths:
+      - "tools/scheduler-sim/**"
+      - ".github/workflows/scheduler-simulator.yml"
+
+permissions:
+  contents: read
 
 jobs:
   java-25:
+    name: Compile and smoke-test (JDK 25)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "25"
-      - name: Compile simulator
+
+      - name: Compile with Java 25
         run: |
-          set -euo pipefail
           mkdir -p build/scheduler-sim
-          mapfile -t sources < <(find tools/scheduler-sim/src -name '*.java' -type f | sort)
-          javac --release 25 -d build/scheduler-sim "${sources[@]}"
-      - name: Run simulator tests
+          javac --release 25 -Xlint:all -Werror \
+            -d build/scheduler-sim \
+            tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/ContextSweep.java \
+            tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/MemoryAddressing.java \
+            tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/BoardFabricSweep.java \
+            tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/CacheSweep.java
+
+      - name: Test deterministic address generation and mapping
+        shell: bash
         run: |
           set -euo pipefail
+          javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim \
+            -d build/scheduler-sim \
+            tools/scheduler-sim/src/test/java/org/flossware/fnx/sim/MemoryAddressingTest.java
           java -cp build/scheduler-sim org.flossware.fnx.sim.MemoryAddressingTest
-          java -cp build/scheduler-sim org.flossware.fnx.sim.CacheSweepTest
-      - name: Run scheduler and fabric smoke tests
+          class=org.flossware.fnx.sim.ContextSweep
+          for pattern in random sequential strided shared_region; do
+            output="$(java -Dfnx.addressPattern="$pattern" -Dfnx.memoryChannels=4 -Dfnx.memoryBanksPerChannel=8 -cp build/scheduler-sim "$class" 64 4 80 0.50 10000 42 4 128)"
+            grep -q "addressPattern=$pattern" <<< "$output"
+          done
+          low="$(java -Dfnx.addressPattern=strided -Dfnx.addressStride=8192 -Dfnx.addressMapping=low_order -Dfnx.memoryChannels=4 -Dfnx.memoryBanksPerChannel=8 -cp build/scheduler-sim "$class" 64 4 80 0.50 10000 42 4 128)"
+          xor="$(java -Dfnx.addressPattern=strided -Dfnx.addressStride=8192 -Dfnx.addressMapping=xor -Dfnx.memoryChannels=4 -Dfnx.memoryBanksPerChannel=8 -cp build/scheduler-sim "$class" 64 4 80 0.50 10000 42 4 128)"
+          grep -q 'addressMapping=low_order' <<< "$low"
+          grep -q 'addressMapping=xor' <<< "$xor"
+          if java -Dfnx.addressPattern=unknown -cp build/scheduler-sim "$class" 64 4 80 0.50 1000 42; then
+            echo "Expected unknown address pattern to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.addressStride=0 -cp build/scheduler-sim "$class" 64 4 80 0.50 1000 42; then
+            echo "Expected non-positive address stride to fail" >&2
+            exit 1
+          fi
+
+      - name: Test synthetic cache hierarchy
+        shell: bash
         run: |
           set -euo pipefail
-          java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 512 4 300 0.25 20000 42 2 128
-          java -cp build/scheduler-sim org.flossware.fnx.sim.BoardFabricSweep
-          java -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep
+          javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim \
+            -d build/scheduler-sim \
+            tools/scheduler-sim/src/test/java/org/flossware/fnx/sim/CacheSweepTest.java
+          java -cp build/scheduler-sim org.flossware.fnx.sim.CacheSweepTest
+          class=org.flossware.fnx.sim.CacheSweep
+          sequential="$(java -Dfnx.addressPattern=sequential -cp build/scheduler-sim "$class" 4 20000 4096 42)"
+          random="$(java -Dfnx.addressPattern=random -cp build/scheduler-sim "$class" 4 20000 4194304 42)"
+          shared="$(java -Dfnx.addressPattern=shared_region -Dfnx.addressStride=64 -cp build/scheduler-sim "$class" 4 20000 65536 42)"
+          grep -q 'cacheModel=private-l1-shared-l2' <<< "$sequential"
+          grep -Eq 'measuredL1Hits=[1-9][0-9]*' <<< "$sequential"
+          grep -Eq 'measuredL2Hits=[1-9][0-9]*' <<< "$shared"
+          grep -Eq 'measuredDramMisses=[1-9][0-9]*' <<< "$random"
+          printf '%s\n' "$sequential"
+          printf '%s\n' "$random"
+          printf '%s\n' "$shared"
+      - name: Exercise cache hierarchy in scheduler
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -Dfnx.cache.enabled=true -Dfnx.addressPattern=shared_region -Dfnx.addressStride=64 -Dfnx.addressRegionBytes=4096 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 200 0.25 20000 42 16 128)"
+          grep -q 'cacheHierarchyEnabled=true' <<< "$output"
+          grep -q '^memoryClass=L1 ' <<< "$output"
+          grep -q '^memoryClass=L2 ' <<< "$output"
+          grep -q '^memoryClass=DRAM ' <<< "$output"
+          printf '%s\n' "$output"
+      - name: Verify cache hits bypass DRAM bank service
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -Dfnx.cache.enabled=true -Dfnx.addressPattern=shared_region -Dfnx.addressStride=64 -Dfnx.addressRegionBytes=4096 -Dfnx.memoryChannels=4 -Dfnx.memoryBanksPerChannel=8 -Dfnx.memoryBandwidthBytesPerCycle=16 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 200 0.25 20000 42 16 128)"
+          grep -q 'cacheHierarchyEnabled=true' <<< "$output"
+          grep -q 'memorySystemEnabled=true' <<< "$output"
+          grep -Eq 'memoryBankRequests=[1-9][0-9]*' <<< "$output"
+          awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="memoryBankRequests") bank=p[2]; if (p[1]=="memoryIssues") issues=p[2]; } } END { if (bank >= issues) exit 1; }' <<< "$output"
+          printf '%s\\n' "$output"
+
+      - name: Exercise modular board and backplane model
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.fnx.sim.BoardFabricSweep
+          options=(-Dfnx.contexts=256 -Dfnx.workspaces=16 -Dfnx.cycles=4000 -Dfnx.warmup=400 -Dfnx.seed=42)
+          first="$(java "${options[@]}" -cp build/scheduler-sim "$class")"
+          second="$(java "${options[@]}" -cp build/scheduler-sim "$class")"
+          test "$first" = "$second"
+          grep -q 'boards=1 clustersPerBoard=8 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=2 clustersPerBoard=4 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=4 clustersPerBoard=2 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=8 clustersPerBoard=1 issueWidthPerCluster=1 aggregateIssueWidth=8' <<< "$first"
+          grep -q 'boards=4 clustersPerBoard=4 issueWidthPerCluster=1 aggregateIssueWidth=16' <<< "$first"
+          grep -Eq 'remoteRequests=[1-9][0-9]*' <<< "$first"
+          grep -Eq 'fabricBytes=[1-9][0-9]*' <<< "$first"
+          grep -q 'remoteFraction=0.10' <<< "$first"
+          grep -q 'remoteFraction=0.50' <<< "$first"
+          grep -q 'remoteFraction=0.90' <<< "$first"
+          printf '%s\n' "$first"
+
+      - name: Exercise local-memory lanes and remote-access patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.fnx.sim.BoardFabricSweep
+          options=(-Dfnx.contexts=256 -Dfnx.workspaces=16 -Dfnx.cycles=4000 -Dfnx.warmup=400 -Dfnx.seed=42)
+          for pattern in uniform hotspot paired; do
+            first="$(java "${options[@]}" -Dfnx.localMemoryLanesPerBoard=4 -Dfnx.remotePattern="$pattern" -cp build/scheduler-sim "$class")"
+            second="$(java "${options[@]}" -Dfnx.localMemoryLanesPerBoard=4 -Dfnx.remotePattern="$pattern" -cp build/scheduler-sim "$class")"
+            test "$first" = "$second"
+            grep -q 'localMemoryLanesPerBoard=4' <<< "$first"
+            grep -q "remotePattern=$pattern" <<< "$first"
+            grep -Eq 'remoteRequests=[1-9][0-9]*' <<< "$first"
+            grep -Eq 'boardRemoteRequests=0:[1-9][0-9]*' <<< "$first"
+            if [[ "$pattern" == hotspot ]]; then
+              grep -Eq 'boardRemoteRequests=0:[1-9][0-9]*,1:[1-9][0-9]*,2:0,3:0' <<< "$first"
+            elif [[ "$pattern" == paired ]]; then
+              grep -Eq 'boardRemoteRequests=0:[1-9][0-9]*,1:[1-9][0-9]*,2:[1-9][0-9]*,3:[1-9][0-9]*' <<< "$first"
+            fi
+          done
+
+      - name: Run full switched-fabric topology sensitivity matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep)"
+          lines="$(grep -c '^topology=' <<< "$output")"
+          test "$lines" -eq 81
+          for topology in shared ring mesh; do
+            grep -q "topology=$topology " <<< "$output"
+          done
+          for boards in 4 8 16; do
+            grep -q "boards=$boards " <<< "$output"
+          done
+          for pattern in uniform hotspot paired; do
+            grep -q "pattern=$pattern " <<< "$output"
+          done
+          for links in 1 2 4; do
+            grep -q "linksPerNeighbor=$links " <<< "$output"
+          done
+          for bandwidth in 192 384 768; do
+            grep -q "bisectionBandwidthBytesPerCycle=$bandwidth " <<< "$output"
+          done
+          for expected in \
+            "topology=shared boards=4 .*bisectionEdges=1" \
+            "topology=ring boards=4 .*bisectionEdges=2" \
+            "topology=mesh boards=4 .*bisectionEdges=2" \
+            "topology=shared boards=8 .*bisectionEdges=1" \
+            "topology=ring boards=8 .*bisectionEdges=2" \
+            "topology=mesh boards=8 .*bisectionEdges=3" \
+            "topology=shared boards=16 .*bisectionEdges=1" \
+            "topology=ring boards=16 .*bisectionEdges=2" \
+            "topology=mesh boards=16 .*bisectionEdges=4"; do
+            grep -Eq "$expected" <<< "$output"
+          done
+          if grep -v 'bisectionBandwidthBytesPerCycle=' <<< "$output" | grep -q '^topology='; then
+            echo "Missing normalized bisection bandwidth in topology result" >&2
+            exit 1
+          fi
+          echo "$output"
+          echo "PASS: full 81-case switched-fabric topology matrix"
+
+      - name: Repeat normalized fabric matrix across independent seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          for seed in 7 2027; do
+            output="$(java -Dfnx.fabric.operationsPerBoard=2048 -Dfnx.fabric.seed="$seed" -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            for bandwidth in 192 384 768; do
+              grep -q "bisectionBandwidthBytesPerCycle=$bandwidth " <<< "$output"
+            done
+            echo "fabric-seed=$seed"
+            echo "$output"
+          done
+          echo "PASS: normalized fabric matrix repeated across seeds 7 and 2027"
+
+      - name: Sweep fabric injection load
+        shell: bash
+        run: |
+          set -euo pipefail
+          for interval in 1 4; do
+            output="$(java -Dfnx.fabric.operationsPerBoard=2048 -Dfnx.fabric.seed=42 -Dfnx.fabric.injectionInterval="$interval" -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "injectionInterval=$interval" <<< "$output"
+            echo "fabric-injection-interval=$interval"
+            echo "$output"
+          done
+          echo "PASS: full topology matrix at injection intervals 1 and 4"
+
+      - name: Sweep destination memory service lanes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for lanes in 2 4; do
+            output="$(java -Dfnx.fabric.operationsPerBoard=2048 -Dfnx.fabric.seed=42 -Dfnx.fabric.injectionInterval=2 -Dfnx.fabric.memoryLanesPerBoard="$lanes" -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "memoryLanesPerBoard=$lanes" <<< "$output"
+            echo "fabric-memory-lanes=$lanes"
+            echo "$output"
+          done
+          echo "PASS: full topology matrix at two and four destination memory lanes"
+
+      - name: Compare fixed and round-robin fabric arbitration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for policy in fixed round_robin; do
+            output="$(java -Dfnx.fabric.operationsPerBoard=256 -Dfnx.fabric.seed=42 -Dfnx.fabric.arbitration="$policy" -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "arbitration=$policy" <<< "$output"
+            grep -Eq 'minSourceMeanLatency=[0-9]+\.[0-9]+ maxSourceMeanLatency=[0-9]+\.[0-9]+ latencyFairnessJain=[01]\.[0-9]+' <<< "$output"
+            echo "fabric-arbitration=$policy"
+            echo "$output"
+          done
+          if java -Dfnx.fabric.arbitration=priority-inversion -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep; then
+            echo "Expected unknown arbitration policy to fail" >&2
+            exit 1
+          fi
+          echo "PASS: fixed and round-robin arbitration matrices and fairness metrics"
+
+      - name: Compare fixed and congestion-aware shortest-path routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          for routing in fixed adaptive; do
+            output="$(java -Dfnx.fabric.operationsPerBoard=256 -Dfnx.fabric.seed=42 -Dfnx.fabric.arbitration=round_robin -Dfnx.fabric.routing="$routing" -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "routing=$routing" <<< "$output"
+            grep -Eq 'adaptiveRouteSelections=[0-9]+' <<< "$output"
+            if [[ "$routing" == adaptive ]]; then
+              awk '/^topology=mesh / { for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="adaptiveRouteSelections" && p[2]>0) found=1; } } END { exit !found; }' <<< "$output"
+            else
+              if grep -Eq 'adaptiveRouteSelections=[1-9][0-9]*' <<< "$output"; then
+                echo "Fixed routing unexpectedly selected adaptive routes" >&2
+                exit 1
+              fi
+            fi
+            echo "fabric-routing=$routing"
+            echo "$output"
+          done
+          if java -Dfnx.fabric.routing=unknown -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep; then
+            echo "Expected unknown routing policy to fail" >&2
+            exit 1
+          fi
+          echo "PASS: fixed and congestion-aware routing matrices"
+
+      - name: Sweep destination memory-bank conflicts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for banks in 1 4 16; do
+            output="$(java -Dfnx.fabric.operationsPerBoard=256 -Dfnx.fabric.seed=42 -Dfnx.fabric.memoryLanesPerBoard=4 -Dfnx.fabric.memoryBanksPerBoard="$banks" -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep)"
+            lines="$(grep -c '^topology=' <<< "$output")"
+            test "$lines" -eq 81
+            grep -q "memoryBanksPerBoard=$banks" <<< "$output"
+            grep -Eq 'bankConflictWaitCycles=[0-9]+\.[0-9]+' <<< "$output"
+            if [[ "$banks" == 1 ]]; then
+              awk '/^topology=.*pattern=hotspot / { for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="bankConflictWaitCycles" && p[2]>0) found=1; } } END { exit !found; }' <<< "$output"
+            fi
+            echo "fabric-memory-banks=$banks"
+            echo "$output"
+          done
+          if java -Dfnx.fabric.memoryBanksPerBoard=0 -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep; then
+            echo "Expected non-positive memory bank count to fail" >&2
+            exit 1
+          fi
+          echo "PASS: destination memory-bank conflict matrices"
+
+      - name: Run deterministic smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=(java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 512 4 300 0.25 20000 42 2 128)
+          first="$( "${command[@]}" )"
+          second="$( "${command[@]}" )"
+          test "$first" = "$second"
+          grep -q 'contexts=512' <<< "$first"
+          grep -q 'issueWidth=4' <<< "$first"
+          grep -q 'maxOutstanding=2' <<< "$first"
+          grep -q 'memoryQueueCapacity=128' <<< "$first"
+          grep -q 'seed=42' <<< "$first"
+          printf '%s\n' "$first"
+
+      - name: Exercise expanded workspace and register capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -Dfnx.threadsPerWorkspace=256 -Dfnx.privateRegistersPerThread=256 -Dfnx.sharedRegistersPerWorkspace=256 -Dfnx.registerWidthBits=256 -Dfnx.scheduler=hierarchical -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 1048576 8 300 0.25 1000 42 4 128)"
+          grep -q 'contexts=1048576 workspaces=4096 threadsPerWorkspace=256' <<< "$output"
+          grep -q 'privateRegistersPerThread=256 sharedRegistersPerWorkspace=256 registerWidthBits=256' <<< "$output"
+          grep -q 'privateRegisterStateBytes=8589934592' <<< "$output"
+          grep -q 'sharedRegisterStateBytes=33554432' <<< "$output"
+          grep -q 'totalRegisterStateBytes=8623489024' <<< "$output"
+          printf '%s\\n' "$output"
+          distributed="$(java -Dfnx.threadsPerWorkspace=256 -Dfnx.privateRegistersPerThread=256 -Dfnx.scheduler=distributed -Dfnx.clusters=4 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 1024 8 300 0.25 2000 42 4 128)"
+          grep -q 'contexts=1024 workspaces=4 threadsPerWorkspace=256' <<< "$distributed"
+          grep -q 'scheduler=distributed clusters=4' <<< "$distributed"
+          if java -Dfnx.threadsPerWorkspace=257 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 80 0.5 100 42; then
+            echo "Expected thread slots above 256 to fail" >&2
+            exit 1
+          fi
+          echo "PASS: 256-thread workspaces, 256 private/shared registers, 256-bit width, and register-state accounting"
+
+      - name: Compare 16-thread and 256-thread workspace latency hiding
+        shell: bash
+        run: |
+          set -euo pipefail
+          for seed in 7 42 2027; do
+            small="$(java -Dfnx.threadsPerWorkspace=16 -Dfnx.scheduler=hierarchical -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 16 8 80 0.25 100000 "$seed" 1)"
+            large="$(java -Dfnx.threadsPerWorkspace=256 -Dfnx.scheduler=hierarchical -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 256 8 80 0.25 100000 "$seed" 1)"
+            small_ipc="$(awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1] == "measuredIPC") print p[2]; } }' <<< "$small")"
+            large_ipc="$(awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1] == "measuredIPC") print p[2]; } }' <<< "$large")"
+            printf "latency-hiding-seed=%s smallIPC=%s largeIPC=%s\\n" "$seed" "$small_ipc" "$large_ipc"
+            awk -v small="$small_ipc" -v large="$large_ipc" 'BEGIN { if (large <= small * 2.0) exit 1; }'
+            grep -q 'contexts=16 workspaces=1 threadsPerWorkspace=16' <<< "$small"
+            grep -q 'contexts=256 workspaces=1 threadsPerWorkspace=256' <<< "$large"
+            echo "latency-hiding-seed=$seed"
+            printf '%s\\n' "$small"
+            printf '%s\\n' "$large"
+          done
+          echo "PASS: 256-thread workspace exceeds 16-thread profile by more than 2x across three seeds"
+
+      - name: Verify single-outstanding compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.fnx.sim.ContextSweep
+          legacy="$(java -cp build/scheduler-sim "$class" 128 2 100 0.25 5000 7)"
+          explicit="$(java -cp build/scheduler-sim "$class" 128 2 100 0.25 5000 7 1)"
+          test "$legacy" = "$explicit"
+
+      - name: Sweep context count and per-thread outstanding limits
+        run: |
+          for outstanding in 1 2 4 8; do
+            for contexts in 64 128 256 512; do
+              java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep "$contexts" 4 300 0.25 200000 42 "$outstanding"
+            done
+          done
+
+      - name: Repeat MLP sweep across deterministic seeds
+        run: |
+          for seed in 1 7 42 101; do
+            for outstanding in 1 2 4 8; do
+              for contexts in 64 128 256 512; do
+                java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep "$contexts" 4 300 0.25 100000 "$seed" "$outstanding"
+              done
+            done
+          done
+
+      - name: Exercise multi-class finite-queue and dependency model
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 1024 4 300 0.25 100000 42 4 128 0.70 4 0.20 20 200 0.10 12)"
+          grep -q 'memoryClass=L1' <<< "$output"
+          grep -q 'memoryClass=L2' <<< "$output"
+          grep -q 'memoryClass=DRAM' <<< "$output"
+          grep -q 'dependencyFraction=0.100' <<< "$output"
+          grep -Eq 'dependencyIssues=[1-9][0-9]*' <<< "$output"
+          printf '%s\n' "$output"
+
+      - name: Compare scheduler topologies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for scheduler in fifo hierarchical distributed; do
+            output="$(java -Dfnx.scheduler="$scheduler" -Dfnx.clusters=8 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 1024 4 300 0.25 50000 42 4 128 0.70 4 0.20 20 200 0.10 12)"
+            grep -q "scheduler=$scheduler" <<< "$output"
+            grep -Eq 'workspaceIssueJainFairness=[01]\.[0-9]+' <<< "$output"
+            grep -Eq 'workspaceRunnableThreadCycles=[1-9][0-9]*' <<< "$output"
+            grep -Eq 'workspaceIssuePerRunnableThreadCycleJainFairness=[01]\.[0-9]+' <<< "$output"
+            grep -Eq 'workspaceRunnableWorkspaceCycles=[1-9][0-9]*' <<< "$output"
+            grep -Eq 'workspaceIssuePerRunnableWorkspaceCycleJainFairness=[01]\.[0-9]+' <<< "$output"
+            printf '%s\n' "$output"
+          done
+          sparse="$(java -Dfnx.scheduler=distributed -Dfnx.clusters=8 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 20000 42 2)"
+          grep -Eq 'schedulerSteals=[1-9][0-9]*' <<< "$sparse"
+          printf '%s\n' "$sparse"
+
+      - name: Compare schedulers under workspace workload skew
+        shell: bash
+        run: |
+          set -euo pipefail
+          for scheduler in fifo hierarchical distributed; do
+            output="$(java -Dfnx.scheduler="$scheduler" -Dfnx.clusters=2 -Dfnx.hotWorkspaceRatio=0.25 -Dfnx.hotMemoryFraction=0.90 -Dfnx.coldMemoryFraction=0.05 -Dfnx.hotDependencyFraction=0.20 -Dfnx.coldDependencyFraction=0.02 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 50000 42 2)"
+            grep -q "scheduler=$scheduler" <<< "$output"
+            grep -q 'hotWorkspaceCount=1' <<< "$output"
+            grep -Eq 'workspaceIssueJainFairness=[01]\.[0-9]+' <<< "$output"
+            grep -Eq 'workspaceRunnableThreadCycles=[1-9][0-9]*' <<< "$output"
+            grep -Eq 'workspaceIssuePerRunnableThreadCycleJainFairness=[01]\.[0-9]+' <<< "$output"
+            grep -Eq 'workspaceRunnableWorkspaceCycles=[1-9][0-9]*' <<< "$output"
+            grep -Eq 'workspaceIssuePerRunnableWorkspaceCycleJainFairness=[01]\.[0-9]+' <<< "$output"
+            printf '%s\n' "$output"
+          done
+
+      - name: Verify per-cluster issue budgets and global capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.fnx.sim.ContextSweep
+          capped="$(java -Dfnx.scheduler=distributed -Dfnx.clusters=2 -Dfnx.clusterIssueWidth=1 -cp build/scheduler-sim "$class" 1024 4 300 0.25 20000 42 4 128 0.70 4 0.20 20 200 0.10 12)"
+          grep -q 'clusterIssueWidth=1 effectiveIssueCapacity=2' <<< "$capped"
+          grep -q 'clusterBudgetUtilization=1.0000' <<< "$capped"
+          awk '/^scheduler=/{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="measuredIPC" && p[2]>2.0001) exit 1; } }' <<< "$capped"
+          awk -v limit=20000 '/^clusterIssueCount=/{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="issues" && p[2]>limit) exit 1; } }' <<< "$capped"
+          printf '%s\n' "$capped"
+          full="$(java -Dfnx.scheduler=distributed -Dfnx.clusters=4 -Dfnx.clusterIssueWidth=2 -cp build/scheduler-sim "$class" 1024 4 300 0.25 50000 42 4 128 0.70 4 0.20 20 200 0.10 12)"
+          grep -q 'clusterIssueWidth=2 effectiveIssueCapacity=4' <<< "$full"
+          grep -q 'measuredIPC=4.0000' <<< "$full"
+          grep -q 'clusterBudgetUtilization=1.0000' <<< "$full"
+          awk -v limit=100000 '/^clusterIssueCount=/{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="issues" && p[2]>limit) exit 1; } }' <<< "$full"
+          printf '%s\n' "$full"
+
+      - name: Verify migration and remote-locality penalties
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.fnx.sim.ContextSweep
+          output="$(java -Dfnx.scheduler=distributed -Dfnx.clusters=8 -Dfnx.clusterIssueWidth=1 -Dfnx.migrationLatency=3 -Dfnx.remoteMemoryLatencyPenalty=7 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -q 'migrationLatency=3 remoteMemoryLatencyPenalty=7' <<< "$output"
+          grep -Eq 'schedulerMigrations=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteWakeups=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteThreadCycles=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteMemoryIssues=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'remoteMemoryLatencyCycles=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'migrationWaiterCycles=[1-9][0-9]*' <<< "$output"
+          grep -Eq 'migrationCompletions=[1-9][0-9]*' <<< "$output"
+          awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="schedulerMigrations") migrations=p[2]; if (p[1]=="schedulerSteals") steals=p[2]; if (p[1]=="remoteMemoryIssues") remote=p[2]; if (p[1]=="remoteMemoryLatencyCycles") penalty=p[2]; } } END { if (migrations != steals || penalty != remote * 7) exit 1; }' <<< "$output"
+          printf '%s\n' "$output"
+          baseline="$(java -Dfnx.scheduler=distributed -Dfnx.clusters=8 -Dfnx.clusterIssueWidth=1 -Dfnx.migrationLatency=0 -Dfnx.remoteMemoryLatencyPenalty=0 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -q 'migrationLatency=0 remoteMemoryLatencyPenalty=0' <<< "$baseline"
+          grep -q 'migrationWaiterCycles=0' <<< "$baseline"
+          grep -q 'migrationCompletions=0' <<< "$baseline"
+          grep -q 'remoteMemoryLatencyCycles=0' <<< "$baseline"
+          printf '%s\n' "$baseline"
+          migration_only="$(java -Dfnx.scheduler=distributed -Dfnx.clusters=8 -Dfnx.clusterIssueWidth=1 -Dfnx.migrationLatency=3 -Dfnx.remoteMemoryLatencyPenalty=0 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -Eq 'migrationWaiterCycles=[1-9][0-9]*' <<< "$migration_only"
+          grep -q 'remoteMemoryLatencyCycles=0' <<< "$migration_only"
+          printf '%s\n' "$migration_only"
+          locality_only="$(java -Dfnx.scheduler=distributed -Dfnx.clusters=8 -Dfnx.clusterIssueWidth=1 -Dfnx.migrationLatency=0 -Dfnx.remoteMemoryLatencyPenalty=7 -cp build/scheduler-sim "$class" 64 4 300 0.25 20000 42 2)"
+          grep -q 'migrationWaiterCycles=0' <<< "$locality_only"
+          grep -Eq 'remoteMemoryLatencyCycles=[1-9][0-9]*' <<< "$locality_only"
+          printf '%s\n' "$locality_only"
+
+      - name: Verify byte bandwidth and bank contention
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.fnx.sim.ContextSweep
+          baseline="$(java -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
+          bounded="$(java -Dfnx.memoryRequestBytes=64 -Dfnx.memoryChannels=4 -Dfnx.memoryBanksPerChannel=8 -Dfnx.memoryBandwidthBytesPerCycle=16 -Dfnx.bankConflictPenalty=2 -cp build/scheduler-sim "$class" 512 4 300 0.50 30000 19 4 128 0.70 4 0.20 20 200)"
+          echo "$bounded"
+          check() {
+            local label="$1" pattern="$2" output="$3"
+            if ! grep -Eq "$pattern" <<< "$output"; then
+              echo "FAIL: $label" >&2
+              exit 1
+            fi
+          }
+          check "memory system enabled with 64-byte requests" 'memorySystemEnabled=true cacheHierarchyEnabled=false memoryRequestBytes=64 memoryRequestBytesMin=64 memoryRequestBytesMax=64' "$bounded"
+          check "four-channel/eight-bank configuration" 'memoryChannels=4 memoryBanksPerChannel=8' "$bounded"
+          check "configured bandwidth and bank penalty" 'memoryBandwidthBytesPerCycle=16 aggregateMemoryBandwidthBytesPerCycle=64 bankConflictPenalty=2' "$bounded"
+          check "bank conflicts observed" 'bankConflictRequests=[1-9][0-9]*' "$bounded"
+          check "bank conflict wait observed" 'bankConflictWaitCycles=[1-9][0-9]*' "$bounded"
+          check "DRAM service cycles observed" 'memoryServiceCycles=[1-9][0-9]*' "$bounded"
+          check "bank outstanding observed" 'maxBankOutstanding=[1-9][0-9]*' "$bounded"
+          check "memory byte counters reported" 'memoryBytesIssued=[1-9][0-9]* memoryBytesCompleted=[0-9]+' "$bounded"
+          check "DRAM bank requests reported" 'memoryBankRequests=[1-9][0-9]*' "$bounded"
+          echo "PASS: byte bandwidth and bank contention checks"
+ 
+      - name: Verify independent dependency chains
+        shell: bash
+        run: |
+          set -euo pipefail
+          class=org.flossware.fnx.sim.ContextSweep
+          single="$(java -Dfnx.dependencyChains=1 -cp build/scheduler-sim "$class" 8 4 300 0.0 50000 42 1 128 0.70 4 0.20 20 200 0.50 12)"
+          parallel="$(java -Dfnx.dependencyChains=4 -cp build/scheduler-sim "$class" 8 4 300 0.0 50000 42 1 128 0.70 4 0.20 20 200 0.50 12)"
+          grep -q 'dependencyChains=1' <<< "$single"
+          grep -q 'dependencyIssuesOverlapped=0' <<< "$single"
+          grep -q 'dependencyChains=4' <<< "$parallel"
+          grep -Eq 'dependencyIssuesOverlapped=[1-9][0-9]*' <<< "$parallel"
+          awk -v single="$single" '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1]=="measuredIPC") parallel=p[2]; } } END { for (i=1; i<=split(single, fields, " "); i++) { split(fields[i], p, "="); if (p[1]=="measuredIPC") baseline=p[2]; } if (parallel <= baseline) exit 1; }' <<< "$parallel"
+          printf '%s\n' "$single"
+          printf '%s\n' "$parallel"
+
+      - name: Verify memory completion-rate backpressure
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 512 4 300 0.50 50000 19 4 128 0.70 4 0.20 20 200 1)"
+          grep -q 'memoryCompletionRate=1' <<< "$output"
+          grep -Eq 'serviceBacklogCycles=[1-9][0-9]*' <<< "$output"
+          printf '%s\n' "$output"
+
+      - name: Verify finite queue backpressure
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 512 4 300 0.50 50000 19 4 8 0.70 4 0.20 20 200)"
+          grep -q 'memoryQueueCapacity=8' <<< "$output"
+          grep -Eq 'queueFullAttempts=[1-9][0-9]*' <<< "$output"
+          awk '{ for (i=1; i<=NF; i++) { split($i, pair, "="); if (pair[1] == "maxQueueOccupancy" && pair[2] > 8) exit 1; } }' <<< "$output"
+          printf '%s\n' "$output"
+
+      - name: Verify invalid arguments fail
+        shell: bash
+        run: |
+          set -euo pipefail
+          if java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep; then
+            echo "Expected invalid invocation to fail" >&2
+            exit 1
+          fi
+          if java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 128 2 100 0.25 5000 7 1 8 0.70 4 0.20 20 200 1.5 12; then
+            echo "Expected invalid dependency fraction to fail" >&2
+            exit 1
+          fi
+          if java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 128 2 100 0.25 5000 7 1 8 0.70 4 0.20 20 200 0; then
+            echo "Expected invalid completion rate to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.hotMemoryFraction=NaN -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected non-finite workspace memory fraction to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.migrationLatency=-1 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected negative migration latency to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.remoteMemoryLatencyPenalty=-1 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected negative remote-memory penalty to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.dependencyChains=0 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected non-positive dependency-chain count to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.dependencyChains=129 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected dependency-chain count above 128 to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.memoryRequestMinBytes=0 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected non-positive minimum request size to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.memoryRequestMinBytes=256 -Dfnx.memoryRequestMaxBytes=128 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected inverted request-size range to fail" >&2
+            exit 1
+          fi
+          if java -Dfnx.scheduler=distributed -Dfnx.clusters=0 -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 64 4 300 0.25 5000 42; then
+            echo "Expected invalid cluster count to fail" >&2
+            exit 1
+          fi
+          if java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 128 2 100 0.25 5000 7 0; then
+            echo "Expected max-outstanding=0 to fail" >&2
+            exit 1
+          fi

@@ -834,7 +834,7 @@ final class PerHopArbitrationSmoke {
         while (firstHop.hasQueuedPackets() || secondHop.hasQueuedPackets()) {
             Packet secondGrant = secondHop.grant();
             if (secondGrant != null) {
-                if (secondGrant.remainingHops() != 0) {
+                if (secondGrant.remainingHops() != 1) {
                     throw new IllegalStateException("Packet advanced an invalid hop count");
                 }
                 completed++;

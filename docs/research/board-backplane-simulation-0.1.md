@@ -49,7 +49,7 @@ Requires JDK 25 or newer:
 mkdir -p build/scheduler-sim
 javac --release 25 -Xlint:all -Werror \
   -d build/scheduler-sim \
-  tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
+  tools/scheduler-sim/src/main/java/org/flossware/fnx/sim/BoardFabricSweep.java
 java -cp build/scheduler-sim org.flossware.fnx.sim.BoardFabricSweep
 ```
 
@@ -68,7 +68,7 @@ java \
 
 ## Preliminary results
 
-Four full-default runs were executed locally with OpenJDK 21, using seeds 42, 7, 101, and 2026. The repository workflow also compiled the committed source with Temurin JDK 25 and passed the board/backplane smoke test and the existing scheduler suite in run [#108](https://github.com/FlossWare/f128x/actions/runs/41851658484). The four-seed throughput table below was generated in the local OpenJDK 21 experiment; JDK 25 CI validates compilation and deterministic smoke behavior, not the full four-seed result table.
+Four full-default runs were executed locally with OpenJDK 21, using seeds 42, 7, 101, and 2026. The repository workflow also compiled the committed source with Temurin JDK 25 and passed the board/backplane smoke test and the existing scheduler suite in run [#108](https://github.com/AI-TwinStream/fNx/actions/runs/41851658484). The four-seed throughput table below was generated in the local OpenJDK 21 experiment; JDK 25 CI validates compilation and deterministic smoke behavior, not the full four-seed result table.
 
 Configuration:
 
@@ -145,7 +145,7 @@ The existing board-fabric smoke path runs a deterministic mesh scenario twice an
 
 ## Switched-fabric topology matrix results (2026-11-04)
 
-The full default matrix was executed in GitHub Actions run [41929014603](https://github.com/AI-TwinStream/f128x/actions/runs/41929014603), using 2,048 remote operations per board and seed 42. All 81 cases completed successfully. These are outputs of the simplified reservation model described above, not hardware predictions.
+The full default matrix was executed in GitHub Actions run [41929014603](https://github.com/AI-TwinStream/fNx/actions/runs/41929014603), using 2,048 remote operations per board and seed 42. All 81 cases completed successfully. These are outputs of the simplified reservation model described above, not hardware predictions.
 
 ### Selected 16-board comparisons
 
@@ -295,7 +295,7 @@ The normalized fabric service model uses fractional cycle availability for links
 
 ## Equal-bisection topology matrix results (2026-11-04)
 
-The corrected normalized matrix completed successfully in [GitHub Actions run 41931395805](https://github.com/AI-TwinStream/f128x/actions/runs/41931395805), at seed 42 and 2,048 operations per board. All 81 combinations passed. Each topology at a given board count received the same aggregate bisection budget for each link-count setting: 192, 384, or 768 bytes/cycle. Fractional link service cycles are used to preserve the bandwidth ratios for 64-byte packets.
+The corrected normalized matrix completed successfully in [GitHub Actions run 41931395805](https://github.com/AI-TwinStream/fNx/actions/runs/41931395805), at seed 42 and 2,048 operations per board. All 81 combinations passed. Each topology at a given board count received the same aggregate bisection budget for each link-count setting: 192, 384, or 768 bytes/cycle. Fractional link service cycles are used to preserve the bandwidth ratios for 64-byte packets.
 
 ### 16-board results
 
@@ -426,7 +426,7 @@ Latency and completion values are in model cycles. Bandwidth values are bytes/cy
 
 ## Three-seed normalized sensitivity check
 
-The CI workflow repeated the complete 81-case matrix at seeds 7 and 2027 in addition to the primary seed 42. All 243 measured cases passed in [GitHub Actions run 41931612205](https://github.com/AI-TwinStream/f128x/actions/runs/41931612205). Each seed used 2,048 operations per board. The table below reports the arithmetic mean across the three seeds for selected 16-board cases; throughput is aggregate completed operations per cycle.
+The CI workflow repeated the complete 81-case matrix at seeds 7 and 2027 in addition to the primary seed 42. All 243 measured cases passed in [GitHub Actions run 41931612205](https://github.com/AI-TwinStream/fNx/actions/runs/41931612205). Each seed used 2,048 operations per board. The table below reports the arithmetic mean across the three seeds for selected 16-board cases; throughput is aggregate completed operations per cycle.
 
 | Traffic | Topology | Links | Mean latency | Mean p95 latency | Mean operations/cycle | Per-seed operations/cycle |
 |---|---|---:|---:|---:|---:|---|
@@ -462,7 +462,7 @@ The normalized model and three-seed result set are now suitable for sensitivity 
 
 ## Injection-rate sensitivity (2026-11-04)
 
-`fnx.fabric.injectionInterval` now controls the deterministic spacing between per-source requests. The full 81-case matrix was run at intervals 1 and 4 in addition to the interval-2 primary matrix and three-seed repeat. The complete workflow passed in [GitHub Actions run 41931975505](https://github.com/AI-TwinStream/f128x/actions/runs/41931975505); 405 result rows were exercised across the five matrix runs (seed 42 at intervals 1/2/4, and seeds 7/2027 at interval 2). Smaller intervals offer more load; larger intervals reduce offered load. Values below are 16-board selected cases. The interval-2 rows are three-seed means; intervals 1 and 4 are seed 42.
+`fnx.fabric.injectionInterval` now controls the deterministic spacing between per-source requests. The full 81-case matrix was run at intervals 1 and 4 in addition to the interval-2 primary matrix and three-seed repeat. The complete workflow passed in [GitHub Actions run 41931975505](https://github.com/AI-TwinStream/fNx/actions/runs/41931975505); 405 result rows were exercised across the five matrix runs (seed 42 at intervals 1/2/4, and seeds 7/2027 at interval 2). Smaller intervals offer more load; larger intervals reduce offered load. Values below are 16-board selected cases. The interval-2 rows are three-seed means; intervals 1 and 4 are seed 42.
 
 | Interval | Traffic | Topology | Links | Mean latency | p95 latency | Operations/cycle |
 |---:|---|---|---:|---:|---:|---:|
@@ -513,7 +513,7 @@ The normalized model and three-seed result set are now suitable for sensitivity 
 
 ## Destination memory-lane sensitivity (2026-11-04)
 
-The model now accepts `-Dfnx.fabric.memoryLanesPerBoard=N`. CI ran the full 81-case topology matrix with two and four destination memory lanes in addition to the one-lane baseline. The full push workflow passed in [GitHub Actions run 41932232583](https://github.com/AI-TwinStream/f128x/actions/runs/41932232583). The selected table shows 16-board hotspot traffic, injection interval 2, and four parallel links per neighbor.
+The model now accepts `-Dfnx.fabric.memoryLanesPerBoard=N`. CI ran the full 81-case topology matrix with two and four destination memory lanes in addition to the one-lane baseline. The full push workflow passed in [GitHub Actions run 41932232583](https://github.com/AI-TwinStream/fNx/actions/runs/41932232583). The selected table shows 16-board hotspot traffic, injection interval 2, and four parallel links per neighbor.
 
 | Memory lanes/board | Topology | Mean latency | p95 latency | Operations/cycle |
 |---:|---|---:|---:|---:|

@@ -1,4 +1,4 @@
-package org.flossware.f128x.sim;
+package org.flossware.fnx.sim;
 
 /** Dependency-free deterministic tests for synthetic address generation/mapping. */
 public final class MemoryAddressingTest {

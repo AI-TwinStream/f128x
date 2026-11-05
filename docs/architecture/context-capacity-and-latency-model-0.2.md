@@ -10,7 +10,7 @@
 
 The 65,536-context target is a design hypothesis, not a performance result. This note establishes a simple model that can be checked, varied, and later calibrated by workload traces and richer simulation.
 
-It does **not** prove that 128-bit member needs 65,536 contexts. It also does not model a realistic cache hierarchy, multiple outstanding requests per thread, dependencies, or scheduler overhead.
+It does **not** prove that a 128-bit implementation needs 65,536 contexts. It also does not model a realistic cache hierarchy, multiple outstanding requests per thread, dependencies, or scheduler overhead.
 
 ## 2. First-order blocking model
 

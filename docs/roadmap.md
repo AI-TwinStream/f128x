@@ -3,7 +3,7 @@
 **Date:** 2026-11-05  
 **Status:** Architecture and research roadmap; priorities evolve as contracts are reviewed
 
-fNx is the architecture family. N is the native architectural width in bits. f128x is one member and the current focus of the executable scheduler/fabric research. Family-wide decisions must not be inferred from f128x-only simulation results.
+fNx is the architecture family. N is the native architectural width in bits. 128-bit research profile is one member and the current focus of the executable scheduler/fabric research. Family-wide decisions must not be inferred from 128-bit research profile-only simulation results.
 
 ## Current working specifications
 
@@ -99,9 +99,9 @@ fNx is the architecture family. N is the native architectural width in bits. f12
 
 ## Research boundaries
 
-- Existing scheduler and board/fabric experiments are f128x-oriented models.
+- Existing scheduler and board/fabric experiments are 128-bit research profile-oriented models.
 - Existing simulation outputs are sensitivity results, not hardware performance predictions.
-- Historical f128x capacity studies are retained as research artifacts, not family-wide architectural requirements.
+- Historical 128-bit research profile capacity studies are retained as research artifacts, not family-wide architectural requirements.
 - No external ISA/runtime precedent makes the fNx combination automatically novel; compare JVM, .NET, WebAssembly, binary translation, and existing heterogeneous systems carefully.
 
 ## Milestones

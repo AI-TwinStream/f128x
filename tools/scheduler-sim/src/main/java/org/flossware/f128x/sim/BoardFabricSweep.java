@@ -322,7 +322,7 @@ final class FabricTopologySweep {
                         Result first = simulate(boards, pattern, topology,
                                 links, 64, 42L, 2, 1, 8, "round_robin", "adaptive");
                         Result second = simulate(boards, pattern, topology,
-                                links, 64, 42L, 2, 1, "round_robin", "adaptive");
+                                links, 64, 42L, 2, 1, 8, "round_robin", "adaptive");
                         Result fixed = simulate(boards, pattern, topology,
                                 links, 64, 42L, 2, 1, 8, "fixed", "fixed");
                         if (!first.equals(second) || first.operations() != boards * 64

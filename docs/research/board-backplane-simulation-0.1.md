@@ -41,7 +41,7 @@ Defaults:
 - 4,096 outstanding memory requests globally.
 - Each cluster issues at most one instruction per cycle in the baseline topology sweep.
 
-A workspace is assigned to a board by workspace ID modulo board count, then to a board-local cluster. All its threads follow that placement. Each board has a configurable number of independent local-memory service lanes (`f128x.localMemoryLanesPerBoard`, default 1), each with the configured byte rate. A request is assigned to the lane with the earliest available service time; local requests queue on the source board and do not consume fabric bandwidth. Remote targets use `f128x.remotePattern`: `uniform` chooses any other board, `hotspot` directs requests to board 0 (or board 1 when the source is board 0), and `paired` directs requests to the paired board (`board XOR 1`, with a wrap fallback). The request and response use separate full-duplex service lanes on the shared fabric, and the request queues at the target board's local-memory lane. Fabric latency includes a base per-direction component plus a logarithmic switch-hop proxy. A memory request occupies one outstanding slot until completion. A thread has at most one outstanding memory request.
+A workspace is assigned to a board by workspace ID modulo board count, then to a board-local cluster. All its threads follow that placement. Each board has a configurable number of independent local-memory service lanes (`fnx.localMemoryLanesPerBoard`, default 1), each with the configured byte rate. A request is assigned to the lane with the earliest available service time; local requests queue on the source board and do not consume fabric bandwidth. Remote targets use `fnx.remotePattern`: `uniform` chooses any other board, `hotspot` directs requests to board 0 (or board 1 when the source is board 0), and `paired` directs requests to the paired board (`board XOR 1`, with a wrap fallback). The request and response use separate full-duplex service lanes on the shared fabric, and the request queues at the target board's local-memory lane. Fabric latency includes a base per-direction component plus a logarithmic switch-hop proxy. A memory request occupies one outstanding slot until completion. A thread has at most one outstanding memory request.
 
 The model reports IPC, utilization against configured aggregate issue capacity, per-board issue counts, remote request count by destination board, fabric bytes, queue-full attempts, idle cluster issue slots, and maximum outstanding requests.
 
@@ -54,19 +54,19 @@ mkdir -p build/scheduler-sim
 javac --release 25 -Xlint:all -Werror \
   -d build/scheduler-sim \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
-java -cp build/scheduler-sim org.flossware.f128x.sim.BoardFabricSweep
+java -cp build/scheduler-sim org.flossware.fnx.sim.BoardFabricSweep
 ```
 
 Useful overrides:
 
 ```sh
 java \
-  -Df128x.fabricBytesPerCycle=512 \
-  -Df128x.localMemoryLatency=60 \
-  -Df128x.remoteMemoryLatency=60 \
-  -Df128x.cycles=60000 \
+  -Dfnx.fabricBytesPerCycle=512 \
+  -Dfnx.localMemoryLatency=60 \
+  -Dfnx.remoteMemoryLatency=60 \
+  -Dfnx.cycles=60000 \
   -cp build/scheduler-sim \
-  org.flossware.f128x.sim.BoardFabricSweep
+  org.flossware.fnx.sim.BoardFabricSweep
 ```
 
 
@@ -139,7 +139,7 @@ The workload injects one 64-byte remote operation per source board every two cyc
 Run:
 
 ```sh
-java -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep
+java -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep
 ```
 
 This experiment is intentionally a separate sensitivity model rather than a claim that the original `BoardFabricSweep` has been upgraded to a detailed network simulator. It omits arbitration fairness, virtual channels, adaptive routing, packet fragmentation, credit flow control, congestion control, link failures, and electrical/physical costs. Its fixed injection schedule and deterministic FIFO link reservations are useful for isolating topology and link-parallelism effects, but they are not a substitute for a cycle-accurate network-on-chip or backplane model.
@@ -466,7 +466,7 @@ The normalized model and three-seed result set are now suitable for sensitivity 
 
 ## Injection-rate sensitivity (2026-11-04)
 
-`f128x.fabric.injectionInterval` now controls the deterministic spacing between per-source requests. The full 81-case matrix was run at intervals 1 and 4 in addition to the interval-2 primary matrix and three-seed repeat. The complete workflow passed in [GitHub Actions run 41931975505](https://github.com/AI-TwinStream/f128x/actions/runs/41931975505); 405 result rows were exercised across the five matrix runs (seed 42 at intervals 1/2/4, and seeds 7/2027 at interval 2). Smaller intervals offer more load; larger intervals reduce offered load. Values below are 16-board selected cases. The interval-2 rows are three-seed means; intervals 1 and 4 are seed 42.
+`fnx.fabric.injectionInterval` now controls the deterministic spacing between per-source requests. The full 81-case matrix was run at intervals 1 and 4 in addition to the interval-2 primary matrix and three-seed repeat. The complete workflow passed in [GitHub Actions run 41931975505](https://github.com/AI-TwinStream/f128x/actions/runs/41931975505); 405 result rows were exercised across the five matrix runs (seed 42 at intervals 1/2/4, and seeds 7/2027 at interval 2). Smaller intervals offer more load; larger intervals reduce offered load. Values below are 16-board selected cases. The interval-2 rows are three-seed means; intervals 1 and 4 are seed 42.
 
 | Interval | Traffic | Topology | Links | Mean latency | p95 latency | Operations/cycle |
 |---:|---|---|---:|---:|---:|---:|
@@ -517,7 +517,7 @@ The normalized model and three-seed result set are now suitable for sensitivity 
 
 ## Destination memory-lane sensitivity (2026-11-04)
 
-The model now accepts `-Df128x.fabric.memoryLanesPerBoard=N`. CI ran the full 81-case topology matrix with two and four destination memory lanes in addition to the one-lane baseline. The full push workflow passed in [GitHub Actions run 41932232583](https://github.com/AI-TwinStream/f128x/actions/runs/41932232583). The selected table shows 16-board hotspot traffic, injection interval 2, and four parallel links per neighbor.
+The model now accepts `-Dfnx.fabric.memoryLanesPerBoard=N`. CI ran the full 81-case topology matrix with two and four destination memory lanes in addition to the one-lane baseline. The full push workflow passed in [GitHub Actions run 41932232583](https://github.com/AI-TwinStream/f128x/actions/runs/41932232583). The selected table shows 16-board hotspot traffic, injection interval 2, and four parallel links per neighbor.
 
 | Memory lanes/board | Topology | Mean latency | p95 latency | Operations/cycle |
 |---:|---|---:|---:|---:|
@@ -541,7 +541,7 @@ These results support continuing with the two independent controls: bisection-no
 ## Fabric ingress arbitration and source latency fairness (2026-11-04)
 
 The switched-fabric transaction model now exposes
-`-Df128x.fabric.arbitration=fixed|round_robin`. The default remains `fixed`
+`-Dfnx.fabric.arbitration=fixed|round_robin`. The default remains `fixed`
 so previously recorded matrices retain their original transaction ordering.
 The `round_robin` policy rotates the first source considered at each injection
 epoch. For an epoch with (N) boards, source priority begins at
@@ -576,7 +576,7 @@ claims.
 ## Congestion-aware shortest-path routing (2026-11-04)
 
 The fabric experiment now supports
-`-Df128x.fabric.routing=fixed|adaptive`. Fixed routing retains the original
+`-Dfnx.fabric.routing=fixed|adaptive`. Fixed routing retains the original
 deterministic breadth-first path. Adaptive routing enumerates all equal-hop
 shortest paths between the source and destination, then selects the path with
 the smallest predicted link-reservation completion time using the current
@@ -605,7 +605,7 @@ a production adaptive router.
 
 The switched-fabric model now separates endpoint service lanes from destination
 memory-bank serialization. Configure bank count with
-`-Df128x.fabric.memoryBanksPerBoard=N` (default 8). Each transaction carries
+`-Dfnx.fabric.memoryBanksPerBoard=N` (default 8). Each transaction carries
 its source-local operation index and maps to a destination bank using
 `(operation + sourceBoard) mod bankCount`. A memory request must wait for both
 an endpoint lane and its selected bank; service begins when both are available.

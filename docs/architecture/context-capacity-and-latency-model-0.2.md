@@ -1,3 +1,5 @@
+> **Applicability note (2026-11-05):** This capacity/latency model is tied to the f128x scheduler research profile and its stated context assumptions. Its conclusions are not family-wide fNx requirements. fNx native width N governs register, arithmetic, pointer, and virtual-address width; context capacity remains a separate member/implementation decision. See the [fNx family contract](fnx-family-and-architectural-contract-0.1.md).
+
 # Context Capacity and Latency-Hiding Model 0.2
 
 **Date:** 2026-11-04  

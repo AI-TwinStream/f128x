@@ -11,8 +11,8 @@
 
 Simulation 0.8 adds configurable migration and remote-memory locality penalties to the distributed scheduler:
 
-- `f128x.migrationLatency`: cycles a thread waits after work stealing moves it to another cluster.
-- `f128x.remoteMemoryLatencyPenalty`: extra latency added to each memory operation issued while the thread is remote from its workspace's home cluster.
+- `fnx.migrationLatency`: cycles a thread waits after work stealing moves it to another cluster.
+- `fnx.remoteMemoryLatencyPenalty`: extra latency added to each memory operation issued while the thread is remote from its workspace's home cluster.
 
 A workspace's home cluster is its workspace ID modulo cluster count. A thread becomes remote when work stealing moves it away from that home cluster and becomes local again if it migrates back. The model counts migrations, remote wakeups, measured remote thread-cycles, remote memory issues, added remote-memory latency, migration-waiter cycles, and completed migrations.
 

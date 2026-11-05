@@ -832,18 +832,18 @@ final class PerHopArbitrationSmoke {
         }
         int cycles = 0;
         while (firstHop.hasQueuedPackets() || secondHop.hasQueuedPackets()) {
-            Packet firstGrant = firstHop.grant();
-            if (firstGrant != null) {
-                firstHopGrants[firstGrant.input()]++;
-                secondHop.enqueue(new Packet(firstGrant.input(),
-                        firstGrant.remainingHops() - 1));
-            }
             Packet secondGrant = secondHop.grant();
             if (secondGrant != null) {
                 if (secondGrant.remainingHops() != 0) {
                     throw new IllegalStateException("Packet advanced an invalid hop count");
                 }
                 completed++;
+            }
+            Packet firstGrant = firstHop.grant();
+            if (firstGrant != null) {
+                firstHopGrants[firstGrant.input()]++;
+                secondHop.enqueue(new Packet(firstGrant.input(),
+                        firstGrant.remainingHops() - 1));
             }
             cycles++;
             if (cycles > contenders * packetsPerInput * 3) {

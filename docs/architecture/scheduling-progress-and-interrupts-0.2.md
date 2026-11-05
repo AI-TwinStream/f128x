@@ -7,7 +7,7 @@
 
 This is an fNx family research document. Native width N determines architectural register, arithmetic, pointer, and virtual-address width. Scheduler topology and context capacity are independent of N unless a specific implementation profile states otherwise.
 
-The 128-workspace × 128-thread f128x research target is not a family-wide requirement. Existing simulations use f128x-oriented parameters and should be interpreted accordingly.
+The 128-workspace × 128-thread 128-bit research profile research target is not a family-wide requirement. Existing simulations use 128-bit research profile-oriented parameters and should be interpreted accordingly.
 
 ## 2. Scheduling hierarchy
 

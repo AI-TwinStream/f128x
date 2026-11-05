@@ -1,3 +1,5 @@
+> **Applicability note (2026-11-05):** The simulator source, Java package names, system properties, and reported results remain f128x-oriented research artifacts. They are not a general fNx architectural simulator and do not validate N-bit pointer translation, family-wide opcode semantics, P-Code, FCP behavior, or mixed-width hierarchical fabric behavior. Preserve the f128x label when interpreting these experiments. See the [fNx family contract](../../docs/architecture/fnx-family-and-architectural-contract-0.1.md).
+
 # Scheduler Simulation 0.11
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.

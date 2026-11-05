@@ -13,7 +13,7 @@ Workspace terminology is retained provisionally. A workspace is not automaticall
 
 For a member fNx, N is its native architectural width. General-purpose registers and native arithmetic are N bits. The number of private registers, shared registers, workspaces, and thread slots is independent of N and remains subject to separate decisions.
 
-The current 128-workspace × 128-thread × 128-private/128-shared-register target is specific to the f128x research profile. It is not yet a family-wide capacity requirement.
+The current 128-workspace × 128-thread × 128-private/128-shared-register target is specific to the 128-bit research profile research profile. It is not yet a family-wide capacity requirement.
 
 ## 3. Ownership model to specify
 
@@ -42,7 +42,7 @@ Define access rules for:
 
 ## 5. Shared-register semantics
 
-The current f128x study uses 128 shared GPRs per workspace, each 128 bits wide. Other fNx members use N-bit register width if this register model is retained; register count is still an independent decision.
+The current 128-bit research profile study uses 128 shared GPRs per workspace, each 128 bits wide. Other fNx members use N-bit register width if this register model is retained; register count is still an independent decision.
 
 Specify:
 - Read/write atomicity.

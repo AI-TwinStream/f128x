@@ -295,3 +295,15 @@ response direction's link reservations. Results report
 `adaptiveRouteSelections` so CI can verify that the adaptive policy actually
 chooses alternate paths. This is source-selected, snapshot-based adaptive
 routing, not per-hop packet deflection or a deadlock-free adaptive router.
+
+
+### Destination memory-bank conflicts
+
+The fabric experiment accepts `-Df128x.fabric.memoryBanksPerBoard=N` (default
+8). Each request maps deterministically to a destination bank using its source
+board and per-source operation index. A request must obtain both an endpoint
+memory lane and its selected bank; the later availability time determines
+service start. Results report `bankConflictWaitCycles` separately from fabric
+latency. This separates endpoint-lane parallelism from bank-level serialization.
+The model does not yet include channels, row buffers, refresh, bank groups, or
+DRAM command timing.

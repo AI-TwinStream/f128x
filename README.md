@@ -26,6 +26,7 @@ A 128-bit register does not imply 128-bit addresses, instructions, memory buses,
 - [Review synthesis 0.2](docs/reviews/review-synthesis-0.2.md)
 - [Context state and residency 0.2](docs/architecture/context-state-and-residency-0.2.md)
 - [Register and context scaling proposal 0.1](docs/architecture/register-and-context-scaling-0.1.md)
+- [Register and context scaling results 0.1](docs/research/register-and-context-scaling-results-0.1.md)
 - [Context capacity and latency model 0.2](docs/architecture/context-capacity-and-latency-model-0.2.md)
 - [Workspace protection and shared state 0.2](docs/architecture/workspace-protection-and-shared-state-0.2.md)
 - [Scheduling progress and interrupts 0.2](docs/architecture/scheduling-progress-and-interrupts-0.2.md)

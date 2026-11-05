@@ -1,4 +1,4 @@
-# f128x Independent Review Synthesis 0.2
+# fNx Baseline Review Synthesis 0.2
 
 **Date:** 2026-11-04  
 **Status:** Review synthesis; recommendations are not frozen architectural decisions
@@ -28,7 +28,7 @@ The 136 MiB figure describes architectural state capacity, not a physically mult
 | Finding | Source | Disposition |
 |---|---|---|
 | Define nonresident context state, backing, spill/fill, and observability | Claude | Accepted as a foundational specification requirement; mechanism remains open |
-| Clarify that f128x workspace differs from the TMS9900 memory-resident register workspace | Claude | Accepted; preserve historical inspiration without claiming semantic equivalence |
+| Clarify that 128-bit architecture member workspace differs from the TMS9900 memory-resident register workspace | Claude | Accepted; preserve historical inspiration without claiming semantic equivalence |
 | Define shared-register atomicity, ordering, hazards, and synchronization | Both | Accepted; evaluate atomic operations and HEP-style full/empty mechanisms without prematurely selecting one |
 | Define workspace protection and OS virtualization | Both | Accepted; workspace is not automatically a process or a permanent trust-domain count |
 | Move instruction encoding earlier | Claude | Accepted; encoding feasibility becomes a parallel early workstream |

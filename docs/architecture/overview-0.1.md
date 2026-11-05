@@ -1,140 +1,85 @@
-# f128x Architecture Overview 0.1
+# fNx Architecture Overview 0.2
 
-**Date:** 2026-11-04  
-**Status:** Initial architectural baseline; not a frozen ISA or microarchitecture
+**Date:** 2026-11-05  
+**Status:** Family-level architectural overview; detailed contracts remain provisional
 
 ## 1. Purpose
 
-f128x is a proposed 128-bit general-purpose processor architecture designed around workspace-oriented execution, large numbers of hardware-resident thread contexts, and shared execution resources.
+fNx is a proposed open processor architecture family. N is the native architectural width in bits. Members such as f16x, f32x, f64x, 128-bit member, f256x, f512x, and f1024x share one ISA and one architectural philosophy. The minimum N is unresolved; 16 bits is currently favored provisionally.
 
-The project began with the TMS9900's workspace concept. It now explores a substantially different architecture: thousands of workspaces, multiple independently scheduled threads per workspace, private thread registers, and shared workspace registers.
+The project explores workspace-oriented execution, large numbers of independently schedulable hardware-thread contexts, private thread state, workspace-shared state, and modular systems that can combine different fNx members.
 
-## 2. Design principles
+The architecture is not a TMS9900 ISA clone and does not promise TMS9900 binary compatibility. The TMS9900 workspace pointer is historical inspiration only; the proposed fNx workspace is a broader resource-sharing and protection abstraction.
 
-1. 128-bit general-purpose architectural registers.
-2. Workspace-oriented resource organization.
-3. Independent architectural state for every hardware thread.
-4. Separate private thread registers and shared workspace registers.
-5. SMT as a first-class execution model.
-6. Dynamic allocation of shared execution resources.
-7. Explicit synchronization, protection, and memory-ordering semantics.
-8. Scalable physical implementations that may expose fewer contexts than the full architectural target.
+## 2. Family design principles
 
-## 3. Workspace and thread capacity
+1. One common ISA and global opcode registry across all fNx members.
+2. N-bit general-purpose registers, native arithmetic, native data width, pointers, and virtual addresses.
+3. One native width per CPU architectural unit; no mixed native widths inside a CPU unit.
+4. Smaller sub-width operations are defined within an N-bit member.
+5. Physical address width and physical memory capacity may be smaller than N, with translation/protection.
+6. Stable opcode assignments and semantics; ISA growth adds unique instructions.
+7. Portable application distribution through the proposed fNx P-Code and `.fnx` package.
+8. Install-time AOT compilation to target-native code, with optional JIT.
+9. A common width-neutral fabric supports mixed-width CPU units and hierarchical backplanes.
+10. An fNx Control Processor (FCP) provides independent platform management and capability discovery, not serial instruction execution.
 
-| Property | Target |
-|---|---:|
-| Workspaces | 4,096 |
-| Threads per workspace | 16 |
-| Total thread contexts | 65,536 |
-| Workspace ID width | 12 bits |
-| Thread-slot width | 4 bits |
-| Combined thread ID | 16 bits |
+## 3. Opcode and instruction encoding
 
-Proposed thread identifier:
+The current direction is an N-bit opcode field with one finite global opcode registry. The same numeric opcode means the same instruction across all members. A larger field does not automatically define more instructions.
 
-`TID = (WorkspaceID << 4) | ThreadSlot`
+New instructions receive unique opcode values. Existing meanings are immutable. Unrecognized native opcodes trap; older hardware may run newer portable applications when the installer can lower the operation into an exact supported sequence.
 
-A workspace is a logical resource-sharing and protection domain. It is not inherently a core, execution unit, or operating-system process.
+Instruction length, operand fields, register selectors, immediate formats, and extension words remain open. Opcode width must not be confused with total instruction size.
 
-Threads within a workspace have independent execution state and share workspace-level resources subject to defined access and synchronization rules.
+## 4. Workspace and thread model
 
-## 4. Register architecture
+A workspace is a proposed logical resource-sharing and protection domain containing independently schedulable threads. Each thread has private architectural state; threads in a workspace may access workspace-shared state under defined synchronization and protection rules.
 
-### 4.1 Private thread registers
-
-Each thread has 128 general-purpose registers, each 128 bits wide.
-
-- 128 × 16 bytes = 2,048 bytes per thread.
-- 65,536 × 2,048 bytes = 128 MiB aggregate private register storage.
-
-### 4.2 Shared workspace registers
-
-Each workspace has 128 general-purpose shared registers, each 128 bits wide.
-
-- 128 × 16 bytes = 2,048 bytes per workspace.
-- 4,096 × 2,048 bytes = 8 MiB aggregate shared register storage.
-
-### 4.3 Aggregate architectural register capacity
-
-| Resource | Aggregate storage |
-|---|---:|
-| Private thread registers | 128 MiB |
-| Shared workspace registers | 8 MiB |
-| **Total** | **136 MiB** |
-
-These are architectural capacity calculations. They do not prescribe physical register-file ports, banking, replication, access latency, or implementation technology.
-
-### 4.4 Register visibility
-
-Private registers are accessible only to their owning thread.
-
-Shared registers are accessible to threads in their owning workspace, subject to synchronization, atomicity, and protection rules.
-
-Suggested software groupings are conventions only. No shared register is permanently reserved for a particular purpose.
-
-## 5. Execution model
-
-The architecture targets simultaneous multithreading across many resident contexts.
-
-Keep these quantities distinct:
-- Resident architectural contexts.
-- Ready/eligible contexts.
-- Instructions selected for issue.
-- Instructions executing in functional units.
-- Physical execution-unit count and issue width.
-
-The target of 65,536 resident contexts does not mean 65,536 instructions execute simultaneously.
-
-Threads should be independently schedulable. Workspace affinity may be a locality hint, not a mandatory execution restriction.
-
-## 6. Memory and communication domains
-
-The design anticipates:
-1. Thread-private memory.
-2. Workspace-shared memory.
-3. Workspace-shared registers.
-
-Explicit inter-workspace communication is a candidate capability. Arbitrary cross-workspace register access is not assumed.
-
-## 7. Status
-
-### Established direction
-- Workspace-oriented execution.
-- Independent thread architectural state.
-- Separate private and shared register resources.
-- SMT as a central design principle.
-- Scalable physical implementations.
-
-### Provisional targets
-- 4,096 workspaces.
-- 16 threads per workspace.
-- 65,536 total contexts.
+The current 128-bit member research profile uses:
+- 128 workspaces.
+- 128 thread contexts per workspace.
 - 128 private 128-bit registers per thread.
 - 128 shared 128-bit registers per workspace.
 
-### Open decisions
-- Instruction encoding and instruction formats.
-- Virtual and physical address widths.
-- Register-file banking and access ports.
-- Scheduling and issue-selection architecture.
-- Execution-unit organization.
-- Cache hierarchy and memory consistency model.
-- Atomic and synchronization instruction semantics.
-- Workspace memory and inter-workspace communication.
-- Privilege, protection, interrupt, and exception models.
-- Context creation, termination, and OS interface.
-- FPGA feasibility and ASIC implementation profiles.
+These are member-specific research targets, not family-wide constants or frozen physical capacities. Context residency, register banking, shared-state synchronization, and physical access costs remain open.
 
-## 8. Development sequence
+## 5. Address and memory model
 
-1. Register semantics and access model.
-2. Thread scheduling, SMT, and issue architecture.
-3. Addressing and memory architecture.
-4. Synchronization and consistency model.
-5. Privilege, protection, interrupts, and exceptions.
-6. Instruction set and encoding.
-7. Microarchitecture and implementation profiles.
-8. Reference implementation and validation.
+Pointers and virtual addresses are N bits for a member. Physical address width may be smaller. Translation maps virtual addresses to installed physical memory and device regions.
 
-The specification evolves through evidence and review. No implementation detail should silently become an ISA requirement.
+The architecture must define memory ordering, atomics, alignment, page translation, permissions, cacheability, coherence, DMA, and I/O. The existence of a wide virtual address space does not require a platform to populate it with physical memory.
+
+## 6. Portable application model
+
+The proposed `.fnx` package contains portable fNx P-Code plus manifest, ABI/runtime requirements, capability requirements, integrity information, and optional resources.
+
+The installer validates the package, discovers target capabilities, and compiles P-Code into native code for the installed member. A JIT may optimize hot paths. Native code is a derived cache; P-Code remains authoritative and can be recompiled after hardware or toolchain changes.
+
+This approach combines established techniques from portable bytecode and binary translation ecosystems. It is not a claim that portable bytecode or AOT/JIT compilation is unprecedented.
+
+## 7. Modular platform and management
+
+Different native-width CPU units may coexist on a common width-neutral fabric. Backplanes may connect hierarchically. Fabric protocol semantics are independent of processor register width.
+
+The proposed FCP uses the fNx ISA family as a separate low-power management processor. It discovers hardware capabilities, manages power/reset/thermal state, reports faults, and coordinates boards and backplanes. It should operate with independent power, clock, reset, and connectivity sufficient to manage the platform when main CPUs are unavailable.
+
+## 8. Status and open decisions
+
+The family-level directions are captured in:
+- [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md)
+- [fNx P-Code and application compatibility](fnx-pcode-and-compatibility-0.1.md)
+- [fNx control processor and management plane](fnx-control-and-management-plane-0.1.md)
+
+Still open: minimum N, exact instruction encoding/length, operand formats, P-Code execution model and package format, ABI, privilege and memory model, context residency, workspace/shared-register synchronization, FCP width and firmware, backplane protocol, and physical implementation.
+
+## 9. Development sequence
+
+1. Ratify family width range and opcode namespace.
+2. Specify native ISA semantics, encoding, and conformance tests.
+3. Specify N-bit virtual addressing and physical translation.
+4. Define P-Code and portable package/ABI contracts.
+5. Build reference interpreter, assembler, disassembler, and compiler path.
+6. Continue 128-bit member scheduler/fabric experiments while clearly bounding their applicability.
+7. Prototype reduced hardware and platform management.
+8. Port an OS only after privilege, memory, interrupt, and ABI contracts stabilize.

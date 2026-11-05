@@ -1,150 +1,128 @@
-# f128x Roadmap
+# fNx Roadmap
 
-The current architectural direction is a workspace-oriented, massively multithreaded 128-bit general-purpose processor. The 0.1 research baseline remains provisional. Independent reviews have been synthesized in [Review synthesis 0.2](reviews/review-synthesis-0.2.md).
+**Date:** 2026-11-05  
+**Status:** Architecture and research roadmap; priorities evolve as contracts are reviewed
 
-## Current review-driven work
+fNx is the architecture family. N is the native architectural width in bits. 128-bit research profile is one member and the current focus of the executable scheduler/fabric research. Family-wide decisions must not be inferred from 128-bit research profile-only simulation results.
 
-- [x] Capture independent Claude and Grok review findings.
-- [x] Separate architectural state from physical context residency.
-- [x] Add workspace protection and shared-state design questions.
-- [x] Add scheduling progress, fairness, and interrupt design questions.
-- [x] Add early ISA, address-width, ABI, and toolchain workstream.
-- [x] Add a first-order context-capacity and latency-hiding model.
-- [x] Add a minimal executable cycle-level scheduler simulation.
-- [ ] Extend the simulation with multiple outstanding requests, latency classes, dependencies, and shared-state contention.
-- [ ] Replace illustrative assumptions with workload traces and measured parameters.
-- [ ] Resolve architectural context observability and residency contract.
-- [ ] Define workspace ownership, isolation, virtualization, and lifecycle.
+## Current working specifications
+
+- [x] Rename the architecture family to fNx.
+- [x] Define N as native architectural width.
+- [x] Establish one common ISA and global opcode namespace across members.
+- [x] Establish N-bit GPRs, native arithmetic, pointers, and virtual addresses as the working family direction.
+- [x] Allow physical address width/capacity to be smaller than N, with translation/protection.
+- [x] Establish one native width per CPU unit and mixed-width system interoperability through a width-neutral fabric.
+- [x] Define the current N-bit opcode-field direction and immutable opcode assignments.
+- [x] Define compiler/installer instruction expansion as the preferred older-member compatibility path where exact equivalence exists.
+- [x] Propose fNx P-Code and a portable `.fnx` application package.
+- [x] Propose install-time AOT compilation, optional JIT, and a regenerable native-code cache.
+- [x] Propose an fNx Control Processor (FCP) for independent platform management and capability discovery.
+- [x] Require hierarchical backplanes and width-neutral management/data contracts.
+
+## 1. Decisions to ratify
+
+- [ ] Decide minimum N (16 bits currently favored; f8x remains open).
+- [ ] Ratify N-bit opcode field and finite global opcode registry.
+- [ ] Specify opcode allocation, reserved values, illegal-instruction behavior, and ISA revision rules.
+- [ ] Specify instruction length, formats, operand fields, register selectors, immediates, and extension words.
+- [ ] Decide whether register counts and workspace/thread capacities are family invariants or member-specific.
+- [ ] Define N-bit virtual-address semantics and physical-address translation contract.
+- [ ] Define the common backplane transaction and management protocols.
+- [ ] Decide FCP native width, placement, redundancy, firmware, and trust model.
+
+## 2. Native ISA and ABI
+
+- [ ] Define instruction semantics and machine-readable opcode registry.
+- [ ] Complete representative encoding feasibility studies.
+- [ ] Define arithmetic, overflow, flags, exceptions, and sub-width operations.
+- [ ] Define memory model, atomics, fences, and ordering across registers/memory/fabric.
+- [ ] Define privilege, protection, traps, interrupts, and reset state.
+- [ ] Define ABI, calling convention, stack, object format, relocations, and system interface.
+- [ ] Build reference interpreter, assembler, disassembler, golden vectors, and conformance suite.
+- [ ] Prototype GCC and LLVM backends; evaluate Rust, Go, and OpenJDK paths.
+
+## 3. Portable P-Code and application package
+
+- [ ] Compare stack-based, register-based, and other typed P-Code execution models.
+- [ ] Specify stable P-Code semantics and versioning independently of native ISA encoding.
+- [ ] Specify `.fnx` package manifest, metadata, signatures, dependencies, and capability requirements.
+- [ ] Define P-Code validation, sandboxing, memory safety, and runtime trust model.
+- [ ] Define install-time AOT compilation and target-specific native cache.
+- [ ] Define cache invalidation and regeneration rules.
+- [ ] Define optional JIT profiling and optimization.
+- [ ] Publish reference instruction expansions for new native opcodes where exact.
+- [ ] Define behavior for conditionally expandable and non-expandable operations.
+- [ ] Define native-code exceptions for kernels, drivers, boot, real-time, and hardware access.
+
+## 4. FCP and platform management
+
+- [ ] Define FCP boot, firmware trust, update, rollback, and recovery.
+- [ ] Define independent power/clock/reset/connectivity requirements.
+- [ ] Define hardware and capability inventory schema.
+- [ ] Define reset, power, thermal, health, telemetry, and fault services.
+- [ ] Define host OS/FCP authority, authentication, and arbitration.
+- [ ] Define hierarchical discovery, routing, and fault containment.
+- [ ] Prototype FCP firmware and management protocol on a small fNx member.
+
+## 5. Workspace, context, and scheduling
+
+- [ ] Define complete architectural thread/workspace state.
+- [ ] Define context residency, backing, save/restore, migration, and privileged observability.
+- [ ] Define workspace ownership, isolation, virtualization, lifecycle, and stale-ID prevention.
 - [ ] Define shared-register atomicity and memory-ordering semantics.
-- [ ] Select candidate memory consistency model(s).
-- [ ] Define minimum progress/fairness guarantees.
-- [ ] Define interrupt and exception routing/return semantics.
-- [ ] Justify 65,536 contexts with workload modelling.
-- [ ] Produce register banking, port, area, and timing estimates.
-- [ ] Compare scheduler topologies with executable models.
-- [ ] Complete instruction encoding feasibility study.
-- [ ] Decide virtual and physical address widths independently.
-- [ ] Prototype assembler, disassembler, interpreter, and compiler backend.
-- [ ] Draft ABI and debugger support.
+- [ ] Define scheduler fairness, progress, interrupt, and exception routing.
+- [ ] Justify member-specific context capacities with workload modelling.
+- [ ] Estimate register banking, ports, area, timing, and power across multiple N values.
 
-## 0. Architecture definition
+## 6. Fabric and physical implementation
 
-- [x] Establish 128-bit general-purpose register direction.
-- [x] Establish provisional capacity target: 4,096 workspaces × 16 threads.
-- [x] Establish provisional register target: 128 private registers/thread and 128 shared registers/workspace.
-- [ ] Define complete thread and workspace architectural state.
-- [ ] Define context residency, backing, save/restore, and privileged observability.
-- [ ] Decide whether “workspace” remains the architectural term; document TMS9900 distinction.
-- [ ] Define ownership, protection, process virtualization, and stale-ID prevention.
-- [ ] Define private/shared memory and inter-workspace communication.
-- [ ] Define 128-bit arithmetic semantics, flags, carry/borrow, overflow, shifts, and rotates.
-- [ ] Define instruction formats, extension space, and encoding.
-- [ ] Define byte order, byte addressing, load/store widths, and alignment.
-- [ ] Define virtual and physical address widths independently of GPR width.
-- [ ] Define exceptions, interrupts, reset state, and privilege model.
-- [ ] Define ABI, calling convention, stack, and process/workspace/thread mapping.
-- [ ] Publish ISA specification and conformance-test format.
+- [ ] Define width-neutral fabric transactions, ordering, errors, flow control, and atomic capabilities.
+- [ ] Define hierarchical backplane addressing, discovery, and capability propagation.
+- [ ] Define link training, retry, CRC/ECC, reset, and fault recovery.
+- [ ] Define mixed-width memory sharing and data-layout interoperability.
+- [ ] Integrate per-output arbitration into the switched-fabric simulation.
+- [ ] Re-run topology, routing, injection, and memory-bank sweeps after arbitration integration.
+- [ ] Add explicit multi-width endpoint scenarios to the simulator.
+- [ ] Define cache/coherence or explicit non-coherent ownership model.
+- [ ] Build reduced reference implementation and FPGA feasibility model.
 
-## 1. Historical architecture research
+## 7. Operating system and software platform
 
-- [ ] Study TMS9900 workspace-pointer and context behavior.
-- [ ] Study Denelcor HEP scheduling and full-empty-reserve synchronization.
-- [ ] Study Tera/Cray MTA latency hiding and hardware-thread scheduling.
-- [ ] Study CDC 6600 scoreboarding and functional-unit reservations.
-- [ ] Study Transputer communication channels.
-- [ ] Study XMOS XCore hardware-thread implementation.
-- [ ] Study Cray vector chaining and register organization.
-- [ ] Record explicit adopt/adapt/reject decisions with sources and quantitative evidence.
-
-## 2. Scheduler and execution architecture
-
-- [ ] Compare centralized, hierarchical, and distributed ready-thread selection.
-- [ ] Define resident, ready, selected, issued, blocked, and executing states.
-- [ ] Define issue width and execution-unit abstraction.
-- [ ] Define dependency tracking and wakeup behavior.
-- [ ] Define scheduler fairness and progress guarantees.
-- [ ] Model shared-register banking and conflicts.
-- [ ] Evaluate interrupt and exception delivery across resident contexts.
-- [x] Establish a runnable baseline model for context count, issue width, blocking latency, and blocking fraction.
-- [ ] Extend the model with multiple outstanding operations, dependencies, scheduler hierarchy, and shared-state contention.
-- [ ] Build broader scheduler simulations before committing to RTL structure.
-
-## 3. ISA, ABI, and toolchain
-
-- [ ] Evaluate fixed, variable, and mixed-width instruction encodings.
-- [ ] Evaluate register namespace and operand encoding costs.
-- [ ] Decide virtual/physical address widths and load/store model.
-- [ ] Implement an architectural reference interpreter.
-- [ ] Implement assembler and disassembler.
-- [ ] Prototype LLVM and/or GCC backend feasibility.
-- [ ] Define ABI, calling convention, object format, and relocations.
-- [ ] Add debugger target, debug state access, and conformance tests.
-
-## 4. Software reference model
-
-- [ ] Implement an executable architectural reference model.
-- [ ] Add instruction-level tests and golden vectors.
-- [ ] Add tests for private/shared registers and synchronization.
-- [ ] Add workspace/thread lifecycle and protection tests.
-- [ ] Add small bare-metal examples and a test runner.
-
-## 5. FPGA and microarchitecture
-
-- [ ] Select HDL and FPGA board after resource studies.
-- [ ] Estimate private/shared register storage, ports, banks, replication, and bypass.
-- [ ] Synthesize candidate structures for 64-, 256-, and 512-context research profiles.
-- [ ] Evaluate the full 65,536-context target analytically.
-- [ ] Evaluate scheduler structures at multiple context capacities.
-- [ ] Implement scalar execution pipeline and control flow.
-- [ ] Implement memory, atomics, exceptions, and interrupts.
-- [ ] Run simulation and formal checks where practical.
-- [ ] Run the same conformance suite against simulator and RTL.
-
-## 6. Platform and operating system
-
-- [ ] Define reset, boot, timer, interrupt, and memory platform contracts.
-- [ ] Build a freestanding runtime and bring-up harness.
-- [ ] Evaluate TI-99/4A compatibility as a separate platform/bridge effort.
-- [ ] Evaluate NetBSD as the first full OS-porting candidate.
-- [ ] Study DragonFly BSD scheduler and SMP design.
-- [ ] Evaluate FreeBSD as an alternative.
+- [ ] Define boot, timer, interrupt, memory, and platform contracts.
+- [ ] Build P-Code verifier/runtime and fNx package installer.
+- [ ] Build freestanding native runtime and bring-up harness.
 - [ ] Define process-to-workspace and OS-thread-to-hardware-context mappings.
-- [ ] Do not expose every hardware context as an OS CPU by default.
-- [ ] Bring up a minimal kernel before a full userland.
+- [ ] Evaluate NetBSD as first full OS-porting candidate.
+- [ ] Study DragonFly BSD scheduler/SMP design; evaluate FreeBSD and Linux alternatives.
+- [ ] Build debugger, profiler, and performance-counter interfaces.
 
-## Implementation profiles under study
+## Research boundaries
 
-These profiles are experimental configurations, not separate architectural ISAs:
-- Tiny functional model: 1 workspace × 2 threads.
-- Small FPGA study: 16 workspaces × 4 threads (64 contexts).
-- Medium FPGA study: 32 workspaces × 8 threads (256 contexts).
-- Larger research prototype: 64 workspaces × 8 threads (512 contexts).
-- Architectural capacity target: 4,096 workspaces × 16 threads (65,536 contexts).
+- Existing scheduler and board/fabric experiments are 128-bit research profile-oriented models.
+- Existing simulation outputs are sensitivity results, not hardware performance predictions.
+- Historical 128-bit research profile capacity studies are retained as research artifacts, not family-wide architectural requirements.
+- No external ISA/runtime precedent makes the fNx combination automatically novel; compare JVM, .NET, WebAssembly, binary translation, and existing heterogeneous systems carefully.
 
 ## Milestones
 
-**M0: Architecture research baseline 0.1**  
-Completed as a draft research baseline. Not a frozen ISA.
+**M0: Family direction**  
+fNx naming, common family philosophy, N-bit width direction, and mixed-width system requirement documented.
 
-**M1: Architectural contracts 0.2**  
-Define context state and residency, workspace ownership/protection, shared-state semantics, memory ordering, scheduling progress, and interrupt contracts.
+**M1: Normative architectural contracts**  
+Ratify width range, opcode namespace, instruction format, address model, workspace/thread semantics, memory model, and platform interfaces.
 
-**M2: ISA and toolchain feasibility**  
-Encoding, address model, interpreter, assembler/disassembler, compiler backend prototype, and ABI draft.
+**M2: Portable software contract**  
+Specify P-Code, `.fnx` package, validation, ABI, installer/AOT, and native cache.
 
-**M3: Executable architecture model**  
-A testable reference model and scheduler/memory experiments.
+**M3: Executable reference architecture**  
+Interpreter, assembler/disassembler, conformance tests, compiler lowering, and P-Code runtime.
 
-**M4: FPGA feasibility prototype**  
-Register banking and scheduler resource estimates followed by a scaled implementation.
+**M4: Platform management and fabric**  
+FCP prototype, width-neutral hierarchical fabric, discovery, telemetry, and fault handling.
 
-**M5: Platform bring-up**  
-Freestanding runtime, then OS-port feasibility when ISA/MMU/interrupt/ABI contracts stabilize.
+**M5: Hardware feasibility**  
+Reduced RTL/FPGA prototype, register banking, scheduler, memory, and fabric validation.
 
-## Non-goals for early milestones
-
-- Freezing a physical scheduler topology before simulation.
-- Requiring every implementation to instantiate 65,536 physical contexts.
-- Assuming 128-bit GPRs imply 128-bit addresses, instructions, buses, or execution units.
-- Claiming TMS9900 binary compatibility.
-- Selecting a final OS before the ISA, MMU, interrupt, and ABI contracts exist.
+**M6: OS bring-up**  
+Freestanding runtime, minimal kernel, and OS-port feasibility after contracts stabilize.

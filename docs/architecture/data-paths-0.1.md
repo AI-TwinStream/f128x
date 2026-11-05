@@ -1,108 +1,105 @@
-# f128x Logical Data Paths 0.1
+# fNx Logical Data Paths 0.2
 
-**Date:** 2026-11-04  
+**Date:** 2026-11-05  
 **Status:** Conceptual architectural flow; memory placement and physical routing remain open
 
-This view follows an instruction and its data through the architecture. It distinguishes architectural visibility from the physical location of storage. In particular, a private or workspace-shared memory scope does not yet imply a particular cache, SRAM, board, or backplane location.
+This document describes logical execution and data movement for the fNx family. For a member fNx, N is its native architectural width in bits. General-purpose registers, native arithmetic, pointers, and virtual addresses are N bits. Physical storage and links may use smaller transfer units.
 
-## 1. Thread execution and register access
+## 1. Application installation and execution
+
+```mermaid
+flowchart LR
+  PKG[".fnx application package\nportable fNx P-Code"] --> VERIFY["Package validation\nsignature · ABI · capabilities"]
+  VERIFY --> DISC["Target discovery\nfNx member · ISA revision · FCP inventory"]
+  DISC --> AOT["Installer / AOT compiler\nP-Code to native ISA"]
+  AOT --> CACHE["Target-specific native code cache"]
+  CACHE --> RUN["Runtime / OS services"]
+  RUN --> CPU["Main CPU native execution"]
+  RUN -. optional profiling .-> JIT["JIT optimization"]
+  JIT --> CACHE
+```
+
+P-Code is the portable application representation. Native machine code is generated for the installed fNx member and its supported capabilities. The native cache is derived and regenerable. The FCP supplies platform discovery and management; it does not compile applications or sit in the normal instruction path.
+
+See [fNx P-Code and application compatibility](fnx-pcode-and-compatibility-0.1.md).
+
+## 2. Thread execution and register access
 
 ```mermaid
 flowchart TB
-    T["Runnable hardware thread"]
-    P["Thread-private architectural state\n128 × 128-bit GPRs (provisional target)"]
-    W["Owning workspace state\n128 × 128-bit shared GPRs (provisional target)"]
-    SCH["Eligibility, scheduling and issue\nphysical organization TBD"]
-    EU["Execution resources\nALU / branch / vector / other units TBD"]
-    T --> SCH
-    P <--> SCH
-    W <--> SCH
-    SCH --> EU
-    EU --> P
-    EU --> W
+  T["Runnable hardware thread"]
+  P["Thread-private architectural state\nN-bit GPRs"]
+  W["Owning workspace state\nN-bit shared GPRs"]
+  SCH["Eligibility · scheduling · issue"]
+  EU["Native execution resources\ninteger · branch · vector · memory · other"]
+  T --> SCH
+  P <--> SCH
+  W <--> SCH
+  SCH --> EU
+  EU --> P
+  EU --> W
 ```
 
-Private registers belong to one thread. Workspace-shared registers belong to the thread's owning workspace and are visible to its threads subject to synchronization, atomicity, and protection rules that still need specification.
+Private registers belong to one thread. Workspace-shared registers belong to its owning workspace and are visible to its threads under synchronization, atomicity, and protection rules that remain to be specified.
 
-The arrows represent logical operand/result movement, not a commitment to a particular register-file port, bypass network, or physical wire.
+Register counts are independent of N. The current 128-private/128-shared register counts and 128-workspace/128-thread targets are 128-bit member research assumptions, not yet family-wide invariants.
 
-## 2. Memory and communication paths
+## 3. Memory and communication paths
 
 ```mermaid
 flowchart TB
-    INS["Issued instruction"]
-    ADDR["Memory / communication operation"]
-    SCOPE{"Target scope / endpoint"}
-    PRIV["Thread-private memory\narchitectural scope; placement TBD"]
-    WS["Workspace-shared memory\narchitectural scope; placement TBD"]
-    LOCAL["Board-local memory endpoint"]
-    REMOTE["Remote-board memory endpoint"]
-    SHARED["Optional shared / expansion memory endpoint"]
-    IO["I/O endpoint\nstorage, network, peripherals"]
-    CTRL["Address translation, protection, ordering,\ncache/coherence and routing mechanisms\nall TBD"]
-    FAB["System fabric / backplane\nonly when physical route requires it"]
-    COMPLETE["Completion / result / exception"]
-
-    INS --> ADDR --> CTRL --> SCOPE
-    SCOPE -->|private| PRIV
-    SCOPE -->|workspace| WS
-    SCOPE -->|local board| LOCAL
-    SCOPE -->|remote board| REMOTE
-    SCOPE -->|shared endpoint| SHARED
-    SCOPE -->|I/O| IO
-    LOCAL --> COMPLETE
-    PRIV --> COMPLETE
-    WS --> COMPLETE
-    REMOTE <--> FAB
-    SHARED <--> FAB
-    IO <--> FAB
-    FAB --> COMPLETE
+  INS["Issued native instruction"]
+  ADDR["N-bit virtual address / memory operation"]
+  TRANS["Translation and protection\nN-bit VA to implemented PA"]
+  SCOPE{"Target endpoint"}
+  LOCAL["Local memory"]
+  REMOTE["Remote fNx CPU / memory endpoint"]
+  SHARED["Shared or expansion memory"]
+  IO["I/O endpoint"]
+  FAB["Width-neutral hierarchical fabric"]
+  COMPLETE["Completion / result / exception"]
+  INS --> ADDR --> TRANS --> SCOPE
+  SCOPE --> LOCAL
+  SCOPE --> REMOTE
+  SCOPE --> SHARED
+  SCOPE --> IO
+  REMOTE <--> FAB
+  SHARED <--> FAB
+  IO <--> FAB
+  LOCAL --> COMPLETE
+  FAB --> COMPLETE
 ```
 
-The diagram is intentionally a set of candidate logical destinations. It does not yet define whether private/workspace memory is implemented in caches, local DRAM, scratchpad SRAM, or some combination. Nor does it define whether a workspace can span boards.
+N-bit virtual addresses are translated to the physical address space implemented by the platform. Physical address width and installed memory capacity may be smaller than N. The exact translation and protection architecture remains open.
 
-## 3. Physical route examples
+## 4. Mixed-width fabric path
 
-| Operation | Architectural intent | Possible physical route |
-|---|---|---|
-| Read/write private GPR | Access the issuing thread's register | Thread state storage / register access network |
-| Read/write workspace GPR | Access shared register state for the owning workspace | Workspace-state storage / shared-register access network |
-| Private-memory access | Access memory private to a thread | Address translation and memory hierarchy; placement TBD |
-| Workspace-memory access | Access memory shared within a workspace | Address translation and memory hierarchy; placement TBD |
-| Board-local memory access | Access memory attached to the current board | Chip interface → board memory controller → local memory |
-| Remote-board memory access | Access memory attached to another board | Chip interface → board endpoint → fabric → destination board memory controller |
-| Shared-memory endpoint access | Access an optional system memory endpoint | Chip/board interface → fabric → memory endpoint |
-| I/O operation | Communicate with a device | Chip/board interface → fabric or local I/O adapter → device |
+Different fNx CPU units may communicate across a common width-neutral fabric. Each CPU unit retains one native width. The fabric defines transaction lengths, ordering, completion, errors, flow control, protection, and atomic-operation capabilities independently of endpoint datapath width.
 
-## 4. Completion, ordering, and faults
+A wide local access may be split into multiple fabric transactions only when the architecture's ordering and atomicity rules permit it. Splitting does not imply atomicity.
 
-A complete architecture must define when each operation becomes architecturally visible and what happens when it stalls or fails. Open specifications include:
+Backplanes may be connected hierarchically. Routing, endpoint discovery, capability propagation, and fault containment must work across parent and child backplanes.
 
+## 5. Completion, ordering, and faults
+
+The architecture must define:
 - Load/store ordering and memory consistency.
-- Atomic operation scope and atomicity guarantees.
+- Atomic operation scope and guarantees.
 - Cacheability, coherence, and DMA interaction.
 - Translation, permissions, and protection faults.
 - Retry, timeout, and fabric error behavior.
-- Interrupt and exception delivery while requests are outstanding.
-- Cancellation and precise completion semantics.
-- Ordering between workspace-shared registers, memory, and communication operations.
+- Interrupt/exception delivery with outstanding requests.
+- Cancellation and precise completion.
+- Ordering between shared registers, memory, and communication operations.
 
-The block diagram does not imply that all endpoints are coherent or that remote accesses are transparent. Those are explicit architecture decisions still to be made.
+## 6. Simulation scope
 
-## 5. Relationship to the simulator
-
-The current `BoardFabricSweep` experiment models only a narrow subset of the physical route:
-
-1. A workspace is statically assigned to a home board.
-2. A memory operation is classified as local or remote using a configured probability.
-3. Local requests use the destination board's modeled memory service lane.
-4. Remote requests use modeled request and response fabric service and the destination board's memory service lane.
-5. A request remains outstanding until the modeled completion time.
-
-It does not model the complete logical paths above. In particular, it does not model caches, coherence, translation, protection, I/O traffic, real routing, or the final ISA memory model. See [Board and backplane simulation 0.1](../research/board-backplane-simulation-0.1.md).
+The current scheduler and fabric simulations use 128-bit member-oriented assumptions and Java package/property names. They do not establish family-wide performance, N-bit translation behavior, cache coherence, protection, or a final ISA memory model.
 
 ## Related material
 
-- [Architecture overview 0.1](overview-0.1.md)
-- [Physical system block diagram 0.1](physical-system-block-diagram-0.1.md)
-- [Workspace protection and shared state 0.2](workspace-protection-and-shared-state-0.2.md)
+- [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md)
+- [fNx P-Code and application compatibility](fnx-pcode-and-compatibility-0.1.md)
+- [fNx control processor and management plane](fnx-control-and-management-plane-0.1.md)
+- [Physical system block diagram](physical-system-block-diagram-0.1.md)
+- [Workspace protection and shared state](workspace-protection-and-shared-state-0.2.md)

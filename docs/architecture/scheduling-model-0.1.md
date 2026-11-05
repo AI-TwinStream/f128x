@@ -1,11 +1,13 @@
-# f128x Scheduling Model Research 0.1
+> **Historical model note (2026-11-05):** This scheduling study uses the original 128-bit research profile capacity assumptions (4,096 workspaces × 16 threads). It remains a research baseline only. Do not treat these counts as family invariants.
+
+# Historical Scheduling Model Research 0.1
 
 **Date:** 2026-11-04  
 **Status:** Provisional research model; not an ISA commitment
 
 ## 1. Problem statement
 
-f128x targets 65,536 resident hardware thread contexts:
+128-bit research profile targets 65,536 resident hardware thread contexts:
 - 4,096 workspaces.
 - 16 threads per workspace.
 
@@ -17,7 +19,7 @@ A naive centralized scheduler that examines every context every cycle is not an 
 
 ### Denelcor HEP
 
-HEP explored a hierarchy of parallel processes and hardware-supported synchronization, including full-empty-reserve mechanisms. Its lesson for f128x is that readiness and synchronization state should be explicit architectural or microarchitectural concerns.
+HEP explored a hierarchy of parallel processes and hardware-supported synchronization, including full-empty-reserve mechanisms. Its lesson for 128-bit research profile is that readiness and synchronization state should be explicit architectural or microarchitectural concerns.
 
 ### Tera / Cray MTA
 

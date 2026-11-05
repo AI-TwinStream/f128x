@@ -1,15 +1,15 @@
-# f128x Historical Architecture Research 0.1
+# fNx Historical Architecture Research 0.1
 
 **Date:** 2026-11-04  
 **Status:** Research plan and initial findings
 
 ## 1. Objective
 
-Study historical processor and computer architectures for mechanisms relevant to f128x. The objective is to understand the original design, not to collect features by analogy.
+Study historical processor and computer architectures for mechanisms relevant to the fNx family. The objective is to understand the original design, not to collect features by analogy.
 
-Each study should document the original problem, actual mechanisms, performance motivations, tradeoffs, limitations, and whether f128x should adopt, adapt, or reject the idea.
+Each study should document the original problem, actual mechanisms, performance motivations, tradeoffs, limitations, and whether fNx should adopt, adapt, or reject the idea.
 
-A historical feature is not an f128x requirement merely because it is interesting.
+A historical feature is not an fNx requirement merely because it is interesting.
 
 ## 2. Priority research subjects
 
@@ -70,7 +70,7 @@ Investigate:
 Potential lessons:
 - Many resident contexts are useful only when the scheduler can find ready work.
 - Memory-system design and scheduling must be co-designed.
-- A cacheless latency-tolerant design is a comparison point, not an automatic f128x choice.
+- A cacheless latency-tolerant design is a comparison point, not an automatic fNx choice.
 
 Primary sources:
 - Sandia National Laboratories, “Final report for the Tera Computer TTI CRADA” (1997): https://www.sandia.gov/research/publications/details/final-report-for-the-tera-computer-tti-crada-1997-01-01/
@@ -142,7 +142,7 @@ Potential lessons:
 
 Investigate overlapping register windows, window overflow/underflow, ABI implications, and interrupt behavior.
 
-Potential lesson: evaluate register windows against f128x's already-large private register set. Do not assume they are beneficial.
+Potential lesson: evaluate register windows against the fNx family's already-large private register set. Do not assume they are beneficial.
 
 ### 2.8 Cray-1 and CDC STAR-100
 
@@ -155,7 +155,7 @@ Potential lesson: 128-bit general-purpose registers do not replace a well-design
 
 ## 3. Research mapping
 
-| f128x subsystem | Primary historical references |
+| 128-bit architecture member subsystem | Primary historical references |
 |---|---|
 | Workspace organization | TMS9900 |
 | Massive thread scheduling | HEP, Tera MTA |
@@ -180,4 +180,4 @@ These mechanisms solve different problems and should not be collapsed into one s
 
 Produce a detailed HEP/MTA comparison covering context state, ready-thread selection, issue cadence, pipeline occupancy, memory latency handling, synchronization, fairness, and physical resource costs.
 
-Then compare candidate scheduling mechanisms against f128x's target of 4,096 workspaces and 16 threads per workspace.
+Then compare candidate scheduling mechanisms against the fNx family's target of 4,096 workspaces and 16 threads per workspace.

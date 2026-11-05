@@ -342,8 +342,9 @@ jobs:
           for seed in 7 42 2027; do
             small="$(java -Df128x.threadsPerWorkspace=16 -Df128x.scheduler=hierarchical -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 16 8 80 0.25 100000 "$seed" 1)"
             large="$(java -Df128x.threadsPerWorkspace=256 -Df128x.scheduler=hierarchical -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 256 8 80 0.25 100000 "$seed" 1)"
-            small_ipc="$(sed -n 's/.*measuredIPC=\\([0-9.]*\\).*/\\1/p' <<< "$small")"
-            large_ipc="$(sed -n 's/.*measuredIPC=\\([0-9.]*\\).*/\\1/p' <<< "$large")"
+            small_ipc="$(awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1] == "measuredIPC") print p[2]; } }' <<< "$small")"
+            large_ipc="$(awk '{ for (i=1; i<=NF; i++) { split($i, p, "="); if (p[1] == "measuredIPC") print p[2]; } }' <<< "$large")"
+            printf "latency-hiding-seed=%s smallIPC=%s largeIPC=%s\\n" "$seed" "$small_ipc" "$large_ipc"
             awk -v small="$small_ipc" -v large="$large_ipc" 'BEGIN { if (large <= small * 2.0) exit 1; }'
             grep -q 'contexts=16 workspaces=1 threadsPerWorkspace=16' <<< "$small"
             grep -q 'contexts=256 workspaces=1 threadsPerWorkspace=256' <<< "$large"

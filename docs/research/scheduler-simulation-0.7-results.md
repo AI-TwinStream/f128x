@@ -13,7 +13,7 @@ Simulation 0.7 adds a per-cluster issue budget to the scheduler experiment. The 
 
 `effectiveIssueCapacity = min(globalIssueWidth, clusterCount × clusterIssueWidth)`
 
-The local width is configured with `-Df128x.clusterIssueWidth=N` and defaults to the global issue width, preserving previous behavior. Cluster selection rotates round-robin. The distributed scheduler first selects from the target cluster's local queue and steals from another cluster if the target is empty. FIFO and hierarchical policies each operate as one logical cluster.
+The local width is configured with `-Dfnx.clusterIssueWidth=N` and defaults to the global issue width, preserving previous behavior. Cluster selection rotates round-robin. The distributed scheduler first selects from the target cluster's local queue and steals from another cluster if the target is empty. FIFO and hierarchical policies each operate as one logical cluster.
 
 This is not a model of physically independent issue pipelines or a distributed arbitration network. It introduces independent local budgets within a shared cycle-level scheduler while conserving the configured global capacity.
 

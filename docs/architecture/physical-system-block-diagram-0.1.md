@@ -1,107 +1,103 @@
-# f128x Physical System Block Diagram 0.1
+# fNx Physical System Block Diagram 0.2
 
-**Date:** 2026-11-04  
+**Date:** 2026-11-05  
 **Status:** Conceptual packaging view; not a frozen chip, board, or interconnect specification
 
-This diagram separates the architectural processor concept from a possible physical implementation. It deliberately does **not** prescribe a number of execution clusters per chip, chips per board, memory capacity, cache levels, link width, clock rate, or backplane topology.
+The fNx family permits different native-width CPU units to coexist in a system. Each CPU unit has exactly one native width N. Width interoperability is provided by a common width-neutral fabric and management contract, not by mixing native widths inside one CPU unit.
 
 ## System view
 
 ```mermaid
 flowchart TB
-    subgraph SYS["f128x system (physical packaging is an implementation choice)"]
-      subgraph BP["System interconnect / backplane (topology and protocol TBD)"]
-        FAB["Fabric endpoints, routing, arbitration and flow control\nCandidate responsibilities; protocol TBD"]
-      end
-
-      subgraph CB0["CPU board 0 (illustrative board boundary)"]
-        subgraph CHIP0["f128x processor chip"]
-          CTX0["Architectural thread contexts\nprivate thread state"]
-          WS0["Workspace state\nshared workspace registers"]
-          SCHED0["Scheduling / issue resources\norganization TBD"]
-          EXEC0["Execution resources\ncount and types TBD"]
-          MEMIF0["Memory / I/O interfaces\nimplementation TBD"]
-          CTX0 --> SCHED0
-          WS0 <--> SCHED0
-          SCHED0 --> EXEC0
-          EXEC0 <--> MEMIF0
-        end
-        LOCAL0["Board-local memory subsystem\nchannels, capacity and technology TBD"]
-        MGMT0["Board management\nreset, telemetry, error reporting (candidate)"]
-        MEMIF0 <--> LOCAL0
-        MEMIF0 <--> FAB
-        MGMT0 -. management .-> CHIP0
-      end
-
-      subgraph CBN["Additional CPU board(s)"]
-        CHIPN["One or more f128x processor chips\nboard population TBD"]
-        LOCALN["Board-local memory subsystem"]
-        CHIPN <--> LOCALN
-        CHIPN <--> FAB
-      end
-
-      subgraph MEM["Optional memory expansion board(s)"]
-        MEMPOOL["Memory endpoint(s)\naddressing and sharing semantics TBD"]
-        MEMPOOL <--> FAB
-      end
-
-      subgraph IO["I/O board(s) or external I/O endpoints"]
-        IOEP["Storage · networking · peripherals\nprotocol adapters TBD"]
-        IOEP <--> FAB
-      end
+  subgraph SYS["fNx system"]
+    subgraph ROOT["Root backplane / fabric"]
+      FAB["Width-neutral hierarchical fabric\ntransactions · routing · flow control · faults"]
+      ROOTFCP["Root FCP\ndiscovery · policy · telemetry"]
     end
-
-    CB0 --- FAB
-    CBN --- FAB
-    MEM --- FAB
-    IO --- FAB
+    subgraph B0["CPU backplane / board 0"]
+      CPU0["f128x CPU unit(s)\none native width per unit"]
+      FCP0["f16x / fNx FCP candidate\nindependent management domain"]
+      MEM0["Local memory controller and memory"]
+      CPU0 <--> MEM0
+      FCP0 -. control .-> CPU0
+      FCP0 -. control .-> MEM0
+    end
+    subgraph B1["CPU backplane / board 1"]
+      CPU1["f256x CPU unit(s)\none native width per unit"]
+      FCP1["Board FCP"]
+      MEM1["Local memory controller and memory"]
+      CPU1 <--> MEM1
+      FCP1 -. control .-> CPU1
+      FCP1 -. control .-> MEM1
+    end
+    subgraph SUB["Subordinate backplane / expansion"]
+      FAB2["Child fabric / backplane"]
+      CPU2["Other fNx CPU or accelerator units"]
+      IO2["I/O and storage endpoints"]
+      FAB2 <--> CPU2
+      FAB2 <--> IO2
+    end
+    MEMX["Optional memory expansion endpoints"]
+    ROOTFCP -. management .-> FCP0
+    ROOTFCP -. management .-> FCP1
+    FAB <--> B0
+    FAB <--> B1
+    FAB <--> SUB
+    FAB <--> MEMX
+  end
 ```
 
-## Chip-level conceptual boundary
+The diagram is a conceptual hierarchy. It does not prescribe chip count, board population, FCP count, link width, memory capacity, cache levels, clock rate, signaling, or topology.
 
-The architecture defines thread and workspace state, but it has not selected a physical microarchitecture. A chip implementation will need to realize at least these responsibilities:
+## Architectural and physical boundaries
 
-- Maintain or access architectural thread state and workspace-shared state.
-- Select eligible threads and issue instructions.
-- Execute the selected instruction operations.
-- Handle memory and communication requests.
-- Preserve architectural behavior across stalls, exceptions, interrupts, and context residency changes.
+The architecture defines the behavior visible to software. A physical chip may partition:
+- Architectural thread and workspace state.
+- Context residency and backing.
+- Scheduling and issue resources.
+- Execution units.
+- Register storage and access networks.
+- Memory translation and protection.
+- Cache and memory interfaces.
+- Fabric endpoints.
 
-The scheduler, issue logic, execution units, register storage, caches, memory controllers, and interfaces may be partitioned differently across implementation profiles. The diagram intentionally groups them rather than inventing a fixed cluster count or cache hierarchy.
+The number and organization of those blocks are implementation choices. A member's N-bit architectural width does not require every memory, link, or peripheral to use an N-bit physical transfer.
 
-## Board and backplane responsibilities
+## Control processor and management plane
 
-A CPU board may contain one or more processor chips and a board-local memory subsystem. The board boundary is a packaging and service boundary, not an architectural workspace or process boundary.
+The proposed fNx Control Processor (FCP) is an auxiliary processor using the fNx ISA family. It is a separate CPU unit with its own single native width. It manages discovery, capability inventory, power/reset sequencing, health, telemetry, fault handling, and board/fabric coordination.
 
-A system interconnect may connect CPU boards to one another and to memory or I/O endpoints. The current board/backplane simulator is a simplified sensitivity model, not a selected electrical design. Its full-duplex request/response lanes, per-board memory service lane, and logarithmic hop proxy are **simulation assumptions**, not a hardware contract.
+The FCP should have sufficiently independent power, clock, reset, and connectivity to manage a board while its main CPUs are unavailable. Exact electrical implementation remains open.
 
-Potential platform responsibilities include:
+The FCP is not a serial hop for every main-CPU instruction. Main CPUs execute native instructions directly. Application compatibility and instruction expansion belong primarily to the P-Code installer/AOT compiler and runtime. The FCP reports capabilities and provides management services.
 
-- Clock and reset distribution.
-- Power sequencing and monitoring.
-- Board discovery and inventory.
-- Link training, routing, arbitration, and flow control.
-- Error detection, reporting, and recovery.
-- Firmware boot and platform management.
-- Hot-plug and failure handling, if supported.
+See [fNx control processor and management plane](fnx-control-and-management-plane-0.1.md).
 
-These are design topics, not claims that the current architecture already specifies them.
+## Hierarchical fabric
+
+Backplanes may connect to other backplanes, forming a hierarchy. Each level requires stable endpoint identity, discovery, address/routing domains, capability propagation, flow control, error reporting, reset boundaries, and fault containment.
+
+Different fNx widths communicate through a common width-neutral protocol. Wider local operations may be segmented only when memory ordering and atomicity rules allow it. A multi-transaction transfer is not automatically atomic.
+
+## Simulation boundary
+
+The existing f128x board/fabric experiments model simplified transaction reservations, endpoint service, and topology sensitivity. They are not electrical models or selected hardware contracts. Their results must remain labelled as f128x-oriented simulation results.
 
 ## Explicitly not decided
 
-- Number of chips per board or boards per system.
-- Number and organization of execution clusters per chip.
-- Physical register-file organization or context residency.
+- Exact FCP width, count, redundancy, firmware, and trust model.
+- CPU chips per board and execution-cluster topology.
+- Context residency and register-file implementation.
 - Cache hierarchy, coherence, and memory consistency.
-- Address widths, address translation, and memory protection implementation.
-- Board-local versus system-wide memory semantics.
-- Backplane topology, link width, signaling, bandwidth, and latency.
-- Whether memory and I/O use dedicated boards, integrated controllers, or external devices.
-- Power, thermal, clocking, packaging, and serviceability constraints.
+- Physical address width and memory topology.
+- Backplane transaction format, physical lanes, signaling, and link rates.
+- Hot-plug, redundancy, and serviceability.
+- Power, thermal, clocking, and packaging constraints.
 
 ## Related material
 
-- [Architecture overview 0.1](overview-0.1.md)
-- [Context state and residency 0.2](context-state-and-residency-0.2.md)
-- [Board and backplane simulation 0.1](../research/board-backplane-simulation-0.1.md)
-- [Logical data paths 0.1](data-paths-0.1.md)
+- [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md)
+- [fNx control processor and management plane](fnx-control-and-management-plane-0.1.md)
+- [fNx P-Code and application compatibility](fnx-pcode-and-compatibility-0.1.md)
+- [Logical data paths](data-paths-0.1.md)
+- [Board and backplane simulation](../research/board-backplane-simulation-0.1.md)

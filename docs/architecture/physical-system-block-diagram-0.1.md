@@ -1,4 +1,8 @@
-# fNx Physical System Block Diagram 0.2
+# fNx Physical System Block Diagram 0.3
+
+![fNx modular physical architecture](images/fnx-modular-physical-architecture-0.3.svg)
+
+The illustration presents the architecture at three scales: a conceptual processor unit, a CPU board assembly, and a hierarchical system backplane. It is a visual companion to the detailed boundaries below, not an additional hardware commitment.
 
 **Date:** 2026-11-05  
 **Status:** Conceptual packaging view; not a frozen chip, board, or interconnect specification

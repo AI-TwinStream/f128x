@@ -78,7 +78,7 @@ A future package specification should define at least:
 - Integrity hashes and signature coverage.
 - Optional precompiled native variants, clearly marked as derived and non-authoritative.
 
-The package should not require one fixed native width unless the application genuinely depends on a width-specific capability. A portable application may run on f16x, f128x, or another member when the target meets its ABI/runtime requirements and all required operations are natively supported or exactly expandable.
+The package should not require one fixed native width unless the application genuinely depends on a width-specific capability. A portable application may run on f16x, 128-bit member, or another member when the target meets its ABI/runtime requirements and all required operations are natively supported or exactly expandable.
 
 ## 6. P-Code design requirements
 

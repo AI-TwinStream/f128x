@@ -1,7 +1,3 @@
-> **Applicability note (2026-11-05):** The simulator source, Java package names, system properties, and reported results remain f128x-oriented research artifacts. They are not a general fNx architectural simulator and do not validate N-bit pointer translation, family-wide opcode semantics, P-Code, FCP behavior, or mixed-width hierarchical fabric behavior. Preserve the f128x label when interpreting these experiments. See the [fNx family contract](../../docs/architecture/fnx-family-and-architectural-contract-0.1.md).
-
-> **Applicability note (2026-11-05):** The simulator source, Java package names, system properties, and reported results remain f128x-oriented research artifacts. They are not a general fNx architectural simulator and do not validate N-bit pointer translation, family-wide opcode semantics, P-Code, FCP behavior, or mixed-width hierarchical fabric behavior. Preserve the f128x label when interpreting these experiments. See the [fNx family contract](../../docs/architecture/fnx-family-and-architectural-contract-0.1.md).
-
 # Scheduler Simulation 0.11
 
 **Status:** Executable cycle-level experiment; not a microarchitecture or memory-system performance model.
@@ -10,7 +6,7 @@
 
 `ContextSweep` explores how context count, issue width, memory-operation frequency, per-thread outstanding-request limits, memory latency classes, finite shared request capacity, per-cluster issue budgets, and optional byte-oriented bank service affect issue utilization.
 
-The model is intended to expose sensitivities and falsify simplistic assumptions. It does not predict the performance of a physical f128x implementation.
+The model is intended to expose sensitivities and falsify simplistic assumptions. Its current workload and context defaults remain a member-specific f128x research profile. It is an fNx-family software experiment using an f128x-oriented context profile; it does not predict physical hardware performance.
 
 ## Model
 
@@ -27,47 +23,47 @@ At each simulated cycle:
 9. A non-memory instruction may optionally incur a serialized dependency stall, controlled by `dependency-fraction` and `dependency-latency`. This is a coarse stall model, not a dependency graph.
 10. A thread may continue issuing while it has fewer than `max-outstanding` accepted memory requests in flight.
 
-The scheduler strategy is selected with the JVM property `-Df128x.scheduler=`:
+The scheduler strategy is selected with the JVM property `-Dfnx.scheduler=`:
 
 - `fifo`: one flat FIFO ready queue.
-- `hierarchical`: per-workspace FIFO queues selected round-robin; each workspace owns `f128x.threadsPerWorkspace` thread slots (default 16, maximum 256).
-- `distributed`: per-cluster queues, with workspaces initially assigned by workspace ID modulo cluster count. The scheduler scans clusters round-robin and steals from another cluster when its target queue is empty. Set the cluster count with `-Df128x.clusters=8`; the default is up to eight clusters.
+- `hierarchical`: per-workspace FIFO queues selected round-robin; each workspace owns `fnx.threadsPerWorkspace` thread slots (default 16, maximum 256).
+- `distributed`: per-cluster queues, with workspaces initially assigned by workspace ID modulo cluster count. The scheduler scans clusters round-robin and steals from another cluster when its target queue is empty. Set the cluster count with `-Dfnx.clusters=8`; the default is up to eight clusters.
 
-The distributed strategy uses a round-robin cluster selector, prefers each target cluster's local ready queue, and steals from another cluster when the target is empty. The global `issue-width` remains a hard aggregate ceiling. Set the per-cluster issue limit with `-Df128x.clusterIssueWidth=2`; it defaults to the global issue width. The effective configured capacity is `min(issue-width, clusters × clusterIssueWidth)`. For example, four clusters with a local width of two can issue at most four instructions per cycle when the global issue width is four. Two clusters with a local width of one can issue at most two, even when the global width is four.
+The distributed strategy uses a round-robin cluster selector, prefers each target cluster's local ready queue, and steals from another cluster when the target is empty. The global `issue-width` remains a hard aggregate ceiling. Set the per-cluster issue limit with `-Dfnx.clusterIssueWidth=2`; it defaults to the global issue width. The effective configured capacity is `min(issue-width, clusters × clusterIssueWidth)`. For example, four clusters with a local width of two can issue at most four instructions per cycle when the global issue width is four. Two clusters with a local width of one can issue at most two, even when the global width is four.
 
 This is a logical per-cluster budget experiment, not a model of physically independent pipelines, distributed arbitration networks, clock/power domains, or cluster-local execution-unit inventories. Work stealing changes a thread's logical owner cluster, but migration and locality costs are not charged. The FIFO and hierarchical policies each use one logical cluster; hierarchical scheduling models workspace selection, not a concrete hardware arbiter.
 
 Workspace workload skew can be introduced with JVM properties:
 
-- `-Df128x.hotWorkspaceRatio=0.25`: fraction of workspaces assigned the hot profile; the first `ceil(workspaces × ratio)` workspaces are hot.
-- `-Df128x.hotMemoryFraction=0.90` and `-Df128x.coldMemoryFraction=0.05`: memory-operation fractions for hot and cold workspaces.
-- `-Df128x.hotDependencyFraction=0.20` and `-Df128x.coldDependencyFraction=0.02`: serialized dependency-stall fractions for non-memory instructions.
+- `-Dfnx.hotWorkspaceRatio=0.25`: fraction of workspaces assigned the hot profile; the first `ceil(workspaces × ratio)` workspaces are hot.
+- `-Dfnx.hotMemoryFraction=0.90` and `-Dfnx.coldMemoryFraction=0.05`: memory-operation fractions for hot and cold workspaces.
+- `-Dfnx.hotDependencyFraction=0.20` and `-Dfnx.coldDependencyFraction=0.02`: serialized dependency-stall fractions for non-memory instructions.
 
 When omitted, hot and cold fractions both inherit the command-line workload fractions, so the default remains uniform. These controls let the scheduler policies be compared under skewed readiness rather than only identical workspaces.
 
 Distributed scheduling can model migration and remote access penalties:
 
-- `-Df128x.migrationLatency=3`: cycles a stolen thread waits before it becomes eligible on its new owner cluster; default 0.
-- `-Df128x.remoteMemoryLatencyPenalty=7`: extra cycles added to memory-request latency while a thread is remote from its workspace's home cluster; default 0.
+- `-Dfnx.migrationLatency=3`: cycles a stolen thread waits before it becomes eligible on its new owner cluster; default 0.
+- `-Dfnx.remoteMemoryLatencyPenalty=7`: extra cycles added to memory-request latency while a thread is remote from its workspace's home cluster; default 0.
 
 A workspace's home cluster is its workspace ID modulo cluster count. A thread becomes remote when work stealing moves it away from that home cluster and becomes local again if it migrates back. The simulator counts migrations, remote wakeups, remote thread-cycles, remote memory issues, added remote-memory latency, and migration-waiter cycles. The remote-memory penalty is applied to every memory operation while remote; this is a deliberately coarse proxy for workspace-local state access, not a cache-coherence or NUMA model.
 
 A byte-oriented memory service model can be enabled with these JVM properties:
 
-- `-Df128x.memoryRequestBytes=64`: fixed bytes per memory request; default 64.
-- `-Df128x.memoryRequestMinBytes=16` and `-Df128x.memoryRequestMaxBytes=256`: optional inclusive request-size range. When omitted, both inherit `memoryRequestBytes`; sizes are sampled uniformly from the configured range.
-- `-Df128x.memoryChannels=4`: number of independent memory channels; default 1.
-- `-Df128x.memoryBanksPerChannel=8`: banks per channel; default 1.
-- `-Df128x.memoryBandwidthBytesPerCycle=16`: byte service budget per channel per cycle; default 0 (unbounded/disabled).
-- `-Df128x.bankConflictPenalty=2`: extra cycles a bank remains unavailable after servicing a request; default 0.
+- `-Dfnx.memoryRequestBytes=64`: fixed bytes per memory request; default 64.
+- `-Dfnx.memoryRequestMinBytes=16` and `-Dfnx.memoryRequestMaxBytes=256`: optional inclusive request-size range. When omitted, both inherit `memoryRequestBytes`; sizes are sampled uniformly from the configured range.
+- `-Dfnx.memoryChannels=4`: number of independent memory channels; default 1.
+- `-Dfnx.memoryBanksPerChannel=8`: banks per channel; default 1.
+- `-Dfnx.memoryBandwidthBytesPerCycle=16`: byte service budget per channel per cycle; default 0 (unbounded/disabled).
+- `-Dfnx.bankConflictPenalty=2`: extra cycles a bank remains unavailable after servicing a request; default 0.
 
-The memory-system model is disabled by default to preserve the earlier fixed-latency behavior. It becomes active when bandwidth is configured, channel or bank count exceeds one, or a bank-conflict penalty is set. When active, requests are assigned to channels and banks using configurable synthetic addresses. The default pattern remains random. Select a pattern with `-Df128x.addressPattern=`:
+The memory-system model is disabled by default to preserve the earlier fixed-latency behavior. It becomes active when bandwidth is configured, channel or bank count exceeds one, or a bank-conflict penalty is set. When active, requests are assigned to channels and banks using configurable synthetic addresses. The default pattern remains random. Select a pattern with `-Dfnx.addressPattern=`:
 - `random`: seeded pseudo-random byte addresses (default).
 - `sequential`: cache-line sequential addresses in a per-thread region.
-- `strided`: per-thread addresses separated by `-Df128x.addressStride=4096` bytes (default 64).
-- `shared_region`: threads generate addresses in the same bounded region, exposing inter-thread overlap; configure its size with `-Df128x.addressRegionBytes=1048576` (default 1 MiB).
+- `strided`: per-thread addresses separated by `-Dfnx.addressStride=4096` bytes (default 64).
+- `shared_region`: threads generate addresses in the same bounded region, exposing inter-thread overlap; configure its size with `-Dfnx.addressRegionBytes=1048576` (default 1 MiB).
 
-Address-to-channel/bank mapping is selected with `-Df128x.addressMapping=`:
+Address-to-channel/bank mapping is selected with `-Dfnx.addressMapping=`:
 - `low_order`: interleave 64-byte cache lines across channels, then banks (default).
 - `xor`: fold higher cache-line address bits into channel and bank selection to test whether structured strides can be dispersed.
 
@@ -101,28 +97,28 @@ javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/CacheSweep.java
 javac --release 25 -Xlint:all -Werror -cp build/scheduler-sim -d build/scheduler-sim \
   tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/MemoryAddressingTest.java
-java -cp build/scheduler-sim org.flossware.f128x.sim.MemoryAddressingTest
+java -cp build/scheduler-sim org.flossware.fnx.sim.MemoryAddressingTest
 ```
 
 Single-latency compatibility mode:
 
 ```sh
-java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42 1
+java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 4096 4 300 0.25 200000 42 1
 ```
 
 Finite queue with three latency classes:
 
 ```sh
-java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42 4 128 0.70 4 0.20 20 200
+java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 4096 4 300 0.25 200000 42 4 128 0.70 4 0.20 20 200
 ```
 
 Add the optional dependency fraction and latency after the five memory-class arguments:
 
 ```sh
-java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42 4 128 0.70 4 0.20 20 200 0.10 12
+java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 4096 4 300 0.25 200000 42 4 128 0.70 4 0.20 20 200 0.10 12
 ```
 
-The dependency fraction applies to non-memory instructions. A selected dependency-bound instruction issues and makes its selected dependency chain unavailable for the configured latency. Set `-Df128x.dependencyChains=4` to give each thread four independent synthetic chains; the default is one and the maximum is 128. If another chain is ready, the thread can remain eligible and issue from it. If all chains are busy, the thread waits until the earliest chain becomes ready. The output reports dependency issues overlapped by another ready chain as well as dependency-waiter cycles. This models independent chains, not operand-level producer/consumer graphs, register renaming, forwarding, or real instruction dependencies.
+The dependency fraction applies to non-memory instructions. A selected dependency-bound instruction issues and makes its selected dependency chain unavailable for the configured latency. Set `-Dfnx.dependencyChains=4` to give each thread four independent synthetic chains; the default is one and the maximum is 128. If another chain is ready, the thread can remain eligible and issue from it. If all chains are busy, the thread waits until the earliest chain becomes ready. The output reports dependency issues overlapped by another ready chain as well as dependency-waiter cycles. This models independent chains, not operand-level producer/consumer graphs, register renaming, forwarding, or real instruction dependencies.
 
 To limit memory request completions to one per cycle, append `1` after the memory-class arguments (14 arguments total). This delays completions that are ready but cannot be serviced in the current cycle. Append the same value after the dependency pair when both options are enabled (16 arguments total). The limit is requests completed per cycle, not bytes transferred per cycle.
 
@@ -144,7 +140,7 @@ Example context and per-thread MLP sweep:
 ```sh
 for outstanding in 1 2 4 8; do
   for contexts in 64 128 256 512 1024; do
-    java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep \
+    java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep \
       "$contexts" 4 300 0.25 200000 42 "$outstanding" 128
   done
 done
@@ -209,17 +205,17 @@ javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/CacheSweep.java \
   tools/scheduler-sim/src/test/java/org/flossware/f128x/sim/CacheSweepTest.java
-java -cp build/scheduler-sim org.flossware.f128x.sim.CacheSweepTest
-java -cp build/scheduler-sim org.flossware.f128x.sim.CacheSweep 64 1000000 65536 42
+java -cp build/scheduler-sim org.flossware.fnx.sim.CacheSweepTest
+java -cp build/scheduler-sim org.flossware.fnx.sim.CacheSweep 64 1000000 65536 42
 ```
 
 Arguments are contexts, total accesses, working-set bytes, and seed. Configure geometry and timing with:
-- `-Df128x.cache.lineBytes=64`, `-Df128x.cache.l1Bytes=32768`, `-Df128x.cache.l1Ways=8`.
-- `-Df128x.cache.l2Bytes=1048576`, `-Df128x.cache.l2Ways=16`.
-- `-Df128x.cache.l1Latency=4`, `-Df128x.cache.l2Latency=20`, `-Df128x.cache.dramLatency=200`.
-- `-Df128x.cache.warmupPercent=10`; address generation also uses `f128x.addressPattern` and `f128x.addressStride`.
+- `-Dfnx.cache.lineBytes=64`, `-Dfnx.cache.l1Bytes=32768`, `-Dfnx.cache.l1Ways=8`.
+- `-Dfnx.cache.l2Bytes=1048576`, `-Dfnx.cache.l2Ways=16`.
+- `-Dfnx.cache.l1Latency=4`, `-Dfnx.cache.l2Latency=20`, `-Dfnx.cache.dramLatency=200`.
+- `-Dfnx.cache.warmupPercent=10`; address generation also uses `fnx.addressPattern` and `fnx.addressStride`.
 
-The model reports raw and post-warmup L1 hits, L2 hits, DRAM misses, and average modeled access latency. L1 is private per thread; L2 is shared. The current model is non-inclusive and has no coherence or invalidation traffic, prefetching, write policy, MSHR capacity, miss coalescing, or cache-level resource contention between concurrent misses. The scheduler can still have multiple independent memory requests in flight. The hierarchy can also drive scheduler memory-request latency directly. Enable `-Df128x.cache.enabled=true` when running `ContextSweep`. The configured memory fraction still controls how often a thread issues a memory operation. At issue time, each generated address is probed in its private L1 and the shared L2 to select L1-hit, L2-hit, or DRAM-miss latency. Cache lines are allocated only when the corresponding memory request completes: an L2 hit then fills the requesting thread's L1, while a DRAM miss fills shared L2 and the requesting L1. Consequently, two concurrent requests to the same not-yet-filled line are both modeled as misses; miss-status holding registers and request coalescing are not modeled. The existing finite outstanding-request queue and completion machinery determine when the thread can run again. Cache geometry and timing use the same `f128x.cache.*` properties listed above. Output includes `cacheHierarchyEnabled=true` and per-class issue/completion counts.
+The model reports raw and post-warmup L1 hits, L2 hits, DRAM misses, and average modeled access latency. L1 is private per thread; L2 is shared. The current model is non-inclusive and has no coherence or invalidation traffic, prefetching, write policy, MSHR capacity, miss coalescing, or cache-level resource contention between concurrent misses. The scheduler can still have multiple independent memory requests in flight. The hierarchy can also drive scheduler memory-request latency directly. Enable `-Dfnx.cache.enabled=true` when running `ContextSweep`. The configured memory fraction still controls how often a thread issues a memory operation. At issue time, each generated address is probed in its private L1 and the shared L2 to select L1-hit, L2-hit, or DRAM-miss latency. Cache lines are allocated only when the corresponding memory request completes: an L2 hit then fills the requesting thread's L1, while a DRAM miss fills shared L2 and the requesting L1. Consequently, two concurrent requests to the same not-yet-filled line are both modeled as misses; miss-status holding registers and request coalescing are not modeled. The existing finite outstanding-request queue and completion machinery determine when the thread can run again. Cache geometry and timing use the same `fnx.cache.*` properties listed above. Output includes `cacheHierarchyEnabled=true` and per-class issue/completion counts.
 
 This remains a bounded model: no coherence or invalidation traffic, prefetching, write policy, MSHRs, miss coalescing, or cache banking. The scheduler's memory-channel/bank model remains an optional layer. When both are enabled, only DRAM misses consume modeled channel/bank service; L1 and L2 hits bypass DRAM. Output includes `memoryBankRequests` so the DRAM-serviced subset can be compared with total memory issues. This is still not a realistic integrated cache/DRAM controller.
 
@@ -233,7 +229,7 @@ A separate Java 25 entry point, `BoardFabricSweep`, compares modular CPU-board t
 - 8 boards × 1 cluster × 1 issue slot.
 - 4 boards × 4 clusters × 1 issue slot (a 16-wide scale-up case).
 
-The first four hold aggregate issue capacity at eight instructions per cycle. The experiment sweeps 10%, 50%, and 90% remote-memory traffic through a shared bandwidth-limited fabric. Each board has a configurable number of independent local-memory service lanes (`f128x.localMemoryLanesPerBoard`, default 1), each with configurable bandwidth. Remote targets can be uniform, concentrated on a hot board, or paired with the source board (`f128x.remotePattern=uniform|hotspot|paired`). Remote requests consume the full-duplex request/response fabric and the destination board's memory service. Workspaces are homed to boards, and threads remain on their home board. The model reports IPC, utilization, per-board issue counts, remote requests by destination board, fabric bytes, queue pressure, and idle issue slots.
+The first four hold aggregate issue capacity at eight instructions per cycle. The experiment sweeps 10%, 50%, and 90% remote-memory traffic through a shared bandwidth-limited fabric. Each board has a configurable number of independent local-memory service lanes (`fnx.localMemoryLanesPerBoard`, default 1), each with configurable bandwidth. Remote targets can be uniform, concentrated on a hot board, or paired with the source board (`fnx.remotePattern=uniform|hotspot|paired`). Remote requests consume the full-duplex request/response fabric and the destination board's memory service. Workspaces are homed to boards, and threads remain on their home board. The model reports IPC, utilization, per-board issue counts, remote requests by destination board, fabric bytes, queue pressure, and idle issue slots.
 
 Compile both simulators and run the board experiment:
 
@@ -242,7 +238,7 @@ javac --release 25 -Xlint:all -Werror -d build/scheduler-sim \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/ContextSweep.java \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/MemoryAddressing.java \
   tools/scheduler-sim/src/main/java/org/flossware/f128x/sim/BoardFabricSweep.java
-java -cp build/scheduler-sim org.flossware.f128x.sim.BoardFabricSweep
+java -cp build/scheduler-sim org.flossware.fnx.sim.BoardFabricSweep
 ```
 
 The board model is intentionally separate from `ContextSweep`. The lane count is a service-parallelism abstraction, not a detailed channel/bank controller. The model still does not include parallel fabric links, cache coherence, migration, or physical board costs. See [Board and Backplane Simulation 0.1](../../docs/research/board-backplane-simulation-0.1.md) for assumptions and limitations.
@@ -263,10 +259,10 @@ Each source board injects a deterministic stream of 64-byte remote requests. Req
 Run it with:
 
 ```sh
-java -cp build/scheduler-sim org.flossware.f128x.sim.FabricTopologySweep
+java -cp build/scheduler-sim org.flossware.fnx.sim.FabricTopologySweep
 ```
 
-Use `-Df128x.fabric.operationsPerBoard=2048`, `-Df128x.fabric.seed=42`, `-Df128x.fabric.injectionInterval=2`, and `-Df128x.fabric.memoryLanesPerBoard=1` to control workload size, seed, per-source injection spacing, and destination memory service lanes. Smaller intervals increase offered load; larger intervals reduce it. CI runs the full topology matrix at intervals 1, 2, and 4, repeats the interval-2 matrix across multiple seeds, and tests two/four destination memory lanes. The normal `BoardFabricSweep` CI smoke path also runs a deterministic switched-mesh check, so this experiment is compiled and exercised by the existing workflow.
+Use `-Dfnx.fabric.operationsPerBoard=2048`, `-Dfnx.fabric.seed=42`, `-Dfnx.fabric.injectionInterval=2`, and `-Dfnx.fabric.memoryLanesPerBoard=1` to control workload size, seed, per-source injection spacing, and destination memory service lanes. Smaller intervals increase offered load; larger intervals reduce it. CI runs the full topology matrix at intervals 1, 2, and 4, repeats the interval-2 matrix across multiple seeds, and tests two/four destination memory lanes. The normal `BoardFabricSweep` CI smoke path also runs a deterministic switched-mesh check, so this experiment is compiled and exercised by the existing workflow.
 
 This is a topology sensitivity model, not a routing or electrical model. It uses deterministic shortest-path routing, fixed injection intervals, FIFO link availability, one destination-memory service lane, and no packet arbitration policy, virtual channels, adaptive routing, failures, congestion control, or physical link costs. The shared topology is a single serialized fabric resource per direction; ring and mesh topologies have per-directed-hop resources, with the configured number of parallel links per neighbor. Compare like-for-like board counts, patterns, and link counts; do not interpret the absolute throughput as a hardware prediction.
 
@@ -274,7 +270,7 @@ This is a topology sensitivity model, not a routing or electrical model. It uses
 ### Fabric arbitration sensitivity
 
 The switched-fabric experiment supports two ingress arbitration orders through
-`-Df128x.fabric.arbitration=fixed|round_robin`. The default remains `fixed`
+`-Dfnx.fabric.arbitration=fixed|round_robin`. The default remains `fixed`
 to preserve the published baseline. `round_robin` rotates the first source
 served at each injection epoch, preventing a permanently favored low-numbered
 source when multiple sources inject together.
@@ -291,7 +287,7 @@ deterministic arbitration smoke coverage.
 ### Congestion-aware shortest-path routing
 
 The switched-fabric model also accepts
-`-Df128x.fabric.routing=fixed|adaptive`. Fixed routing preserves the
+`-Dfnx.fabric.routing=fixed|adaptive`. Fixed routing preserves the
 deterministic breadth-first path used by the baseline. Adaptive routing
 enumerates equal-hop shortest paths and selects the path with the lowest
 predicted link-availability completion time using the current request or
@@ -303,7 +299,7 @@ routing, not per-hop packet deflection or a deadlock-free adaptive router.
 
 ### Destination memory-bank conflicts
 
-The fabric experiment accepts `-Df128x.fabric.memoryBanksPerBoard=N` (default
+The fabric experiment accepts `-Dfnx.fabric.memoryBanksPerBoard=N` (default
 8). Each request maps deterministically to a destination bank using its source
 board and per-source operation index. A request must obtain both an endpoint
 memory lane and its selected bank; the later availability time determines
@@ -335,10 +331,10 @@ results.
 
 The scheduler accepts a configurable architectural workspace shape:
 
-- `-Df128x.threadsPerWorkspace=256`: thread slots per workspace; default 16, supported range 1–256.
-- `-Df128x.privateRegistersPerThread=256`: private GPR count per thread; default 128, supported range 1–256.
-- `-Df128x.sharedRegistersPerWorkspace=256`: shared GPR count per workspace; default 128, supported range 1–256.
-- `-Df128x.registerWidthBits=256`: architectural GPR width; default 128 and must be a positive multiple of 8.
+- `-Dfnx.threadsPerWorkspace=256`: thread slots per workspace; default 16, supported range 1–256.
+- `-Dfnx.privateRegistersPerThread=256`: private GPR count per thread; default 128, supported range 1–256.
+- `-Dfnx.sharedRegistersPerWorkspace=256`: shared GPR count per workspace; default 128, supported range 1–256.
+- `-Dfnx.registerWidthBits=256`: architectural GPR width; default 128 and must be a positive multiple of 8.
 
 The scheduler uses the configured thread-slot count when grouping thread identifiers into workspaces, when applying hierarchical round-robin selection, and when assigning workspace home clusters in the distributed policy. The output reports workspace count and the calculated private, shared, and total architectural register-state byte capacities.
 
@@ -346,13 +342,13 @@ For the expanded candidate, run:
 
 ```sh
 java \
-  -Df128x.threadsPerWorkspace=256 \
-  -Df128x.privateRegistersPerThread=256 \
-  -Df128x.sharedRegistersPerWorkspace=256 \
-  -Df128x.registerWidthBits=256 \
-  -Df128x.scheduler=hierarchical \
+  -Dfnx.threadsPerWorkspace=256 \
+  -Dfnx.privateRegistersPerThread=256 \
+  -Dfnx.sharedRegistersPerWorkspace=256 \
+  -Dfnx.registerWidthBits=256 \
+  -Dfnx.scheduler=hierarchical \
   -cp build/scheduler-sim \
-  org.flossware.f128x.sim.ContextSweep \
+  org.flossware.fnx.sim.ContextSweep \
   1048576 8 300 0.25 1000 42 4 128
 ```
 
@@ -365,10 +361,10 @@ A controlled comparison can hold the number of workspaces at one while varying t
 
 ```sh
 for threads in 16 256; do
-  java -Df128x.threadsPerWorkspace="$threads" \
-    -Df128x.scheduler=hierarchical \
+  java -Dfnx.threadsPerWorkspace="$threads" \
+    -Dfnx.scheduler=hierarchical \
     -cp build/scheduler-sim \
-    org.flossware.f128x.sim.ContextSweep \
+    org.flossware.fnx.sim.ContextSweep \
     "$threads" 8 80 0.25 100000 42 1
 done
 ```

@@ -155,7 +155,7 @@ Potential lesson: 128-bit general-purpose registers do not replace a well-design
 
 ## 3. Research mapping
 
-| f128x subsystem | Primary historical references |
+| 128-bit architecture member subsystem | Primary historical references |
 |---|---|
 | Workspace organization | TMS9900 |
 | Massive thread scheduling | HEP, Tera MTA |

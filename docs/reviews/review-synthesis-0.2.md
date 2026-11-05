@@ -1,3 +1,5 @@
+> **Review-scope notice (2026-11-05):** This synthesis records reviews of the earlier f128x research baseline. Those reviews did not evaluate the new fNx family contract, N-bit addressing/opcode direction, portable P-Code model, or FCP proposal. The findings remain useful historical inputs but do not constitute approval of the newer architecture.
+
 # f128x Independent Review Synthesis 0.2
 
 **Date:** 2026-11-04  

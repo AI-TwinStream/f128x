@@ -307,3 +307,21 @@ service start. Results report `bankConflictWaitCycles` separately from fabric
 latency. This separates endpoint-lane parallelism from bank-level serialization.
 The model does not yet include channels, row buffers, refresh, bank groups, or
 DRAM command timing.
+
+### Per-output arbitration prototype
+
+The board-fabric source now includes a deterministic store-and-forward arbitration
+smoke test. It creates four independent input queues contending for one output,
+then forwards each granted packet through a second output on the following
+cycle. Each output owns its own round-robin pointer and grants at most one
+packet per cycle. The test checks that all 32 packets complete, each input
+receives exactly eight first-hop grants, and no packet traverses two hops in
+one arbitration epoch.
+
+This is an isolated arbitration correctness prototype, not yet the arbitration
+implementation used by the 4/8/16-board topology throughput matrix. The matrix
+still uses deterministic transaction-order link reservations. The next step
+is to replace those reservations with the per-output queued event model, then
+re-run the full topology, routing, injection, and memory-bank sensitivity
+matrix. Do not compare prototype cycle counts with the existing topology
+results.

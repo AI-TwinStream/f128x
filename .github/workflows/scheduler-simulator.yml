@@ -315,6 +315,26 @@ jobs:
           grep -q 'seed=42' <<< "$first"
           printf '%s\n' "$first"
 
+      - name: Exercise expanded workspace and register capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(java -Df128x.threadsPerWorkspace=256 -Df128x.privateRegistersPerThread=256 -Df128x.sharedRegistersPerWorkspace=128 -Df128x.registerWidthBits=128 -Df128x.scheduler=hierarchical -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1048576 8 300 0.25 1000 42 4 128)"
+          grep -q 'contexts=1048576 workspaces=4096 threadsPerWorkspace=256' <<< "$output"
+          grep -q 'privateRegistersPerThread=256 sharedRegistersPerWorkspace=128 registerWidthBits=128' <<< "$output"
+          grep -q 'privateRegisterStateBytes=4294967296' <<< "$output"
+          grep -q 'sharedRegisterStateBytes=8388608' <<< "$output"
+          grep -q 'totalRegisterStateBytes=4303355904' <<< "$output"
+          printf '%s\\n' "$output"
+          distributed="$(java -Df128x.threadsPerWorkspace=256 -Df128x.privateRegistersPerThread=256 -Df128x.scheduler=distributed -Df128x.clusters=4 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1024 8 300 0.25 2000 42 4 128)"
+          grep -q 'contexts=1024 workspaces=4 threadsPerWorkspace=256' <<< "$distributed"
+          grep -q 'scheduler=distributed clusters=4' <<< "$distributed"
+          if java -Df128x.threadsPerWorkspace=257 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 64 4 80 0.5 100 42; then
+            echo "Expected thread slots above 256 to fail" >&2
+            exit 1
+          fi
+          echo "PASS: 256-thread workspaces, 256 private registers, and register-state accounting"
+
       - name: Verify single-outstanding compatibility
         shell: bash
         run: |

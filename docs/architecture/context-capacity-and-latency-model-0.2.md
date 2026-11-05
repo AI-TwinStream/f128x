@@ -1,4 +1,4 @@
-> **Applicability note (2026-11-05):** This capacity/latency model is tied to the f128x scheduler research profile and its stated context assumptions. Its conclusions are not family-wide fNx requirements. fNx native width N governs register, arithmetic, pointer, and virtual-address width; context capacity remains a separate member/implementation decision. See the [fNx family contract](fnx-family-and-architectural-contract-0.1.md).
+> **Applicability note (2026-11-05):** This capacity/latency model is tied to the 128-bit member scheduler research profile and its stated context assumptions. Its conclusions are not family-wide fNx requirements. fNx native width N governs register, arithmetic, pointer, and virtual-address width; context capacity remains a separate member/implementation decision. See the [fNx family contract](fnx-family-and-architectural-contract-0.1.md).
 
 # Context Capacity and Latency-Hiding Model 0.2
 
@@ -10,7 +10,7 @@
 
 The 65,536-context target is a design hypothesis, not a performance result. This note establishes a simple model that can be checked, varied, and later calibrated by workload traces and richer simulation.
 
-It does **not** prove that f128x needs 65,536 contexts. It also does not model a realistic cache hierarchy, multiple outstanding requests per thread, dependencies, or scheduler overhead.
+It does **not** prove that 128-bit member needs 65,536 contexts. It also does not model a realistic cache hierarchy, multiple outstanding requests per thread, dependencies, or scheduler overhead.
 
 ## 2. First-order blocking model
 
@@ -54,7 +54,7 @@ The Java program in tools/scheduler-sim implements the simple blocking model wit
 
 Example command:
 
-    java -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 4096 4 300 0.25 200000 42
+    java -cp build/scheduler-sim org.flossware.fnx.sim.ContextSweep 4096 4 300 0.25 200000 42
 
 The following sample was compiled and run with OpenJDK 21. Parameters: issue width 4, blocking latency 300 cycles, blocking probability 0.25, 200,000 cycles, seed 42. Warmup is 10,000 cycles.
 

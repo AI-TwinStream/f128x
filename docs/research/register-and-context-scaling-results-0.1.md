@@ -1,5 +1,7 @@
 > **Historical experiment notice (2026-11-05):** These results belong to the earlier f128x scheduler model and its synthetic workload. They are not evidence for all fNx widths, nor do they establish physical feasibility or performance. The family-level architectural contract is maintained separately.
 
+> **Historical experiment notice (2026-11-05):** These results belong to the earlier f128x scheduler model and its synthetic workload. They are not evidence for all fNx widths, nor do they establish physical feasibility or performance. The family-level architectural contract is maintained separately.
+
 # Register and context scaling results 0.1
 
 ## Summary

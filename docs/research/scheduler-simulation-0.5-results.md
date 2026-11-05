@@ -1,4 +1,4 @@
-> **Historical simulation note (2026-11-05):** This result set belongs to the f128x scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
+> **Historical simulation note (2026-11-05):** This result set belongs to the 128-bit research profile scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
 
 # Scheduler Simulation 0.5 Results
 

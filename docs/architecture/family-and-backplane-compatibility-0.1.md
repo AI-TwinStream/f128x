@@ -3,11 +3,11 @@
 **Date:** 2026-11-05  
 **Status:** Working architectural direction; see the [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md) for current normative decisions and unresolved items.
 
-This document is retained as the original family/backplane study. Its earlier assumptions that the family begins at 128-bit member and that pointers are fixed at 128 bits are superseded.
+This document is retained as the original family/backplane study. Its earlier assumptions that the family begins at a 128-bit native width and that pointers are fixed at 128 bits are superseded.
 
 ## Current family model
 
-fNx is the architecture family. N is the native architectural width in bits. Candidate members include f16x, f32x, f64x, 128-bit member, f256x, f512x, and f1024x. The minimum N is not frozen; 16 bits is currently favored, while f8x remains an open question.
+fNx is the architecture family. N is the native architectural width in bits. Candidate members include f16x, f32x, f64x, the 128-bit member, f256x, f512x, and f1024x. The minimum N is not frozen; 16 bits is currently favored, while f8x remains an open question.
 
 All members share one ISA and one global opcode registry. A CPU architectural unit has one native width. A system may combine different-width CPU units through the common backplane contract; it does not combine different native widths inside one CPU unit.
 

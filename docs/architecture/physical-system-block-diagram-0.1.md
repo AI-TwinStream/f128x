@@ -15,7 +15,7 @@ flowchart TB
       ROOTFCP["Root FCP\ndiscovery · policy · telemetry"]
     end
     subgraph B0["CPU backplane / board 0"]
-      CPU0["f128x CPU unit(s)\none native width per unit"]
+      CPU0["fNx CPU unit(s)\none native width per unit"]
       FCP0["f16x / fNx FCP candidate\nindependent management domain"]
       MEM0["Local memory controller and memory"]
       CPU0 <--> MEM0
@@ -81,7 +81,7 @@ Different fNx widths communicate through a common width-neutral protocol. Wider 
 
 ## Simulation boundary
 
-The existing f128x board/fabric experiments model simplified transaction reservations, endpoint service, and topology sensitivity. They are not electrical models or selected hardware contracts. Their results must remain labelled as f128x-oriented simulation results.
+The existing fNx board/fabric experiments model simplified transaction reservations, endpoint service, and topology sensitivity. They are not electrical models or selected hardware contracts. Their results must remain labelled as fNx-oriented simulation results.
 
 ## Explicitly not decided
 

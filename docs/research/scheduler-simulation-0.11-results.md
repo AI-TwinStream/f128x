@@ -1,4 +1,4 @@
-> **Historical simulation note (2026-11-05):** This result set belongs to the f128x scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
+> **Historical simulation note (2026-11-05):** This result set belongs to the 128-bit research profile scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
 
 # Scheduler Simulation 0.11 Results
 
@@ -11,7 +11,7 @@
 
 Simulation 0.11 replaces the single serialized dependency-stall approximation with a configurable set of independent synthetic dependency chains per thread.
 
-Configure the chain count with `-Df128x.dependencyChains=N`. The default is one; the supported range is 1 through 128. A dependency-bound non-memory instruction issues on one ready chain and makes that chain unavailable for the configured dependency latency. If another chain is ready by the next cycle, the thread remains eligible to issue from it. If no other chain is ready, the thread waits until the earliest chain becomes ready.
+Configure the chain count with `-Dfnx.dependencyChains=N`. The default is one; the supported range is 1 through 128. A dependency-bound non-memory instruction issues on one ready chain and makes that chain unavailable for the configured dependency latency. If another chain is ready by the next cycle, the thread remains eligible to issue from it. If no other chain is ready, the thread waits until the earliest chain becomes ready.
 
 The model reports:
 
@@ -50,7 +50,7 @@ Four independent chains increased measured IPC by approximately 3.22× in this d
 
 ## 3. Interpretation and limitations
 
-This result demonstrates the impact of independent chains in the simulator; it does not establish an expected f128x speedup. The model creates synthetic chain readiness, not a real instruction stream or operand dependency graph.
+This result demonstrates the impact of independent chains in the simulator; it does not establish an expected 128-bit research profile speedup. The model creates synthetic chain readiness, not a real instruction stream or operand dependency graph.
 
 It does not model register renaming, architectural register hazards, forwarding, execution-unit latency variation, memory dependencies, branch speculation, out-of-order issue, or compiler scheduling. Dependency-bound instructions are assigned to the next ready chain in round-robin order. This is a controlled ILP experiment, not a claim that every thread will expose four independent chains.
 

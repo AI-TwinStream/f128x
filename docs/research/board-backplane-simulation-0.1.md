@@ -595,3 +595,31 @@ virtual-channel allocation, escape routing, deadlock analysis, or
 credit-based flow control. The model therefore measures congestion-aware
 path selection within this simplified reservation model, not the behavior of
 a production adaptive router.
+
+
+## Destination memory-bank conflict sensitivity (2026-11-04)
+
+The switched-fabric model now separates endpoint service lanes from destination
+memory-bank serialization. Configure bank count with
+`-Df128x.fabric.memoryBanksPerBoard=N` (default 8). Each transaction carries
+its source-local operation index and maps to a destination bank using
+`(operation + sourceBoard) mod bankCount`. A memory request must wait for both
+an endpoint lane and its selected bank; service begins when both are available.
+The result field `bankConflictWaitCycles` accumulates delay attributable
+specifically to the selected bank after endpoint-lane availability is taken
+into account.
+
+CI runs the complete 81-case topology matrix with 1, 4, and 16 banks per board,
+using four endpoint lanes to make bank-level serialization observable. The
+one-bank hotspot case must report nonzero bank-conflict wait. The default of
+eight banks preserves the earlier one-endpoint-lane baseline behavior because
+the single endpoint lane already serializes all accesses; the bank dimension
+becomes visible when endpoint lanes are increased.
+
+**Model boundary:** this is a bank-occupancy queueing abstraction, not a DRAM
+controller. It does not model channels, bank groups, row-buffer hits/conflicts,
+activate/precharge timing, refresh, command buses, address hashing beyond the
+simple deterministic mapping, or bank-aware request scheduling. The
+`bankConflictWaitCycles` metric isolates serialization from the bank
+availability array in this model; it should not be interpreted as calibrated
+DRAM timing.

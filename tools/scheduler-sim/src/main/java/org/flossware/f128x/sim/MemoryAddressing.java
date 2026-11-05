@@ -1,4 +1,4 @@
-package org.flossware.f128x.sim;
+package org.flossware.fnx.sim;
 
 import java.util.Locale;
 

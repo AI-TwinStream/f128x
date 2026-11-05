@@ -319,12 +319,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          output="$(java -Df128x.threadsPerWorkspace=256 -Df128x.privateRegistersPerThread=256 -Df128x.sharedRegistersPerWorkspace=128 -Df128x.registerWidthBits=128 -Df128x.scheduler=hierarchical -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1048576 8 300 0.25 1000 42 4 128)"
+          output="$(java -Df128x.threadsPerWorkspace=256 -Df128x.privateRegistersPerThread=256 -Df128x.sharedRegistersPerWorkspace=256 -Df128x.registerWidthBits=256 -Df128x.scheduler=hierarchical -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1048576 8 300 0.25 1000 42 4 128)"
           grep -q 'contexts=1048576 workspaces=4096 threadsPerWorkspace=256' <<< "$output"
-          grep -q 'privateRegistersPerThread=256 sharedRegistersPerWorkspace=128 registerWidthBits=128' <<< "$output"
-          grep -q 'privateRegisterStateBytes=4294967296' <<< "$output"
-          grep -q 'sharedRegisterStateBytes=8388608' <<< "$output"
-          grep -q 'totalRegisterStateBytes=4303355904' <<< "$output"
+          grep -q 'privateRegistersPerThread=256 sharedRegistersPerWorkspace=256 registerWidthBits=256' <<< "$output"
+          grep -q 'privateRegisterStateBytes=8589934592' <<< "$output"
+          grep -q 'sharedRegisterStateBytes=33554432' <<< "$output"
+          grep -q 'totalRegisterStateBytes=8623489024' <<< "$output"
           printf '%s\\n' "$output"
           distributed="$(java -Df128x.threadsPerWorkspace=256 -Df128x.privateRegistersPerThread=256 -Df128x.scheduler=distributed -Df128x.clusters=4 -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 1024 8 300 0.25 2000 42 4 128)"
           grep -q 'contexts=1024 workspaces=4 threadsPerWorkspace=256' <<< "$distributed"
@@ -333,7 +333,7 @@ jobs:
             echo "Expected thread slots above 256 to fail" >&2
             exit 1
           fi
-          echo "PASS: 256-thread workspaces, 256 private registers, and register-state accounting"
+          echo "PASS: 256-thread workspaces, 256 private/shared registers, 256-bit width, and register-state accounting"
 
       - name: Compare 16-thread and 256-thread workspace latency hiding
         shell: bash

@@ -1,3 +1,5 @@
+> **Historical model note (2026-11-05):** This scheduling study uses the original f128x capacity assumptions (4,096 workspaces × 16 threads). It remains a research baseline only. Do not treat these counts as family invariants.
+
 # f128x Scheduling Model Research 0.1
 
 **Date:** 2026-11-04  

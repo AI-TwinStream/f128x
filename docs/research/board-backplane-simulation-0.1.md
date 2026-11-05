@@ -1,3 +1,5 @@
+> **Applicability note (2026-11-05):** This is an f128x-oriented sensitivity experiment. Its parameters, model assumptions, and measured results are not automatically applicable to other fNx members. fNx now defines N-bit native registers, arithmetic, pointers, and virtual addresses, a common global ISA/opcode registry, and width-neutral hierarchical backplanes. The experiment does not model those family-wide contracts or establish physical hardware performance. See [fNx family contract](../architecture/fnx-family-and-architectural-contract-0.1.md) and [physical system model](../architecture/physical-system-block-diagram-0.1.md).
+
 # Board and Backplane Simulation 0.1
 
 **Status:** Initial cycle-level comparative model. Results are exploratory, not hardware predictions.

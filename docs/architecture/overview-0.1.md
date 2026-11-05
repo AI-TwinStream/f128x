@@ -5,7 +5,7 @@
 
 ## 1. Purpose
 
-fNx is a proposed open processor architecture family. N is the native architectural width in bits. Members such as f16x, f32x, f64x, f128x, f256x, f512x, and f1024x share one ISA and one architectural philosophy. The minimum N is unresolved; 16 bits is currently favored provisionally.
+fNx is a proposed open processor architecture family. N is the native architectural width in bits. Members such as f16x, f32x, f64x, 128-bit member, f256x, f512x, and f1024x share one ISA and one architectural philosophy. The minimum N is unresolved; 16 bits is currently favored provisionally.
 
 The project explores workspace-oriented execution, large numbers of independently schedulable hardware-thread contexts, private thread state, workspace-shared state, and modular systems that can combine different fNx members.
 
@@ -36,7 +36,7 @@ Instruction length, operand fields, register selectors, immediate formats, and e
 
 A workspace is a proposed logical resource-sharing and protection domain containing independently schedulable threads. Each thread has private architectural state; threads in a workspace may access workspace-shared state under defined synchronization and protection rules.
 
-The current f128x research profile uses:
+The current 128-bit member research profile uses:
 - 128 workspaces.
 - 128 thread contexts per workspace.
 - 128 private 128-bit registers per thread.
@@ -80,6 +80,6 @@ Still open: minimum N, exact instruction encoding/length, operand formats, P-Cod
 3. Specify N-bit virtual addressing and physical translation.
 4. Define P-Code and portable package/ABI contracts.
 5. Build reference interpreter, assembler, disassembler, and compiler path.
-6. Continue f128x scheduler/fabric experiments while clearly bounding their applicability.
+6. Continue 128-bit member scheduler/fabric experiments while clearly bounding their applicability.
 7. Prototype reduced hardware and platform management.
 8. Port an OS only after privilege, memory, interrupt, and ABI contracts stabilize.

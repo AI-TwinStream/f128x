@@ -1,4 +1,4 @@
-package org.flossware.f128x.sim;
+package org.flossware.fnx.sim;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -140,18 +140,18 @@ public final class CacheSweep {
         long workingSetBytes = Long.parseLong(args[2]);
         long seed = Long.parseLong(args[3]);
 
-        int lineBytes = Integer.getInteger("f128x.cache.lineBytes", 64);
-        int l1Bytes = Integer.getInteger("f128x.cache.l1Bytes", 32 * 1024);
-        int l1Ways = Integer.getInteger("f128x.cache.l1Ways", 8);
-        int l2Bytes = Integer.getInteger("f128x.cache.l2Bytes", 1024 * 1024);
-        int l2Ways = Integer.getInteger("f128x.cache.l2Ways", 16);
-        int l1Latency = Integer.getInteger("f128x.cache.l1Latency", 4);
-        int l2Latency = Integer.getInteger("f128x.cache.l2Latency", 20);
-        int dramLatency = Integer.getInteger("f128x.cache.dramLatency", 200);
-        int warmupPercent = Integer.getInteger("f128x.cache.warmupPercent", 10);
-        long stride = Long.getLong("f128x.addressStride", 4096L);
+        int lineBytes = Integer.getInteger("fnx.cache.lineBytes", 64);
+        int l1Bytes = Integer.getInteger("fnx.cache.l1Bytes", 32 * 1024);
+        int l1Ways = Integer.getInteger("fnx.cache.l1Ways", 8);
+        int l2Bytes = Integer.getInteger("fnx.cache.l2Bytes", 1024 * 1024);
+        int l2Ways = Integer.getInteger("fnx.cache.l2Ways", 16);
+        int l1Latency = Integer.getInteger("fnx.cache.l1Latency", 4);
+        int l2Latency = Integer.getInteger("fnx.cache.l2Latency", 20);
+        int dramLatency = Integer.getInteger("fnx.cache.dramLatency", 200);
+        int warmupPercent = Integer.getInteger("fnx.cache.warmupPercent", 10);
+        long stride = Long.getLong("fnx.addressStride", 4096L);
         MemoryAddressing.Pattern pattern = MemoryAddressing.Pattern.parse(
-                System.getProperty("f128x.addressPattern", "sequential"));
+                System.getProperty("fnx.addressPattern", "sequential"));
 
         if (contexts < 1 || accesses < 1 || workingSetBytes < lineBytes
                 || lineBytes < 1 || l1Bytes < lineBytes || l1Ways < 1

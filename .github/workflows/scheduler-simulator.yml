@@ -335,6 +335,24 @@ jobs:
           fi
           echo "PASS: 256-thread workspaces, 256 private registers, and register-state accounting"
 
+      - name: Compare 16-thread and 256-thread workspace latency hiding
+        shell: bash
+        run: |
+          set -euo pipefail
+          for seed in 7 42 2027; do
+            small="$(java -Df128x.threadsPerWorkspace=16 -Df128x.scheduler=hierarchical -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 16 8 80 0.25 100000 "$seed" 1)"
+            large="$(java -Df128x.threadsPerWorkspace=256 -Df128x.scheduler=hierarchical -cp build/scheduler-sim org.flossware.f128x.sim.ContextSweep 256 8 80 0.25 100000 "$seed" 1)"
+            small_ipc="$(sed -n 's/.*measuredIPC=\\([0-9.]*\\).*/\\1/p' <<< "$small")"
+            large_ipc="$(sed -n 's/.*measuredIPC=\\([0-9.]*\\).*/\\1/p' <<< "$large")"
+            awk -v small="$small_ipc" -v large="$large_ipc" 'BEGIN { if (large <= small * 2.0) exit 1; }'
+            grep -q 'contexts=16 workspaces=1 threadsPerWorkspace=16' <<< "$small"
+            grep -q 'contexts=256 workspaces=1 threadsPerWorkspace=256' <<< "$large"
+            echo "latency-hiding-seed=$seed"
+            printf '%s\\n' "$small"
+            printf '%s\\n' "$large"
+          done
+          echo "PASS: 256-thread workspace exceeds 16-thread profile by more than 2x across three seeds"
+
       - name: Verify single-outstanding compatibility
         shell: bash
         run: |

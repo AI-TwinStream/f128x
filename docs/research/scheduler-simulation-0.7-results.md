@@ -1,4 +1,4 @@
-> **Historical simulation note (2026-11-05):** This result set belongs to the f128x scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
+> **Historical simulation note (2026-11-05):** This result set belongs to the 128-bit research profile scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
 
 # Scheduler Simulation 0.7 Results
 
@@ -66,7 +66,7 @@ The sum of local budgets is eight, but the global issue-width ceiling remains fo
 
 ## 4. Interpretation and limitations
 
-The tests demonstrate that the simulator enforces both constraints: local issue width per cluster and the aggregate global issue width. They do not establish that a physical f128x implementation should use these cluster counts or widths.
+The tests demonstrate that the simulator enforces both constraints: local issue width per cluster and the aggregate global issue width. They do not establish that a physical 128-bit research profile implementation should use these cluster counts or widths.
 
 The model still has a central logical scheduler and a global issue-width ceiling. It does not model independent physical pipelines, arbitration latency, cross-cluster links, issue-unit inventories, clock/power domains, or migration/locality penalties. Cluster issue totals are whole-run counts; the local per-cycle cap is enforced by the issue loop.
 

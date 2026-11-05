@@ -353,3 +353,22 @@ java \
 ```
 
 This represents 4,096 workspaces × 256 thread slots, 256 private 128-bit GPRs per thread, and 128 shared 128-bit GPRs per workspace. The accounting result is 4 GiB of private state plus 8 MiB of shared state. It is architectural storage accounting only: it does not model physical register-file ports, banking, timing, area, power, context-cache residency, or spill/fill bandwidth. Compare smaller context counts and register counts before drawing conclusions about implementability or performance.
+
+
+### Workspace thread-count latency-hiding comparison
+
+A controlled comparison can hold the number of workspaces at one while varying the number of architectural thread slots:
+
+```sh
+for threads in 16 256; do
+  java -Df128x.threadsPerWorkspace="$threads" \
+    -Df128x.scheduler=hierarchical \
+    -cp build/scheduler-sim \
+    org.flossware.f128x.sim.ContextSweep \
+    "$threads" 8 80 0.25 100000 42 1
+done
+```
+
+This experiment uses one outstanding memory operation per thread, an 80-cycle memory latency, a 25% memory-instruction probability, and an eight-instruction aggregate issue ceiling. It tests whether a larger set of independently schedulable threads in one workspace can hide latency better than a 16-thread workspace in this particular synthetic workload. It does not establish that 256 threads are universally optimal; results depend on the number of active workspaces, issue width, latency distribution, memory-level parallelism, and runnable population.
+
+Changing `privateRegistersPerThread` affects architectural state-capacity accounting only. This scheduler model does not model register allocation, register-file ports, physical banking, or execution behavior that benefits from a larger register namespace. Any claimed performance gain from 256 private registers requires a separate compiler/workload and register-file implementation study.

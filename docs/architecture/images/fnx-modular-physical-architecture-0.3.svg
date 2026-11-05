@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1260" viewBox="0 0 1800 1260" role="img" aria-labelledby="title desc">
+<title id="title">fNx modular physical architecture</title>
+<desc id="desc">A layered architecture illustration showing a conceptual fNx processor unit, a CPU board assembly, and a hierarchical system backplane connecting compute, memory, and I/O with independent FCP management.</desc>
+<defs>
+  <linearGradient id="canvas" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#edf4fb"/><stop offset="1" stop-color="#dce8f3"/></linearGradient>
+  <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#245887"/><stop offset="1" stop-color="#153b63"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9ecff"/><stop offset="1" stop-color="#a9cbed"/></linearGradient>
+  <linearGradient id="green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9f2d6"/><stop offset="1" stop-color="#9ed49b"/></linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0c8"/><stop offset="1" stop-color="#f2cf83"/></linearGradient>
+  <linearGradient id="purple" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9e3fb"/><stop offset="1" stop-color="#c9bce9"/></linearGradient>
+  <linearGradient id="fabric" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b8d8f5"/><stop offset=".5" stop-color="#e0f0ff"/><stop offset="1" stop-color="#b8d8f5"/></linearGradient>
+  <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#24415e" flood-opacity=".22"/></filter>
+  <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9Z" fill="#315f8a"/></marker>
+  <marker id="arrGold" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9Z" fill="#b27b26"/></marker>
+  <style>
+    text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;fill:#172b43}
+    .mainTitle{font-size:36px;font-weight:800;fill:#fff;letter-spacing:.2px}
+    .subTitle{font-size:17px;font-weight:500;fill:#d9e8f7}
+    .panelHead{font-size:20px;font-weight:800;fill:#fff}
+    .panelSub{font-size:13px;font-weight:600;fill:#d9e8f7;letter-spacing:1px}
+    .section{font-size:14px;font-weight:800;letter-spacing:1.5px;fill:#315f8a}
+    .blockTitle{font-size:16px;font-weight:750}
+    .blockSub{font-size:12px;font-weight:550;fill:#425a73}
+    .chipText{font-size:14px;font-weight:800}
+    .small{font-size:12px;fill:#425a73}
+    .tiny{font-size:10px;fill:#526a83}
+    .white{fill:#fff}
+    .frame{fill:#f8fbff;stroke:#7e9bb7;stroke-width:2}
+    .blueBlock{fill:url(#blue);stroke:#5b8dbb;stroke-width:1.5}
+    .greenBlock{fill:url(#green);stroke:#6caa70;stroke-width:1.5}
+    .goldBlock{fill:url(#gold);stroke:#c49a4b;stroke-width:1.5}
+    .purpleBlock{fill:url(#purple);stroke:#927ebd;stroke-width:1.5}
+    .board{fill:#b6d8ad;stroke:#4d8b57;stroke-width:3}
+    .trace{fill:none;stroke:#315f8a;stroke-width:3;marker-end:url(#arr)}
+    .management{fill:none;stroke:#b27b26;stroke-width:2.5;stroke-dasharray:7 6;marker-end:url(#arrGold)}
+    .dot{fill:#2d5c86}
+  </style>
+</defs>
+<rect width="1800" height="1260" rx="24" fill="url(#canvas)"/>
+<rect x="0" y="0" width="1800" height="100" rx="24" fill="url(#navy)"/>
+<rect x="0" y="76" width="1800" height="24" fill="#153b63"/>
+<text x="900" y="48" text-anchor="middle" class="mainTitle">fNx Modular Physical Architecture</text>
+<text x="900" y="76" text-anchor="middle" class="subTitle">Processor unit · CPU board · hierarchical system backplane</text>
+
+<!-- Processor unit panel -->
+<g filter="url(#shadow)">
+ <rect x="38" y="128" width="840" height="430" rx="15" class="frame"/>
+ <rect x="38" y="128" width="840" height="52" rx="15" fill="url(#navy)"/>
+ <rect x="38" y="162" width="840" height="18" fill="#153b63"/>
+</g>
+<text x="458" y="160" text-anchor="middle" class="panelHead">01  /  fNx PROCESSOR UNIT</text>
+<text x="458" y="201" text-anchor="middle" class="section">CONCEPTUAL INTERNAL ORGANIZATION · IMPLEMENTATION-DEFINED</text>
+<rect x="68" y="220" width="780" height="50" rx="8" class="purpleBlock"/>
+<text x="458" y="250" text-anchor="middle" class="blockTitle">Architectural control · instruction flow · privilege and exception handling</text>
+
+<rect x="68" y="292" width="145" height="155" rx="9" class="goldBlock"/>
+<text x="140" y="325" text-anchor="middle" class="blockTitle">Memory</text>
+<text x="140" y="347" text-anchor="middle" class="blockTitle">interface</text>
+<text x="140" y="382" text-anchor="middle" class="blockSub">Translation</text>
+<text x="140" y="402" text-anchor="middle" class="blockSub">Protection</text>
+<text x="140" y="422" text-anchor="middle" class="blockSub">Load / store</text>
+
+<rect x="235" y="292" width="445" height="155" rx="9" class="blueBlock"/>
+<text x="457" y="320" text-anchor="middle" class="blockTitle">Execution resources</text>
+<rect x="258" y="337" width="188" height="82" rx="7" fill="#f6fbff" stroke="#6e9dc5"/>
+<rect x="468" y="337" width="188" height="82" rx="7" fill="#f6fbff" stroke="#6e9dc5"/>
+<text x="352" y="369" text-anchor="middle" class="blockTitle">Integer / control</text>
+<text x="352" y="393" text-anchor="middle" class="blockSub">Execution pipelines</text>
+<text x="562" y="369" text-anchor="middle" class="blockTitle">Data / specialized</text>
+<text x="562" y="393" text-anchor="middle" class="blockSub">Execution pipelines</text>
+
+<rect x="702" y="292" width="146" height="155" rx="9" class="goldBlock"/>
+<text x="775" y="325" text-anchor="middle" class="blockTitle">Fabric</text>
+<text x="775" y="347" text-anchor="middle" class="blockTitle">endpoint</text>
+<text x="775" y="382" text-anchor="middle" class="blockSub">Transactions</text>
+<text x="775" y="402" text-anchor="middle" class="blockSub">Routing</text>
+<text x="775" y="422" text-anchor="middle" class="blockSub">Flow control</text>
+
+<rect x="235" y="465" width="445" height="58" rx="8" class="greenBlock"/>
+<text x="457" y="489" text-anchor="middle" class="blockTitle">Architectural state and workspace</text>
+<text x="457" y="510" text-anchor="middle" class="blockSub">Register / context implementation is not prescribed here</text>
+<path d="M457 270 V292 M213 370 H235 M680 370 H702 M457 447 V465" class="trace"/>
+<text x="68" y="542" class="small">One processor unit has one native width N. Internal resource counts and partitioning are implementation choices.</text>
+
+<!-- CPU board panel -->
+<g filter="url(#shadow)">
+ <rect x="902" y="128" width="860" height="430" rx="15" class="frame"/>
+ <rect x="902" y="128" width="860" height="52" rx="15" fill="url(#navy)"/>
+ <rect x="902" y="162" width="860" height="18" fill="#153b63"/>
+</g>
+<text x="1332" y="160" text-anchor="middle" class="panelHead">02  /  CPU BOARD ASSEMBLY</text>
+<text x="1332" y="201" text-anchor="middle" class="section">ILLUSTRATIVE BOARD POPULATION · NOT A REQUIRED CHIP COUNT</text>
+<rect x="936" y="220" width="792" height="245" rx="12" class="board"/>
+<path d="M960 241 H1704 M960 445 H1704" stroke="#6b9e68" stroke-width="2" fill="none"/>
+<g>
+ <rect x="970" y="252" width="166" height="102" rx="9" fill="#e8f3ff" stroke="#4b7ca8" stroke-width="2"/>
+ <rect x="1150" y="252" width="166" height="102" rx="9" fill="#e8f3ff" stroke="#4b7ca8" stroke-width="2"/>
+ <rect x="1330" y="252" width="166" height="102" rx="9" fill="#e8f3ff" stroke="#4b7ca8" stroke-width="2"/>
+ <rect x="1510" y="252" width="166" height="102" rx="9" fill="#e8f3ff" stroke="#4b7ca8" stroke-width="2"/>
+ <g text-anchor="middle">
+  <text x="1053" y="292" class="chipText">fNx CPU unit</text><text x="1053" y="319" class="small">native width N</text>
+  <text x="1233" y="292" class="chipText">fNx CPU unit</text><text x="1233" y="319" class="small">native width N</text>
+  <text x="1413" y="292" class="chipText">fNx CPU unit</text><text x="1413" y="319" class="small">native width N</text>
+  <text x="1593" y="292" class="chipText">fNx CPU unit</text><text x="1593" y="319" class="small">native width N</text>
+ </g>
+ <rect x="970" y="374" width="706" height="54" rx="8" class="blueBlock"/>
+ <text x="1323" y="397" text-anchor="middle" class="blockTitle">Board interconnect and fabric interface</text>
+ <text x="1323" y="416" text-anchor="middle" class="blockSub">Local communication · transaction forwarding · endpoint coordination</text>
+ <path d="M1053 354 V374 M1233 354 V374 M1413 354 V374 M1593 354 V374" stroke="#315f8a" stroke-width="2.5" fill="none"/>
+</g>
+<rect x="936" y="480" width="250" height="54" rx="8" class="greenBlock"/>
+<rect x="1204" y="480" width="250" height="54" rx="8" class="purpleBlock"/>
+<rect x="1472" y="480" width="256" height="54" rx="8" class="goldBlock"/>
+<text x="1061" y="503" text-anchor="middle" class="blockTitle">Memory attachment</text><text x="1061" y="520" text-anchor="middle" class="tiny">local / optional expansion</text>
+<text x="1329" y="503" text-anchor="middle" class="blockTitle">Board services</text><text x="1329" y="520" text-anchor="middle" class="tiny">identity · monitoring · error reporting</text>
+<text x="1600" y="503" text-anchor="middle" class="blockTitle">FCP management</text><text x="1600" y="520" text-anchor="middle" class="tiny">independent control domain</text>
+
+<!-- Connector from detailed unit to board -->
+<path d="M878 340 H900" stroke="#315f8a" stroke-width="3" stroke-dasharray="5 5"/>
+
+<!-- System backplane panel -->
+<g filter="url(#shadow)">
+ <rect x="38" y="584" width="1724" height="526" rx="15" class="frame"/>
+ <rect x="38" y="584" width="1724" height="52" rx="15" fill="url(#navy)"/>
+ <rect x="38" y="618" width="1724" height="18" fill="#153b63"/>
+</g>
+<text x="900" y="616" text-anchor="middle" class="panelHead">03  /  fNx SYSTEM BACKPLANE AND HIERARCHICAL FABRIC</text>
+<text x="900" y="658" text-anchor="middle" class="section">WIDTH-NEUTRAL TRANSACTION FABRIC · ROOT AND SUBORDINATE SEGMENTS</text>
+
+<rect x="84" y="684" width="1632" height="72" rx="10" fill="url(#fabric)" stroke="#5687b4" stroke-width="2"/>
+<text x="900" y="713" text-anchor="middle" class="blockTitle">Root fabric / backplane</text>
+<text x="900" y="738" text-anchor="middle" class="blockSub">Endpoint discovery · address and routing domains · ordering · flow control · error reporting</text>
+
+<!-- board modules -->
+<rect x="88" y="804" width="340" height="190" rx="12" class="greenBlock"/>
+<rect x="452" y="804" width="340" height="190" rx="12" class="greenBlock"/>
+<rect x="816" y="804" width="340" height="190" rx="12" class="purpleBlock"/>
+<rect x="1180" y="804" width="532" height="190" rx="12" class="blueBlock"/>
+<g text-anchor="middle">
+ <text x="258" y="840" class="blockTitle">CPU board A</text><text x="258" y="866" class="blockSub">fNx CPU unit(s)</text><text x="258" y="888" class="blockSub">one native width per unit</text><text x="258" y="935" class="small">Board-local memory</text><text x="258" y="958" class="small">FCP / board services</text>
+ <text x="622" y="840" class="blockTitle">CPU board B</text><text x="622" y="866" class="blockSub">fNx CPU unit(s)</text><text x="622" y="888" class="blockSub">may use a different native width</text><text x="622" y="935" class="small">Board-local memory</text><text x="622" y="958" class="small">FCP / board services</text>
+ <text x="986" y="840" class="blockTitle">Memory expansion</text><text x="986" y="875" class="blockSub">Optional memory endpoints</text><text x="986" y="899" class="blockSub">Controllers and capacity</text><text x="986" y="923" class="blockSub">are implementation-defined</text>
+ <text x="1446" y="840" class="blockTitle">I/O and peripheral boards</text><text x="1446" y="878" class="blockSub">Storage · networking · accelerators</text><text x="1446" y="902" class="blockSub">Device bridges · external interfaces</text><text x="1446" y="944" class="blockSub">Protocol-specific endpoints</text>
+</g>
+<path d="M258 756 V804 M622 756 V804 M986 756 V804 M1446 756 V804" class="trace"/>
+
+<!-- subordinate segment -->
+<rect x="88" y="1020" width="1624" height="62" rx="10" fill="#d5e6f6" stroke="#7899b8" stroke-width="1.5"/>
+<text x="900" y="1046" text-anchor="middle" class="blockTitle">Subordinate backplanes may attach as managed fabric segments</text>
+<text x="900" y="1067" text-anchor="middle" class="blockSub">Additional CPU, memory, accelerator, and I/O endpoints · hierarchical routing and fault boundaries</text>
+<path d="M900 994 V1020" class="trace"/>
+
+<!-- management plane -->
+<path d="M1600 534 V566 H1680 V784 H1600 V804" class="management"/>
+<rect x="1380" y="768" width="220" height="26" rx="6" fill="#fff0c8" stroke="#c49a4b"/>
+<text x="1490" y="786" text-anchor="middle" class="tiny" style="font-weight:800">INDEPENDENT FCP CONTROL</text>
+
+<!-- footer legend -->
+<rect x="38" y="1130" width="1724" height="92" rx="12" fill="#f8fbff" stroke="#9bb1c7" stroke-width="1.5"/>
+<text x="68" y="1161" class="section">LEGEND</text>
+<rect x="178" y="1147" width="24" height="18" rx="4" class="blueBlock"/><text x="212" y="1161" class="small">Compute / fabric</text>
+<rect x="390" y="1147" width="24" height="18" rx="4" class="greenBlock"/><text x="424" y="1161" class="small">Board / memory</text>
+<rect x="600" y="1147" width="24" height="18" rx="4" class="goldBlock"/><text x="634" y="1161" class="small">Memory interface / services</text>
+<rect x="900" y="1147" width="24" height="18" rx="4" class="purpleBlock"/><text x="934" y="1161" class="small">Architectural state / expansion</text>
+<path d="M1240 1156 H1290" class="trace"/><text x="1302" y="1161" class="small">Data / transaction path</text>
+<path d="M1510 1156 H1560" class="management"/><text x="1572" y="1161" class="small">Management</text>
+<text x="68" y="1197" class="tiny">Conceptual architecture only. No chip count, cache design, memory size, lane width, link rate, or electrical topology is implied.</text>
+<text x="1730" y="1197" text-anchor="end" class="tiny">fNx · PHYSICAL SYSTEM VIEW · 0.3</text>
+</svg>

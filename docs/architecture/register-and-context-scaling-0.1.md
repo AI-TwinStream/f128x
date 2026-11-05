@@ -107,6 +107,12 @@ Measure throughput, latency distributions, runnable-thread service, runnable-wor
 5. Run ISA encoding feasibility experiments with 256-entry private register selectors.
 6. Only then select an architectural profile for RTL and toolchain prototyping.
 
+## Initial evidence
+
+The first controlled one-workspace scheduler experiment showed the 256-thread profile sustaining the eight-wide issue ceiling while the 16-thread profile achieved approximately 0.77 IPC under an 80-cycle memory latency and 25% memory-instruction probability. This supports further investigation of 256 threads per workspace, but is not a universal optimum or a physical performance prediction. Full parameters, three-seed results, and limitations are recorded in [Register and context scaling results 0.1](../research/register-and-context-scaling-results-0.1.md).
+
+The experiment held private-register count at 128. It therefore provides no evidence for or against increasing private GPRs from 128 to 256; that remains a separate compiler and register-file study.
+
 ## Decision status
 
 - 128-bit GPR width: retained for this proposal.

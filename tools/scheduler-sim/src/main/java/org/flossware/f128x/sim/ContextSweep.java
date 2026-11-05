@@ -100,7 +100,14 @@ public final class ContextSweep {
             };
         }
 
-        int workspaceCount = (contexts + 15) / 16;
+        int threadsPerWorkspace = Integer.getInteger("f128x.threadsPerWorkspace", 16);
+        int privateRegistersPerThread = Integer.getInteger("f128x.privateRegistersPerThread", 128);
+        int sharedRegistersPerWorkspace = Integer.getInteger("f128x.sharedRegistersPerWorkspace", 128);
+        int registerWidthBits = Integer.getInteger("f128x.registerWidthBits", 128);
+        if (threadsPerWorkspace < 1 || threadsPerWorkspace > 256) {
+            throw new IllegalArgumentException("threadsPerWorkspace must be between 1 and 256");
+        }
+        int workspaceCount = (contexts + threadsPerWorkspace - 1) / threadsPerWorkspace;
         double hotWorkspaceRatio = Double.parseDouble(
                 System.getProperty("f128x.hotWorkspaceRatio", "0.25"));
         double hotMemoryFraction = Double.parseDouble(System.getProperty(
@@ -113,7 +120,10 @@ public final class ContextSweep {
                 "f128x.coldDependencyFraction", Double.toString(dependencyFraction)));
         int hotWorkspaceCount = (int) Math.ceil(workspaceCount * hotWorkspaceRatio);
 
-        if (contexts < 1 || issueWidth < 1 || defaultLatency < 1
+        if (contexts < 1 || privateRegistersPerThread < 1 || privateRegistersPerThread > 256
+                || sharedRegistersPerWorkspace < 1 || sharedRegistersPerWorkspace > 256
+                || registerWidthBits < 8 || registerWidthBits % 8 != 0
+                || issueWidth < 1 || defaultLatency < 1
                 || cycles < 1 || maxOutstanding < 1
                 || memoryQueueCapacity < 1 || !Double.isFinite(memoryFraction)
                 || memoryFraction < 0.0 || memoryFraction > 1.0
@@ -191,7 +201,7 @@ public final class ContextSweep {
                             + "migration and remote-memory penalties cannot be negative");
         }
         ReadyScheduler ready = createReadyScheduler(
-                schedulerStrategy, contexts, clusterCount);
+                schedulerStrategy, contexts, clusterCount, threadsPerWorkspace);
         int effectiveIssueCapacity = (int) Math.min(
                 issueWidth, (long) ready.clusterCount() * clusterIssueWidth);
 
@@ -384,7 +394,7 @@ public final class ContextSweep {
                             (long) cycle + migrationLatency, thread));
                     continue;
                 }
-                int workspace = thread / 16;
+                int workspace = thread / threadsPerWorkspace;
                 double threadMemoryFraction = workspace < hotWorkspaceCount
                         ? hotMemoryFraction : coldMemoryFraction;
                 double threadDependencyFraction = workspace < hotWorkspaceCount
@@ -488,10 +498,10 @@ public final class ContextSweep {
                     pendingClass[thread] = -1;
                     memoryIssues++;
                     classIssues[selectedClass]++;
-                    workspaceIssues[thread / 16]++;
+                    workspaceIssues[thread / threadsPerWorkspace]++;
                     if (cycle >= warmup) {
                         measuredIssued++;
-                        workspaceMeasuredIssues[thread / 16]++;
+                        workspaceMeasuredIssues[thread / threadsPerWorkspace]++;
                     }
                     issuedThisCycle++;
                     clusterIssuedThisCycle[cluster]++;
@@ -513,10 +523,10 @@ public final class ContextSweep {
                     issuedThisCycle++;
                     clusterIssuedThisCycle[cluster]++;
                     clusterIssues[cluster]++;
-                    workspaceIssues[thread / 16]++;
+                    workspaceIssues[thread / threadsPerWorkspace]++;
                     if (cycle >= warmup) {
                         measuredIssued++;
-                        workspaceMeasuredIssues[thread / 16]++;
+                        workspaceMeasuredIssues[thread / threadsPerWorkspace]++;
                     }
                     if (random.nextDouble() < threadDependencyFraction) {
                         int chain = selectReadyDependencyChain(
@@ -650,7 +660,10 @@ public final class ContextSweep {
 
         System.out.printf(
                 "scheduler=%s clusters=%d schedulerSteals=%d schedulerSelections=%d "
-                        + "contexts=%d workspaces=%d hotWorkspaceCount=%d "
+                        + "contexts=%d workspaces=%d threadsPerWorkspace=%d "
+                        + "privateRegistersPerThread=%d sharedRegistersPerWorkspace=%d "
+                        + "registerWidthBits=%d privateRegisterStateBytes=%d "
+                        + "sharedRegisterStateBytes=%d totalRegisterStateBytes=%d hotWorkspaceCount=%d "
                         + "hotWorkspaceRatio=%.3f hotMemoryFraction=%.3f "
                         + "coldMemoryFraction=%.3f hotDependencyFraction=%.3f "
                         + "coldDependencyFraction=%.3f issueWidth=%d memoryFraction=%.3f "
@@ -702,6 +715,12 @@ public final class ContextSweep {
                         + "workspaceIssuePerRunnableWorkspaceCycleJainFairness=%.6f seed=%d%n",
                 ready.name(), ready.clusterCount(), ready.steals(),
                 ready.selectionProbes(), contexts, workspaceCount,
+                threadsPerWorkspace, privateRegistersPerThread, sharedRegistersPerWorkspace,
+                registerWidthBits,
+                (long) contexts * privateRegistersPerThread * (registerWidthBits / 8),
+                (long) workspaceCount * sharedRegistersPerWorkspace * (registerWidthBits / 8),
+                (long) contexts * privateRegistersPerThread * (registerWidthBits / 8)
+                        + (long) workspaceCount * sharedRegistersPerWorkspace * (registerWidthBits / 8),
                 hotWorkspaceCount, hotWorkspaceRatio, hotMemoryFraction,
                 coldMemoryFraction, hotDependencyFraction, coldDependencyFraction,
                 issueWidth, memoryFraction, dependencyFraction,
@@ -768,11 +787,11 @@ public final class ContextSweep {
     }
 
     private static ReadyScheduler createReadyScheduler(
-            String strategy, int contexts, int clusters) {
+            String strategy, int contexts, int clusters, int threadsPerWorkspace) {
         return switch (strategy.toLowerCase(java.util.Locale.ROOT)) {
-            case "fifo" -> new FifoReadyScheduler(contexts);
-            case "hierarchical" -> new HierarchicalReadyScheduler(contexts);
-            case "distributed" -> new DistributedReadyScheduler(contexts, clusters);
+            case "fifo" -> new FifoReadyScheduler(contexts, threadsPerWorkspace);
+            case "hierarchical" -> new HierarchicalReadyScheduler(contexts, threadsPerWorkspace);
+            case "distributed" -> new DistributedReadyScheduler(contexts, clusters, threadsPerWorkspace);
             default -> throw new IllegalArgumentException(
                     "Unknown scheduler strategy: " + strategy);
         };
@@ -781,23 +800,25 @@ public final class ContextSweep {
     private static final class FifoReadyScheduler implements ReadyScheduler {
         private final ArrayDeque<Integer> queue;
         private final int[] workspaceReadyCounts;
+        private final int threadsPerWorkspace;
         private long selectionProbes;
 
-        private FifoReadyScheduler(int capacity) {
+        private FifoReadyScheduler(int capacity, int threadsPerWorkspace) {
+            this.threadsPerWorkspace = threadsPerWorkspace;
             queue = new ArrayDeque<>(capacity);
-            workspaceReadyCounts = new int[(capacity + 15) / 16];
+            workspaceReadyCounts = new int[(capacity + threadsPerWorkspace - 1) / threadsPerWorkspace];
         }
 
         @Override
         public void addFirst(int thread) {
             queue.addFirst(thread);
-            workspaceReadyCounts[thread / 16]++;
+            workspaceReadyCounts[thread / threadsPerWorkspace]++;
         }
 
         @Override
         public void addLast(int thread) {
             queue.addLast(thread);
-            workspaceReadyCounts[thread / 16]++;
+            workspaceReadyCounts[thread / threadsPerWorkspace]++;
         }
 
         @Override
@@ -810,7 +831,7 @@ public final class ContextSweep {
                 return -1;
             }
             int thread = queue.removeFirst();
-            workspaceReadyCounts[thread / 16]--;
+            workspaceReadyCounts[thread / threadsPerWorkspace]--;
             return thread;
         }
 
@@ -880,18 +901,21 @@ public final class ContextSweep {
         private int size;
         private long selectionProbes;
 
-        private HierarchicalReadyScheduler(int contexts) {
-            int workspaces = (contexts + 15) / 16;
+        private final int threadsPerWorkspace;
+
+        private HierarchicalReadyScheduler(int contexts, int threadsPerWorkspace) {
+            this.threadsPerWorkspace = threadsPerWorkspace;
+            int workspaces = (contexts + threadsPerWorkspace - 1) / threadsPerWorkspace;
             workspaceQueues = new ArrayList<>(workspaces);
             for (int i = 0; i < workspaces; i++) {
-                workspaceQueues.add(new ArrayDeque<>(16));
+                workspaceQueues.add(new ArrayDeque<>(threadsPerWorkspace));
             }
             activeWorkspaces = new BitSet(workspaces);
         }
 
         @Override
         public void addFirst(int thread) {
-            int workspace = thread / 16;
+            int workspace = thread / threadsPerWorkspace;
             workspaceQueues.get(workspace).addFirst(thread);
             activeWorkspaces.set(workspace);
             size++;
@@ -899,7 +923,7 @@ public final class ContextSweep {
 
         @Override
         public void addLast(int thread) {
-            int workspace = thread / 16;
+            int workspace = thread / threadsPerWorkspace;
             workspaceQueues.get(workspace).addLast(thread);
             activeWorkspaces.set(workspace);
             size++;
@@ -995,7 +1019,10 @@ public final class ContextSweep {
         private boolean lastPollMigrated;
         private long selectionProbes;
 
-        private DistributedReadyScheduler(int contexts, int clusters) {
+        private final int threadsPerWorkspace;
+
+        private DistributedReadyScheduler(int contexts, int clusters, int threadsPerWorkspace) {
+            this.threadsPerWorkspace = threadsPerWorkspace;
             if (clusters < 1) {
                 throw new IllegalArgumentException("Cluster count must be positive");
             }
@@ -1005,10 +1032,10 @@ public final class ContextSweep {
             }
             homeCluster = new int[contexts];
             ownerCluster = new int[contexts];
-            workspaceReadyCounts = new int[(contexts + 15) / 16];
+            workspaceReadyCounts = new int[(contexts + threadsPerWorkspace - 1) / threadsPerWorkspace];
             remoteThreadsByWorkspace = new int[workspaceReadyCounts.length];
             for (int thread = 0; thread < contexts; thread++) {
-                homeCluster[thread] = (thread / 16) % clusters;
+                homeCluster[thread] = (thread / threadsPerWorkspace) % clusters;
                 ownerCluster[thread] = homeCluster[thread];
             }
         }
@@ -1016,14 +1043,14 @@ public final class ContextSweep {
         @Override
         public void addFirst(int thread) {
             clusterQueues.get(ownerCluster[thread]).addFirst(thread);
-            workspaceReadyCounts[thread / 16]++;
+            workspaceReadyCounts[thread / threadsPerWorkspace]++;
             size++;
         }
 
         @Override
         public void addLast(int thread) {
             clusterQueues.get(ownerCluster[thread]).addLast(thread);
-            workspaceReadyCounts[thread / 16]++;
+            workspaceReadyCounts[thread / threadsPerWorkspace]++;
             size++;
         }
 
@@ -1050,11 +1077,11 @@ public final class ContextSweep {
             }
 
             int thread = clusterQueues.get(source).removeFirst();
-            workspaceReadyCounts[thread / 16]--;
+            workspaceReadyCounts[thread / threadsPerWorkspace]--;
             if (source != targetCluster) {
                 steals++;
                 migrations++;
-                int workspace = thread / 16;
+                int workspace = thread / threadsPerWorkspace;
                 if (ownerCluster[thread] == homeCluster[thread]) {
                     remoteThreadsByWorkspace[workspace]++;
                 } else if (targetCluster == homeCluster[thread]) {

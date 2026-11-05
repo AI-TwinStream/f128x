@@ -1,4 +1,4 @@
-package org.flossware.f128x.sim;
+package org.flossware.fnx.sim;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -55,21 +55,21 @@ public final class ContextSweep {
                 ? Double.parseDouble(args[13]) : 0.0;
         int dependencyLatency = args.length >= 15
                 ? Integer.parseInt(args[14]) : 1;
-        int dependencyChains = Integer.getInteger("f128x.dependencyChains", 1);
+        int dependencyChains = Integer.getInteger("fnx.dependencyChains", 1);
         int memoryCompletionRate = args.length == 14
                 ? Integer.parseInt(args[13])
                 : args.length == 16 ? Integer.parseInt(args[15])
                 : Integer.MAX_VALUE;
 
-        boolean cacheHierarchyEnabled = Boolean.getBoolean("f128x.cache.enabled");
-        int cacheLineBytes = Integer.getInteger("f128x.cache.lineBytes", 64);
-        int cacheL1Bytes = Integer.getInteger("f128x.cache.l1Bytes", 32 * 1024);
-        int cacheL1Ways = Integer.getInteger("f128x.cache.l1Ways", 8);
-        int cacheL2Bytes = Integer.getInteger("f128x.cache.l2Bytes", 1024 * 1024);
-        int cacheL2Ways = Integer.getInteger("f128x.cache.l2Ways", 16);
-        int cacheL1Latency = Integer.getInteger("f128x.cache.l1Latency", 4);
-        int cacheL2Latency = Integer.getInteger("f128x.cache.l2Latency", 20);
-        int cacheDramLatency = Integer.getInteger("f128x.cache.dramLatency", 200);
+        boolean cacheHierarchyEnabled = Boolean.getBoolean("fnx.cache.enabled");
+        int cacheLineBytes = Integer.getInteger("fnx.cache.lineBytes", 64);
+        int cacheL1Bytes = Integer.getInteger("fnx.cache.l1Bytes", 32 * 1024);
+        int cacheL1Ways = Integer.getInteger("fnx.cache.l1Ways", 8);
+        int cacheL2Bytes = Integer.getInteger("fnx.cache.l2Bytes", 1024 * 1024);
+        int cacheL2Ways = Integer.getInteger("fnx.cache.l2Ways", 16);
+        int cacheL1Latency = Integer.getInteger("fnx.cache.l1Latency", 4);
+        int cacheL2Latency = Integer.getInteger("fnx.cache.l2Latency", 20);
+        int cacheDramLatency = Integer.getInteger("fnx.cache.dramLatency", 200);
         MemoryClass[] memoryClasses;
         if (cacheHierarchyEnabled) {
             memoryClasses = new MemoryClass[] {
@@ -100,24 +100,24 @@ public final class ContextSweep {
             };
         }
 
-        int threadsPerWorkspace = Integer.getInteger("f128x.threadsPerWorkspace", 16);
-        int privateRegistersPerThread = Integer.getInteger("f128x.privateRegistersPerThread", 128);
-        int sharedRegistersPerWorkspace = Integer.getInteger("f128x.sharedRegistersPerWorkspace", 128);
-        int registerWidthBits = Integer.getInteger("f128x.registerWidthBits", 128);
+        int threadsPerWorkspace = Integer.getInteger("fnx.threadsPerWorkspace", 16);
+        int privateRegistersPerThread = Integer.getInteger("fnx.privateRegistersPerThread", 128);
+        int sharedRegistersPerWorkspace = Integer.getInteger("fnx.sharedRegistersPerWorkspace", 128);
+        int registerWidthBits = Integer.getInteger("fnx.registerWidthBits", 128);
         if (threadsPerWorkspace < 1 || threadsPerWorkspace > 256) {
             throw new IllegalArgumentException("threadsPerWorkspace must be between 1 and 256");
         }
         int workspaceCount = (contexts + threadsPerWorkspace - 1) / threadsPerWorkspace;
         double hotWorkspaceRatio = Double.parseDouble(
-                System.getProperty("f128x.hotWorkspaceRatio", "0.25"));
+                System.getProperty("fnx.hotWorkspaceRatio", "0.25"));
         double hotMemoryFraction = Double.parseDouble(System.getProperty(
-                "f128x.hotMemoryFraction", Double.toString(memoryFraction)));
+                "fnx.hotMemoryFraction", Double.toString(memoryFraction)));
         double coldMemoryFraction = Double.parseDouble(System.getProperty(
-                "f128x.coldMemoryFraction", Double.toString(memoryFraction)));
+                "fnx.coldMemoryFraction", Double.toString(memoryFraction)));
         double hotDependencyFraction = Double.parseDouble(System.getProperty(
-                "f128x.hotDependencyFraction", Double.toString(dependencyFraction)));
+                "fnx.hotDependencyFraction", Double.toString(dependencyFraction)));
         double coldDependencyFraction = Double.parseDouble(System.getProperty(
-                "f128x.coldDependencyFraction", Double.toString(dependencyFraction)));
+                "fnx.coldDependencyFraction", Double.toString(dependencyFraction)));
         int hotWorkspaceCount = (int) Math.ceil(workspaceCount * hotWorkspaceRatio);
 
         if (contexts < 1 || privateRegistersPerThread < 1 || privateRegistersPerThread > 256
@@ -148,36 +148,36 @@ public final class ContextSweep {
                 || coldDependencyFraction < 0.0 || coldDependencyFraction > 1.0) {
             throw new IllegalArgumentException("Invalid simulation parameter");
         }
-        String schedulerStrategy = System.getProperty("f128x.scheduler", "fifo");
+        String schedulerStrategy = System.getProperty("fnx.scheduler", "fifo");
         int defaultClusters = Math.max(1, Math.min(8, workspaceCount));
-        int clusterCount = Integer.getInteger("f128x.clusters", defaultClusters);
+        int clusterCount = Integer.getInteger("fnx.clusters", defaultClusters);
         int clusterIssueWidth = Integer.getInteger(
-                "f128x.clusterIssueWidth", issueWidth);
+                "fnx.clusterIssueWidth", issueWidth);
         int migrationLatency = Integer.getInteger(
-                "f128x.migrationLatency", 0);
+                "fnx.migrationLatency", 0);
         int remoteMemoryLatencyPenalty = Integer.getInteger(
-                "f128x.remoteMemoryLatencyPenalty", 0);
+                "fnx.remoteMemoryLatencyPenalty", 0);
         int memoryRequestBytes = Integer.getInteger(
-                "f128x.memoryRequestBytes", 64);
+                "fnx.memoryRequestBytes", 64);
         int memoryRequestMinBytes = Integer.getInteger(
-                "f128x.memoryRequestMinBytes", memoryRequestBytes);
+                "fnx.memoryRequestMinBytes", memoryRequestBytes);
         int memoryRequestMaxBytes = Integer.getInteger(
-                "f128x.memoryRequestMaxBytes", memoryRequestBytes);
-        int memoryChannels = Integer.getInteger("f128x.memoryChannels", 1);
+                "fnx.memoryRequestMaxBytes", memoryRequestBytes);
+        int memoryChannels = Integer.getInteger("fnx.memoryChannels", 1);
         int memoryBanksPerChannel = Integer.getInteger(
-                "f128x.memoryBanksPerChannel", 1);
+                "fnx.memoryBanksPerChannel", 1);
         int memoryBandwidthBytesPerCycle = Integer.getInteger(
-                "f128x.memoryBandwidthBytesPerCycle", 0);
+                "fnx.memoryBandwidthBytesPerCycle", 0);
         int bankConflictPenalty = Integer.getInteger(
-                "f128x.bankConflictPenalty", 0);
-        String addressPatternName = System.getProperty("f128x.addressPattern", "random");
-        String addressMappingName = System.getProperty("f128x.addressMapping", "low_order");
+                "fnx.bankConflictPenalty", 0);
+        String addressPatternName = System.getProperty("fnx.addressPattern", "random");
+        String addressMappingName = System.getProperty("fnx.addressMapping", "low_order");
         MemoryAddressing.Pattern addressPattern =
                 MemoryAddressing.Pattern.parse(addressPatternName);
         MemoryAddressing.Mapping addressMapping =
                 MemoryAddressing.Mapping.parse(addressMappingName);
-        long addressStride = Long.getLong("f128x.addressStride", 64L);
-        long addressRegionBytes = Long.getLong("f128x.addressRegionBytes", 1L << 20);
+        long addressStride = Long.getLong("fnx.addressStride", 64L);
+        long addressRegionBytes = Long.getLong("fnx.addressRegionBytes", 1L << 20);
         long[] memoryAddressSequences = new long[contexts];
         CacheSweep.Hierarchy cacheHierarchy = cacheHierarchyEnabled
                 ? new CacheSweep.Hierarchy(contexts, cacheL1Bytes, cacheL1Ways,

@@ -1,4 +1,4 @@
-> **Historical simulation note (2026-11-05):** This result set belongs to the f128x scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
+> **Historical simulation note (2026-11-05):** This result set belongs to the 128-bit research profile scheduler model and its historical parameters. It is retained for reproducibility and is not a family-wide fNx performance claim.
 
 # Scheduler Simulation 0.4 Results
 
@@ -11,7 +11,7 @@
 
 This report records the first experiments after extending `ContextSweep` with memory latency classes, finite shared outstanding-request capacity, queue-credit backpressure, and a coarse serialized dependency-stall model.
 
-The simulator is deliberately not a cache hierarchy, memory controller, bandwidth model, or cycle-accurate implementation of an f128x core.
+The simulator is deliberately not a cache hierarchy, memory controller, bandwidth model, or cycle-accurate implementation of an 128-bit research profile core.
 
 ## 2. Multi-seed context and MLP sweep
 

@@ -9,7 +9,9 @@ The illustration presents the architecture at three scales: a conceptual process
 **Date:** 2026-11-05  
 **Status:** Conceptual packaging view; not a frozen chip, board, or interconnect specification
 
-**Revision note:** The Markdown filename is retained for link stability; the page content and companion SVG are revision 0.3.\n\nThe fNx family permits different native-width CPU units to coexist in a system. Each CPU unit has exactly one native width N. Width interoperability is provided by a common width-neutral fabric and management contract, not by mixing native widths inside one CPU unit.
+**Revision note:** The Markdown filename is retained for link stability; the page content and companion SVG are revision 0.3.
+
+The fNx family permits different native-width CPU units to coexist in a system. Each CPU unit has exactly one native width N. Width interoperability is provided by a common width-neutral fabric and management contract, not by mixing native widths inside one CPU unit.
 
 ## System view
 

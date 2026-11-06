@@ -134,7 +134,7 @@
 <!-- board modules -->
 <rect x="88" y="804" width="340" height="190" rx="12" class="greenBlock"/>
 <rect x="452" y="804" width="340" height="190" rx="12" class="greenBlock"/>
-<rect x="816" y="804" width="340" height="190" rx="12" class="purpleBlock"/>
+<rect x="816" y="804" width="340" height="190" rx="12" class="greenBlock"/>
 <rect x="1180" y="804" width="532" height="190" rx="12" class="blueBlock"/>
 <g text-anchor="middle">
  <text x="258" y="840" class="blockTitle">CPU board A</text><text x="258" y="866" class="blockSub">fNx CPU unit(s)</text><text x="258" y="888" class="blockSub">one native width per unit</text><text x="258" y="935" class="small">Board-local memory</text><text x="258" y="958" class="small">FCP / board services</text>
@@ -151,9 +151,11 @@
 <path d="M900 994 V1020" class="trace"/>
 
 <!-- management plane -->
-<path d="M1600 534 V566 H1680 V784 H1600 V804" class="management"/>
-<rect x="1380" y="768" width="220" height="26" rx="6" fill="#fff0c8" stroke="#c49a4b"/>
-<text x="1490" y="786" text-anchor="middle" class="tiny" style="font-weight:800">INDEPENDENT FCP CONTROL</text>
+<path d="M1600 534 V568 H1740 V780" class="management" marker-end="none"/>
+<path d="M258 780 H1740" class="management" marker-end="none"/>
+<path d="M258 780 V804 M622 780 V804 M986 780 V804 M1446 780 V804" class="management"/>
+<rect x="1330" y="760" width="330" height="18" rx="5" fill="#fff0c8" stroke="#c49a4b"/>
+<text x="1495" y="773" text-anchor="middle" class="tiny" style="font-weight:800">FCP MANAGEMENT TO ALL BOARD / FABRIC SEGMENTS</text>
 
 <!-- footer legend -->
 <rect x="38" y="1130" width="1724" height="92" rx="12" fill="#f8fbff" stroke="#9bb1c7" stroke-width="1.5"/>
@@ -161,7 +163,7 @@
 <rect x="178" y="1147" width="24" height="18" rx="4" class="blueBlock"/><text x="212" y="1161" class="small">Compute / fabric</text>
 <rect x="390" y="1147" width="24" height="18" rx="4" class="greenBlock"/><text x="424" y="1161" class="small">Board / memory</text>
 <rect x="600" y="1147" width="24" height="18" rx="4" class="goldBlock"/><text x="634" y="1161" class="small">Memory interface / services</text>
-<rect x="900" y="1147" width="24" height="18" rx="4" class="purpleBlock"/><text x="934" y="1161" class="small">Architectural state / expansion</text>
+<rect x="900" y="1147" width="24" height="18" rx="4" class="purpleBlock"/><text x="934" y="1161" class="small">Architectural state</text>
 <path d="M1240 1156 H1290" class="trace"/><text x="1302" y="1161" class="small">Data / transaction path</text>
 <path d="M1510 1156 H1560" class="management"/><text x="1572" y="1161" class="small">Management</text>
 <text x="68" y="1197" class="tiny">Conceptual architecture only. No chip count, cache design, memory size, lane width, link rate, or electrical topology is implied.</text>

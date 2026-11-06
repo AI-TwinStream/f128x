@@ -1,6 +1,6 @@
 # fNx Architecture Family Overview 0.1
 
-![fNx architecture family overview](images/fnx-architecture-family-overview-0.1.svg)
+![Native-width fNx processors sharing one ISA and a width-neutral hierarchical fabric, with memory, I/O, and an independent FCP management plane.](images/fnx-architecture-family-overview-0.1.svg)
 
 **Status:** Working architectural direction; conceptual overview, not a frozen ISA, microarchitecture, or physical platform specification.
 

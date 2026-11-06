@@ -41,7 +41,7 @@
   <rect x="92" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="326" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="560" y="265" width="216" height="126" rx="18" class="node"/>
-  <rect x="794" y="265" width="216" height="126" rx="18" class="node"/>
+  <rect x="794" y="265" width="216" height="126" rx="18" class="node"/>\n  <rect x="798" y="269" width="208" height="118" rx="14" fill="none" stroke="#ffc77d" stroke-width="2.5" stroke-dasharray="7 5"/>
   <rect x="1028" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="1262" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="1496" y="265" width="212" height="126" rx="18" class="node"/>
@@ -50,7 +50,7 @@
   <text x="200" y="316" class="cardTitle">f16x</text><text x="200" y="349" class="cardSub">16-bit native width</text>
   <text x="434" y="316" class="cardTitle">f32x</text><text x="434" y="349" class="cardSub">32-bit native width</text>
   <text x="668" y="316" class="cardTitle">f64x</text><text x="668" y="349" class="cardSub">64-bit native width</text>
-  <text x="902" y="316" class="cardTitle">128-bit member</text><text x="902" y="349" class="cardSub">128-bit native width</text>
+  <text x="902" y="310" class="cardTitle">128-bit member</text><text x="902" y="340" class="cardSub">128-bit native width</text><text x="902" y="370" class="tiny" style="fill:#ffc77d;font-weight:750">NAMING TBD</text>
   <text x="1136" y="316" class="cardTitle">f256x</text><text x="1136" y="349" class="cardSub">256-bit native width</text>
   <text x="1370" y="316" class="cardTitle">f512x</text><text x="1370" y="349" class="cardSub">512-bit native width</text>
   <text x="1602" y="316" class="cardTitle">f1024x</text><text x="1602" y="349" class="cardSub">1024-bit native width</text>

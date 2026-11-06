@@ -41,7 +41,8 @@
   <rect x="92" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="326" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="560" y="265" width="216" height="126" rx="18" class="node"/>
-  <rect x="794" y="265" width="216" height="126" rx="18" class="node"/>\n  <rect x="798" y="269" width="208" height="118" rx="14" fill="none" stroke="#ffc77d" stroke-width="2.5" stroke-dasharray="7 5"/>
+  <rect x="794" y="265" width="216" height="126" rx="18" class="node"/>
+  <rect x="798" y="269" width="208" height="118" rx="14" fill="none" stroke="#ffc77d" stroke-width="2.5" stroke-dasharray="7 5"/>
   <rect x="1028" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="1262" y="265" width="216" height="126" rx="18" class="node"/>
   <rect x="1496" y="265" width="212" height="126" rx="18" class="node"/>
@@ -84,7 +85,7 @@
 <text x="943" y="910" text-anchor="middle" class="cardTitle">I/O boards</text>
 <text x="943" y="940" text-anchor="middle" class="cardSub">Storage · networking · devices</text>
 <text x="943" y="963" text-anchor="middle" class="small">protocol adapters</text>
-<path d="M278 871 V744 H900 M604 871 V744 M943 871 V744" fill="none" stroke="#71d7d0" stroke-width="2.5" opacity=".75"/>
+<path d="M278 871 V744 H943 M604 871 V744 M943 871 V744 M900 744 V722" fill="none" stroke="#71d7d0" stroke-width="2.5" opacity=".75" marker-end="url(#arrow)"/>
 <text x="1204" y="845" class="eyebrow" style="fill:#ffc77d">INDEPENDENT CONTROL PLANE</text>
 <rect x="1205" y="871" width="468" height="112" rx="14" fill="#382f2b" stroke="#a97848" stroke-width="1.5"/>
 <text x="1439" y="910" text-anchor="middle" class="cardTitle">FCP</text>

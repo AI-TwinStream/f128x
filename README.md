@@ -35,6 +35,10 @@ At those values, private register-state capacity is 32 MiB and workspace-shared 
 
 The scheduler and board/fabric experiments currently use 128-bit member-oriented models and naming. Their measured results are sensitivity studies for those model assumptions, not performance predictions for every fNx width.
 
+
+![fNx CPU concept illustration](https://github.com/user-attachments/assets/0fde519b-5cf7-4909-9c3c-4e2622a3ce32)
+
+*Contributor-provided concept illustration. It is illustrative only and does not define the physical implementation.*
 ## Normative working specifications
 
 - [fNx family and architectural contract](docs/architecture/fnx-family-and-architectural-contract-0.1.md)

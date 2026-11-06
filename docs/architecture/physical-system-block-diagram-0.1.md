@@ -1,7 +1,15 @@
-# fNx Physical System Block Diagram 0.2
+# fNx Physical System Block Diagram 0.3
+
+![fNx modular physical architecture](images/fnx-modular-physical-architecture-0.3.svg)
+
+**How to read this page:** This is a conceptual packaging and connectivity view. It explores one possible physical organization beneath the family-level architectural contract; it does not freeze chip, board, or interconnect design.
+
+The illustration presents the architecture at three scales: a conceptual processor unit, a CPU board assembly, and a hierarchical system backplane. It is a visual companion to the detailed boundaries below, not an additional hardware commitment.
 
 **Date:** 2026-11-05  
 **Status:** Conceptual packaging view; not a frozen chip, board, or interconnect specification
+
+**Revision note:** The Markdown filename is retained for link stability; the page content and companion SVG are revision 0.3.
 
 The fNx family permits different native-width CPU units to coexist in a system. Each CPU unit has exactly one native width N. Width interoperability is provided by a common width-neutral fabric and management contract, not by mixing native widths inside one CPU unit.
 
@@ -12,11 +20,11 @@ flowchart TB
   subgraph SYS["fNx system"]
     subgraph ROOT["Root backplane / fabric"]
       FAB["Width-neutral hierarchical fabric\ntransactions · routing · flow control · faults"]
-      ROOTFCP["Root FCP\ndiscovery · policy · telemetry"]
+      ROOTFCP["Root FCP\ndiscovery · capabilities · telemetry"]
     end
     subgraph B0["CPU backplane / board 0"]
       CPU0["fNx CPU unit(s)\none native width per unit"]
-      FCP0["f16x / fNx FCP candidate\nindependent management domain"]
+      FCP0["FCP (native width TBD)\nindependent management domain"]
       MEM0["Local memory controller and memory"]
       CPU0 <--> MEM0
       FCP0 -. control .-> CPU0
@@ -65,7 +73,9 @@ The number and organization of those blocks are implementation choices. A member
 
 ## Control processor and management plane
 
-The proposed fNx Control Processor (FCP) is an auxiliary processor using the fNx ISA family. It is a separate CPU unit with its own single native width. It manages discovery, capability inventory, power/reset sequencing, health, telemetry, fault handling, and board/fabric coordination.
+The proposed fNx Control Processor (FCP) is an auxiliary processor using the fNx ISA family. It is a separate CPU unit with its own single native width. Its exact native width is not selected here. It manages discovery, capability inventory, power/reset sequencing, health, telemetry, fault handling, and board/fabric coordination.
+
+The FCP is therefore neither inherently an f16x unit nor width-agnostic: it is an fNx processor with one native width, selected as part of a concrete implementation. The management protocol and responsibilities are independent of that width.
 
 The FCP should have sufficiently independent power, clock, reset, and connectivity to manage a board while its main CPUs are unavailable. Exact electrical implementation remains open.
 

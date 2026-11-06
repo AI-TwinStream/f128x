@@ -151,8 +151,8 @@
 <path d="M900 994 V1020" class="trace"/>
 
 <!-- management plane -->
-<path d="M1600 534 V568 H1740 V780" class="management" marker-end="none"/>
-<path d="M258 780 H1740" class="management" marker-end="none"/>
+<path d="M1600 534 V568 H1740 V780" class="management" style="marker-end:none"/>
+<path d="M258 780 H1740" class="management" style="marker-end:none"/>
 <path d="M258 780 V804 M622 780 V804 M986 780 V804 M1446 780 V804" class="management"/>
 <rect x="1330" y="760" width="330" height="18" rx="5" fill="#fff0c8" stroke="#c49a4b"/>
 <text x="1495" y="773" text-anchor="middle" class="tiny" style="font-weight:800">FCP MANAGEMENT TO ALL BOARD / FABRIC SEGMENTS</text>

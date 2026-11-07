@@ -121,6 +121,9 @@ The FCP must not become an undocumented bypass around CPU privilege, memory prot
 
 ## 10. Related specifications
 
+- [Width-neutral fabric and backplane contract](width-neutral-fabric-and-backplane-contract-proposal-0.1.md)
+- [Workspace and thread lifecycle contract](workspace-and-thread-lifecycle-contract-proposal-0.1.md)
+
 - [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md)
 - [fNx P-Code and application compatibility](fnx-pcode-and-compatibility-0.1.md)
 - [Physical system block diagram](physical-system-block-diagram-0.1.md)

@@ -22,10 +22,10 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 
 ## 1. Decisions to ratify
 
-**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) documents the global namespace constraints and unresolved minimum-width/encoding alternatives. This is a proposal, not a ratified decision. The next step is comparative encoding feasibility work; no opcode values have been assigned.
+**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) now records N-bit opcode width as the working architectural direction. Each member directly represents the opcode identifiers that fit in its N-bit field; smaller members therefore expose a smaller directly encodable portion of the global namespace. Supported N bounds, allocation policy, and instruction encoding remain open. No opcode values have been assigned.
 
-- [ ] Decide minimum N (16 bits currently favored; f8x remains open).
-- [ ] Ratify N-bit opcode field and finite global opcode registry.
+- [ ] Define the supported minimum and maximum N values.
+- [ ] Ratify N-bit opcode fields and the finite global opcode registry, including allocation rules for identifiers representable only by wider members.
 - [ ] Specify opcode allocation, reserved values, illegal-instruction behavior, and ISA revision rules.
 - [ ] Specify instruction length, formats, operand fields, register selectors, immediates, and extension words.
 - [ ] Decide whether register counts and workspace/thread capacities are family invariants or member-specific.

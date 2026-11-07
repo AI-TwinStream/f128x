@@ -22,12 +22,13 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 
 ## 1. Decisions to ratify
 
-**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) records N-bit opcode width as the working architectural direction. [Instruction encoding feasibility study](architecture/instruction-encoding-feasibility-0.1.md) compares candidate formats while preserving that rule and makes the opcode-field cost explicit at large N. [Opcode allocation and encoding decision analysis](architecture/opcode-allocation-and-encoding-decision-analysis-0.1.md) compares global allocation policies and quantifies a small illustrative instruction corpus. Each member directly represents identifiers that fit in its N-bit field. Supported N bounds, global allocation policy, and final instruction encoding remain open. [Address-space and memory-model proposal](architecture/address-space-and-memory-model-proposal-0.1.md) now collects the N-bit virtual-address, translation, protection, memory-ordering, atomicity, and coherence contracts. [Exception and interrupt model proposal](architecture/exception-and-interrupt-model-proposal-0.1.md) now collects precise-fault, trap, interrupt, reset, and privilege requirements. No opcode values have been assigned.
+**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) records N-bit opcode width as the working architectural direction. [Instruction encoding feasibility study](architecture/instruction-encoding-feasibility-0.1.md) compares candidate formats while preserving that rule and makes the opcode-field cost explicit at large N. [Opcode allocation and encoding decision analysis](architecture/opcode-allocation-and-encoding-decision-analysis-0.1.md) compares global allocation policies and quantifies a small illustrative instruction corpus. Each member directly represents identifiers that fit in its N-bit field. Supported N bounds, global allocation policy, and final instruction encoding remain open. [Address-space and memory-model proposal](architecture/address-space-and-memory-model-proposal-0.1.md) now collects the N-bit virtual-address, translation, protection, memory-ordering, atomicity, and coherence contracts. [Exception and interrupt model proposal](architecture/exception-and-interrupt-model-proposal-0.1.md) now collects precise-fault, trap, interrupt, reset, and privilege requirements. [Workspace and thread lifecycle contract proposal](architecture/workspace-and-thread-lifecycle-contract-proposal-0.1.md) now defines logical ownership, generation-safe identity, lifecycle, residency, migration, shared-register semantics, and resource discovery requirements. No opcode values have been assigned.
 
 - [ ] Define the supported minimum and maximum N values.
 - [ ] Ratify N-bit opcode fields and the finite global opcode registry, including allocation rules for identifiers representable only by wider members.
 - [ ] Specify opcode allocation, reserved values, illegal-instruction behavior, and ISA revision rules.
 - [ ] Select and specify instruction length, formats, operand fields, register selectors, immediates, and extension rules using the encoding feasibility study.
+- [x] Draft workspace/thread ownership, identity, lifecycle, residency, migration, and resource-discovery contract for review.
 - [ ] Decide whether register counts and workspace/thread capacities are family invariants or member-specific.
 - [ ] Ratify N-bit virtual-address semantics and physical-address translation contract.
 - [ ] Define the common backplane transaction and management protocols.
@@ -73,9 +74,12 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 
 ## 5. Workspace, context, and scheduling
 
-- [ ] Define complete architectural thread/workspace state.
-- [ ] Define context residency, backing, save/restore, migration, and privileged observability.
-- [ ] Define workspace ownership, isolation, virtualization, lifecycle, and stale-ID prevention.
+- [x] Draft complete architectural thread/workspace state and ownership requirements.
+- [ ] Ratify complete architectural thread/workspace state.
+- [x] Draft context residency, backing, save/restore, migration, and privileged observability requirements.
+- [ ] Define normative context residency, backing, save/restore, migration, and privileged observability.
+- [x] Draft workspace ownership, isolation, lifecycle, and stale-identity prevention requirements.
+- [ ] Define normative workspace ownership, isolation, virtualization, lifecycle, and stale-ID prevention.
 - [ ] Define shared-register atomicity and memory-ordering semantics.
 - [ ] Define scheduler fairness, progress, interrupt, and exception routing.
 - [ ] Justify member-specific context capacities with workload modelling.

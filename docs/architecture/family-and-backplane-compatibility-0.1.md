@@ -33,6 +33,8 @@ Backplanes may be connected hierarchically, including backplanes of backplanes. 
 
 ## Compatibility layers
 
+See the [width-neutral fabric and backplane contract](width-neutral-fabric-and-backplane-contract-proposal-0.1.md) for the proposed endpoint and transaction semantics.
+
 Compatibility is not a single property:
 
 1. **ISA compatibility:** common instruction semantics and global opcode assignments.

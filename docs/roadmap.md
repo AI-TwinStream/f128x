@@ -13,7 +13,7 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 - [x] Establish N-bit GPRs, native arithmetic, pointers, and virtual addresses as the working family direction.
 - [x] Allow physical address width/capacity to be smaller than N, with translation/protection.
 - [x] Establish one native width per CPU unit and mixed-width system interoperability through a width-neutral fabric.
-- [x] Define the current N-bit opcode-field direction and immutable opcode assignments.
+- [x] Record N-bit opcode-field direction and proposed immutable-allocation rules; ratification remains open.
 - [x] Define compiler/installer instruction expansion as the preferred older-member compatibility path where exact equivalence exists.
 - [x] Propose fNx P-Code and a portable `.fnx` application package.
 - [x] Propose install-time AOT compilation, optional JIT, and a regenerable native-code cache.
@@ -22,7 +22,7 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 
 ## 1. Decisions to ratify
 
-**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) records N-bit opcode width as the working architectural direction. [Instruction encoding feasibility study](architecture/instruction-encoding-feasibility-0.1.md) compares candidate formats while preserving that rule and makes the opcode-field cost explicit at large N. Each member directly represents identifiers that fit in its N-bit field. Supported N bounds, global allocation policy, and final instruction encoding remain open. No opcode values have been assigned.
+**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) records N-bit opcode width as the working architectural direction. [Instruction encoding feasibility study](architecture/instruction-encoding-feasibility-0.1.md) compares candidate formats while preserving that rule and makes the opcode-field cost explicit at large N. [Opcode allocation and encoding decision analysis](architecture/opcode-allocation-and-encoding-decision-analysis-0.1.md) compares global allocation policies and quantifies a small illustrative instruction corpus. Each member directly represents identifiers that fit in its N-bit field. Supported N bounds, global allocation policy, and final instruction encoding remain open. No opcode values have been assigned.
 
 - [ ] Define the supported minimum and maximum N values.
 - [ ] Ratify N-bit opcode fields and the finite global opcode registry, including allocation rules for identifiers representable only by wider members.
@@ -37,7 +37,7 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 
 - [ ] Define instruction semantics and machine-readable opcode registry.
 - [x] Establish comparative instruction encoding feasibility study and evaluation criteria.
-- [ ] Encode representative instruction corpus and measure code density, fetch cost, and decode complexity across N values.
+- [x] Add an illustrative corpus and first-pass encoding-size comparison; full program-level measurement remains open.\n- [ ] Encode representative instruction corpus and measure code density, fetch cost, and decode complexity across N values.
 - [ ] Define arithmetic, overflow, flags, exceptions, and sub-width operations.
 - [ ] Define memory model, atomics, fences, and ordering across registers/memory/fabric.
 - [ ] Define privilege, protection, traps, interrupts, and reset state.

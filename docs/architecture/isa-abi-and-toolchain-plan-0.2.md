@@ -9,7 +9,7 @@ fNx is one architecture family whose member name encodes its native architectura
 
 For an fNx member, general-purpose registers, native arithmetic, native data width, pointers, and virtual addresses are N bits. Physical address width and physical memory capacity may be smaller and are handled through translation and protection.
 
-The minimum N is still open, with 16 bits currently favored provisionally. The current opcode-field direction is N bits, using one finite global opcode registry across all members. Existing opcode assignments and meanings must never change. New instructions receive new unique opcode values.
+The supported minimum and maximum N remain open. The working architectural rule is that the opcode field is N bits, consistent with N governing native architectural widths. One finite global opcode registry is shared across all members; each member directly represents identifiers within its N-bit range. Existing standardized assignments and meanings must never change. New instructions receive new unique opcode values.
 
 **Opcode width is not instruction length.** Instruction formats, operand fields, register selectors, immediates, extension words, and fetch alignment remain unresolved. Do not assume every operand field must be N bits.
 
@@ -109,8 +109,8 @@ The ABI must not assume all architectural registers are equally cheap or physica
 
 ## 8. Milestones
 
-1. Ratify minimum N and the global opcode registry/field direction.
-2. Complete representative instruction encoding and instruction-length feasibility studies.
+1. Define supported minimum/maximum N and ratify the global opcode registry with N-bit opcode fields.
+2. Complete representative instruction encoding and instruction-length feasibility studies while preserving the N-bit opcode rule.
 3. Specify N-bit pointer/virtual-address semantics and physical-address translation contract.
 4. Specify P-Code execution model, package manifest, validation, and ABI.
 5. Build ISA registry, reference interpreter, assembler, disassembler, and conformance tests.

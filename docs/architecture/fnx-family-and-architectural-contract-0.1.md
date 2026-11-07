@@ -9,7 +9,7 @@
 
 Examples include `f16x`, `f32x`, `f64x`, a member with a 128-bit native width, `f256x`, `f512x`, and `f1024x`. These are width-specific members of one family, not independent architectures with unrelated ISAs.
 
-The minimum supported N is still under consideration. A 16-bit minimum is the current leading candidate because it provides a useful opcode namespace without introducing a separate fixed-width opcode field. It is a candidate, not yet a ratified minimum. Smaller widths such as f8x remain a question for the family specification.
+The supported N range remains to be specified. The architectural rule is that N governs native-width architectural elements, including the opcode field. Smaller members therefore have smaller directly representable opcode spaces; that is a capability and portability constraint, not by itself a reason to violate the N-bit rule.
 
 Use these terms consistently:
 
@@ -92,7 +92,7 @@ Rules under consideration:
 - Native execution of an unsupported opcode raises a defined illegal-instruction/unsupported-operation exception.
 - Portable code may be compiled or expanded to an older supported instruction sequence before execution, where an exact compatible implementation exists.
 
-A 16-bit minimum N is currently favored because it yields 65,536 representable opcode values without adding a separate fixed 8-bit opcode scheme. This remains provisional until the minimum N and opcode format are formally decided.
+The opcode field is N bits. Its directly representable numeric range is therefore 0 through 2^N−1. A smaller member can represent a smaller subset of the global registry; operations whose identifiers are outside that member's range are unavailable for direct native encoding on that member and require an exact compiler/runtime expansion where one exists. No escape or fixed-width exception is implied by this rule.
 
 **Do not infer instruction length from opcode width.** The overall instruction format, instruction length, operand fields, register selectors, immediates, extension words, and fetch alignment remain unresolved. In particular, an N-bit opcode does not require every operand field to be N bits.
 
@@ -138,9 +138,9 @@ The current 128-bit member workspace/thread/register counts are member-specific 
 | GPR/arithmetic/data width | N bits | Working invariant |
 | Pointer/virtual-address width | N bits | Working invariant |
 | Physical address width | May be smaller than N | Working direction |
-| Opcode field width | N bits | Leading design direction |
+| Opcode field width | N bits | Selected working direction |
 | Global opcode registry | One finite shared namespace | Working direction |
-| Minimum N | 16 bits favored; f8x still unresolved | Provisional |
+| Supported N range | Not yet bounded; N-bit rule applies to every member | Open |
 | Instruction length and operand format | Not decided | Open |
 | Register counts across members | Not decided as a family invariant | Open |
 | Backplane hierarchy | Supported by common width-neutral contract | Working requirement |

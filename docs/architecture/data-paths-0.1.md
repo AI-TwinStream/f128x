@@ -96,6 +96,9 @@ The architecture must define:
 
 The current scheduler and fabric simulations use 128-bit member-oriented assumptions and Java package/property names. They do not establish family-wide performance, N-bit translation behavior, cache coherence, protection, or a final ISA memory model.
 
+- [Width-neutral fabric and backplane contract](width-neutral-fabric-and-backplane-contract-proposal-0.1.md)
+- [Address-space and memory-model proposal](address-space-and-memory-model-proposal-0.1.md)
+- [Exception and interrupt model proposal](exception-and-interrupt-model-proposal-0.1.md)
 ## Related material
 
 - [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md)

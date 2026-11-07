@@ -7,7 +7,7 @@ This document is retained as the original family/backplane study. Its earlier as
 
 ## Current family model
 
-fNx is the architecture family. N is the native architectural width in bits. Candidate members include f16x, f32x, f64x, the 128-bit member, f256x, f512x, and f1024x. The minimum N is not frozen; 16 bits is currently favored, while f8x remains an open question.
+fNx is the architecture family. N is the native architectural width in bits. Candidate members include f16x, f32x, f64x, the 128-bit member, f256x, f512x, and f1024x. The supported minimum and maximum N are not frozen. The N-bit rule applies to every member, including the opcode field; smaller members consequently have smaller directly representable opcode ranges.
 
 All members share one ISA and one global opcode registry. A CPU architectural unit has one native width. A system may combine different-width CPU units through the common backplane contract; it does not combine different native widths inside one CPU unit.
 
@@ -17,7 +17,7 @@ Smaller scalar and packed operations are defined as operations within an N-bit a
 
 ## Opcode and instruction-format direction
 
-The current opcode-field direction is N bits. The opcode registry remains one finite global namespace shared across all members. A numeric opcode has the same meaning everywhere; wider opcode fields do not create new instructions automatically.
+The selected working opcode-field direction is N bits. The opcode registry remains one finite global namespace shared across all members. A numeric opcode has the same meaning everywhere; wider opcode fields do not create new instructions automatically.
 
 New instructions receive unique opcode values. Existing assignments and semantics are immutable. Unassigned values remain reserved. Unsupported instructions raise a defined exception unless portable code has already been compiled to an equivalent supported sequence.
 
@@ -32,6 +32,8 @@ Wider local operations may be segmented into protocol transactions only where th
 Backplanes may be connected hierarchically, including backplanes of backplanes. Discovery, routing, addressing, capability propagation, fault containment, reset, and management contracts must work across hierarchy levels.
 
 ## Compatibility layers
+
+See the [width-neutral fabric and backplane contract](width-neutral-fabric-and-backplane-contract-proposal-0.1.md) for the proposed endpoint and transaction semantics.
 
 Compatibility is not a single property:
 

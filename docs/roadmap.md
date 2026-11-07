@@ -1,6 +1,6 @@
 # fNx Roadmap
 
-**Date:** 2026-11-05  
+**Date:** 2026-11-06  
 **Status:** Architecture and research roadmap; priorities evolve as contracts are reviewed
 
 fNx is the architecture family. N is the native architectural width in bits. 128-bit research profile is one member and the current focus of the executable scheduler/fabric research. Family-wide decisions must not be inferred from 128-bit research profile-only simulation results.
@@ -21,6 +21,8 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 - [x] Require hierarchical backplanes and width-neutral management/data contracts.
 
 ## 1. Decisions to ratify
+
+**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) documents the global namespace constraints and unresolved minimum-width/encoding alternatives. This is a proposal, not a ratified decision. The next step is comparative encoding feasibility work; no opcode values have been assigned.
 
 - [ ] Decide minimum N (16 bits currently favored; f8x remains open).
 - [ ] Ratify N-bit opcode field and finite global opcode registry.

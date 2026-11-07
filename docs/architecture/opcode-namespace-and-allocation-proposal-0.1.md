@@ -18,7 +18,7 @@ The goals are:
 
 ## 2. Existing working direction
 
-The family contract currently favors an opcode field whose width equals the member's native architectural width N. It also calls for one finite global registry, with the same numeric assignment used by every member.
+The family contract defines the opcode field as the member's native architectural width N. It also calls for one finite global registry, with the same numeric assignment used by every member.
 
 These are the same rule, applied consistently: the opcode field is N bits. The minimum and maximum supported N values remain open, but no member receives a special fixed-width opcode representation merely to enlarge its namespace.
 
@@ -151,7 +151,7 @@ The next design artifact should compare representative encoding candidates acros
 - Fetch and decode complexity.
 - Exact compatibility and disassembly behavior.
 
-After the minimum-width and encoding direction are selected, establish a machine-readable registry and validate uniqueness, lifecycle state, and revision metadata automatically.
+After the supported N range and encoding direction are selected, establish a machine-readable registry and validate uniqueness, lifecycle state, representable ranges, and revision metadata automatically.
 
 ## 11. Decision status
 

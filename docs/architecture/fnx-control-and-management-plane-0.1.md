@@ -13,7 +13,7 @@ The proposed **fNx Control Processor (FCP)** is an auxiliary processor that prov
 
 The FCP should use the fNx ISA family and instruction semantics rather than introducing an unrelated proprietary instruction language.
 
-The FCP may be a smaller, low-power fNx member than the main processor unit. A main CPU unit has one native width; the FCP is a separate CPU unit with its own single native width. The family minimum width remains an open decision, with f16x currently favored provisionally.
+The FCP may be a smaller, low-power fNx member than the main processor unit. A main CPU unit has one native width; the FCP is a separate CPU unit with its own single native width. The supported minimum and maximum N remain open. The FCP's native width follows the same N-bit family rule as every other CPU unit.
 
 A controller of one width can manage a processor or backplane of another width because management messages and platform contracts are width-neutral. It does not execute instructions on behalf of the managed processor and does not reinterpret the managed processor's native opcodes.
 

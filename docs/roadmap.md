@@ -37,9 +37,11 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 
 - [ ] Define instruction semantics and machine-readable opcode registry.
 - [x] Establish comparative instruction encoding feasibility study and evaluation criteria.
-- [x] Add an illustrative corpus and first-pass encoding-size comparison; full program-level measurement remains open.\n- [ ] Encode representative instruction corpus and measure code density, fetch cost, and decode complexity across N values.
+- [x] Add an illustrative corpus and first-pass encoding-size comparison; full program-level measurement remains open.
+- [ ] Encode representative instruction corpus and measure code density, fetch cost, and decode complexity across N values.
 - [ ] Define arithmetic, overflow, flags, exceptions, and sub-width operations.
-- [x] Draft address-space, translation, memory-model, atomicity, and coherence requirements for review.\n- [ ] Define normative memory model, atomics, fences, and ordering across registers/memory/fabric.
+- [x] Draft address-space, translation, memory-model, atomicity, and coherence requirements for review.
+- [ ] Define normative memory model, atomics, fences, and ordering across registers/memory/fabric.
 - [ ] Define privilege, protection, traps, interrupts, and reset state.
 - [ ] Define ABI, calling convention, stack, object format, relocations, and system interface.
 - [ ] Build reference interpreter, assembler, disassembler, golden vectors, and conformance suite.

@@ -5,7 +5,7 @@
 
 ## 1. Purpose
 
-fNx is a proposed open processor architecture family. N is the native architectural width in bits. Members such as f16x, f32x, f64x, 128-bit member, f256x, f512x, and f1024x share one ISA and one architectural philosophy. The minimum N is unresolved; 16 bits is currently favored provisionally.
+fNx is a proposed open processor architecture family. N is the native architectural width in bits. Members such as f16x, f32x, f64x, 128-bit member, f256x, f512x, and f1024x share one ISA and one architectural philosophy. The supported minimum and maximum N remain unresolved. N governs native architectural elements, including the opcode field.
 
 The project explores workspace-oriented execution, large numbers of independently schedulable hardware-thread contexts, private thread state, workspace-shared state, and modular systems that can combine different fNx members.
 
@@ -26,7 +26,7 @@ The architecture is not a TMS9900 ISA clone and does not promise TMS9900 binary 
 
 ## 3. Opcode and instruction encoding
 
-The current direction is an N-bit opcode field with one finite global opcode registry. The same numeric opcode means the same instruction across all members. A larger field does not automatically define more instructions.
+The selected working direction is an N-bit opcode field with one finite global opcode registry. The same numeric opcode means the same instruction across all members. A larger field does not automatically define more instructions.
 
 New instructions receive unique opcode values. Existing meanings are immutable. Unrecognized native opcodes trap; older hardware may run newer portable applications when the installer can lower the operation into an exact supported sequence.
 
@@ -68,10 +68,12 @@ The proposed FCP uses the fNx ISA family as a separate low-power management proc
 
 The family-level directions are captured in:
 - [fNx family and architectural contract](fnx-family-and-architectural-contract-0.1.md)
+- [Opcode namespace and allocation proposal](opcode-namespace-and-allocation-proposal-0.1.md)
+- [Instruction encoding feasibility study](instruction-encoding-feasibility-0.1.md)
 - [fNx P-Code and application compatibility](fnx-pcode-and-compatibility-0.1.md)
 - [fNx control processor and management plane](fnx-control-and-management-plane-0.1.md)
 
-Still open: minimum N, exact instruction encoding/length, operand formats, P-Code execution model and package format, ABI, privilege and memory model, context residency, workspace/shared-register synchronization, FCP width and firmware, backplane protocol, and physical implementation.
+Still open: supported minimum/maximum N, global opcode allocation policy, exact instruction encoding/length, operand formats, P-Code execution model and package format, ABI, privilege and memory model, context residency, workspace/shared-register synchronization, FCP width and firmware, backplane protocol, and physical implementation.
 
 ## 9. Development sequence
 

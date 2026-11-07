@@ -138,7 +138,7 @@ The current 128-bit member workspace/thread/register counts are member-specific 
 | GPR/arithmetic/data width | N bits | Working invariant |
 | Pointer/virtual-address width | N bits | Working invariant |
 | Physical address width | May be smaller than N | Working direction |
-| Opcode field width | N bits | Leading design direction |
+| Opcode field width | N bits | Selected working direction |
 | Global opcode registry | One finite shared namespace | Working direction |
 | Supported N range | Not yet bounded; N-bit rule applies to every member | Open |
 | Instruction length and operand format | Not decided | Open |

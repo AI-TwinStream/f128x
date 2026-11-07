@@ -20,9 +20,7 @@ The goals are:
 
 The family contract currently favors an opcode field whose width equals the member's native architectural width N. It also calls for one finite global registry, with the same numeric assignment used by every member.
 
-These are compatible only after the minimum supported N and the representation of opcodes on the smallest member are resolved.
-
-The minimum N is not yet ratified. Sixteen bits is favored; an 8-bit member remains an open question.
+These are the same rule, applied consistently: the opcode field is N bits. The minimum and maximum supported N values remain open, but no member receives a special fixed-width opcode representation merely to enlarge its namespace.
 
 ## 3. The minimum-width constraint
 
@@ -35,33 +33,11 @@ If the opcode field is exactly N bits, the representable numeric range is:
 | 32 | 0–4,294,967,295 |
 | 64 | 0–18,446,744,073,709,551,615 |
 
-A single global registry does not require every member to implement every operation. It does require every member's instruction representation to identify the same assigned operation unambiguously.
+A single global registry does not require every member to implement or directly encode every operation. Each member's N-bit opcode field can represent identifiers in the range shown above. Consequently, a member with a smaller N has a smaller directly encodable portion of the global namespace. For example, f8x can directly encode identifiers 0–255; f16x can directly encode identifiers 0–65,535. Wider members can directly encode larger identifiers.
 
-An 8-bit minimum therefore cannot directly encode registry values above 255 if the opcode field is exactly N bits. This is not solved by declaring the registry finite. It requires an explicit architectural choice.
+This is an intentional consequence of the N-bit rule, not a reason to introduce a fixed-width opcode field or an escape mechanism. The registry remains global: a numeric identifier has one meaning wherever it is representable. Operations outside a member's representable range are unavailable for direct native encoding on that member. Portable software may use an exact compiler/runtime expansion when one exists. The ISA capability model must make these limits discoverable.
 
-### Alternatives
-
-**A. Minimum width is 16 bits; opcode field is N bits.**
-
-- Every member can represent the entire 16-bit base namespace.
-- Wider members can represent additional numeric values, but those values are not automatically allocated.
-- No special escape mechanism is required solely to reach the base namespace.
-- f8x is not a member of the initial family contract.
-
-**B. Retain f8x and use an escape/prefix mechanism.**
-
-- An 8-bit member can reach operations outside the direct 8-bit range through a separately specified encoding mechanism.
-- The escape mechanism becomes part of the instruction encoding and must be designed for unambiguous decoding, length determination, compatibility, and disassembly.
-- The architecture must state whether the escaped value is still the opcode or an extended opcode identifier.
-- This adds complexity to the smallest member and must not be assumed to be free.
-
-**C. Use a fixed-width opcode representation independent of N.**
-
-- Every member uses the same opcode representation width.
-- This abandons the current N-bit opcode-field direction.
-- It may simplify global allocation but changes fetch/encoding tradeoffs and must be evaluated against the family design goals.
-
-No alternative is selected by this proposal.
+The architecture must define how allocation accounts for the representable ranges of supported members. It must not imply that every member can directly encode every registry entry.
 
 ## 4. Namespace model
 
@@ -150,22 +126,21 @@ A single monotonically increasing revision number may be insufficient to describ
 
 Before the registry is populated, the project should decide:
 
-1. Minimum supported N: 16 bits, or retain an 8-bit member.
-2. Opcode representation for the minimum-width member.
-3. Whether the N-bit opcode-field direction is retained or replaced.
-4. Base namespace size and treatment of values representable only by wider members.
-5. Reserved ranges, if any, and who may allocate them.
-6. Experimental/vendor extension policy.
-7. Unsupported-operation and malformed-instruction trap semantics.
-8. ISA revision and capability discovery model.
-9. Whether standardized entries may ever be marked withdrawn, and the exact meaning of withdrawal.
-10. Required review and conformance evidence before an allocation becomes standardized.
+1. Supported minimum and maximum N values.
+2. Whether every supported member follows the N-bit opcode-field rule (the current direction).
+3. Allocation policy for identifiers that are representable only by wider members.
+4. Reserved ranges, if any, and who may allocate them.
+5. Experimental/vendor extension policy.
+6. Unsupported-operation and malformed-instruction trap semantics, including out-of-range identifiers.
+7. ISA revision and capability discovery model.
+8. Whether standardized entries may ever be marked withdrawn, and the exact meaning of withdrawal.
+9. Required review and conformance evidence before an allocation becomes standardized.
 
 ## 10. Recommended next work
 
 Do not assign real opcode numbers yet.
 
-The next design artifact should compare representative encoding candidates against at least f16x and the 128-bit member, with f8x included as a constraint case if it remains under consideration. The comparison should measure:
+The next design artifact should compare representative encoding candidates across the supported N range, including the smallest proposed member and the 128-bit member. The study must account for the smaller directly representable opcode namespace at smaller N values. The comparison should measure:
 
 - Decode unambiguity and instruction-boundary recovery.
 - Common operation encoding cost.
@@ -186,11 +161,11 @@ After the minimum-width and encoding direction are selected, establish a machine
 | Stable numeric identity across members | Required by the family model |
 | Immutable standardized assignments and semantics | Proposed allocation rule |
 | No value recycling | Proposed allocation rule |
-| N-bit opcode field | Existing leading direction; unresolved |
-| Minimum N = 16 | Favored, not selected |
-| f8x support | Open |
-| Escape/prefix mechanism | Alternative only; not selected |
-| Fixed-width opcode representation | Alternative only; not selected |
+| N-bit opcode field | Selected working architectural direction |
+| Minimum and maximum supported N | Open |
+| Smaller-member opcode range | 0 through 2^N−1; intentional consequence of N |
+| Escape/prefix mechanism | Not part of the current direction |
+| Fixed-width opcode representation | Not part of the current direction |
 | Instruction length and operand formats | Open |
 | Reserved/vendor ranges | Open |
 | Trap semantics | Open |

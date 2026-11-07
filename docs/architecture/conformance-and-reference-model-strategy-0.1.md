@@ -107,6 +107,8 @@ These are different facts. A temporary shortage of resident contexts must not be
 ## 4. Normative source and test traceability
 
 Every normative requirement should have:
+
+The working cross-document mapping is maintained in [M1 requirements traceability matrix](m1-requirements-traceability-matrix-0.1.md). Its IDs are provisional traceability identifiers, not a claim that the linked proposal text has been ratified.
 1. A stable requirement identifier.
 2. A specification section and revision.
 3. A classification: mandatory, optional capability, or implementation-defined with required discovery.
@@ -286,4 +288,5 @@ A failed or skipped test must remain visible in the conformance report.
 - [fNx exception and interrupt model proposal](exception-and-interrupt-model-proposal-0.1.md)
 - [fNx workspace and thread lifecycle contract proposal](workspace-and-thread-lifecycle-contract-proposal-0.1.md)
 - [fNx width-neutral fabric and backplane contract proposal](width-neutral-fabric-and-backplane-contract-proposal-0.1.md)
+- [M1 requirements traceability matrix](m1-requirements-traceability-matrix-0.1.md)
 - [fNx roadmap](../roadmap.md)

@@ -22,14 +22,14 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 
 ## 1. Decisions to ratify
 
-**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) records N-bit opcode width as the working architectural direction. [Instruction encoding feasibility study](architecture/instruction-encoding-feasibility-0.1.md) compares candidate formats while preserving that rule and makes the opcode-field cost explicit at large N. [Opcode allocation and encoding decision analysis](architecture/opcode-allocation-and-encoding-decision-analysis-0.1.md) compares global allocation policies and quantifies a small illustrative instruction corpus. Each member directly represents identifiers that fit in its N-bit field. Supported N bounds, global allocation policy, and final instruction encoding remain open. No opcode values have been assigned.
+**Active M1 work:** [Opcode namespace and allocation proposal](architecture/opcode-namespace-and-allocation-proposal-0.1.md) records N-bit opcode width as the working architectural direction. [Instruction encoding feasibility study](architecture/instruction-encoding-feasibility-0.1.md) compares candidate formats while preserving that rule and makes the opcode-field cost explicit at large N. [Opcode allocation and encoding decision analysis](architecture/opcode-allocation-and-encoding-decision-analysis-0.1.md) compares global allocation policies and quantifies a small illustrative instruction corpus. Each member directly represents identifiers that fit in its N-bit field. Supported N bounds, global allocation policy, and final instruction encoding remain open. [Address-space and memory-model proposal](architecture/address-space-and-memory-model-proposal-0.1.md) now collects the N-bit virtual-address, translation, protection, memory-ordering, atomicity, and coherence contracts. No opcode values have been assigned.
 
 - [ ] Define the supported minimum and maximum N values.
 - [ ] Ratify N-bit opcode fields and the finite global opcode registry, including allocation rules for identifiers representable only by wider members.
 - [ ] Specify opcode allocation, reserved values, illegal-instruction behavior, and ISA revision rules.
 - [ ] Select and specify instruction length, formats, operand fields, register selectors, immediates, and extension rules using the encoding feasibility study.
 - [ ] Decide whether register counts and workspace/thread capacities are family invariants or member-specific.
-- [ ] Define N-bit virtual-address semantics and physical-address translation contract.
+- [ ] Ratify N-bit virtual-address semantics and physical-address translation contract.
 - [ ] Define the common backplane transaction and management protocols.
 - [ ] Decide FCP native width, placement, redundancy, firmware, and trust model.
 
@@ -39,7 +39,7 @@ fNx is the architecture family. N is the native architectural width in bits. 128
 - [x] Establish comparative instruction encoding feasibility study and evaluation criteria.
 - [x] Add an illustrative corpus and first-pass encoding-size comparison; full program-level measurement remains open.\n- [ ] Encode representative instruction corpus and measure code density, fetch cost, and decode complexity across N values.
 - [ ] Define arithmetic, overflow, flags, exceptions, and sub-width operations.
-- [ ] Define memory model, atomics, fences, and ordering across registers/memory/fabric.
+- [x] Draft address-space, translation, memory-model, atomicity, and coherence requirements for review.\n- [ ] Define normative memory model, atomics, fences, and ordering across registers/memory/fabric.
 - [ ] Define privilege, protection, traps, interrupts, and reset state.
 - [ ] Define ABI, calling convention, stack, object format, relocations, and system interface.
 - [ ] Build reference interpreter, assembler, disassembler, golden vectors, and conformance suite.
